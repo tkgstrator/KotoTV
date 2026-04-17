@@ -62,15 +62,21 @@
 
     *, *::before, *::after { box-sizing: border-box; }
 
+    html { background: hsl(220 20% 5%); min-height: 100dvh; }
     body {
-      background-color: hsl(var(--background));
       color: hsl(var(--foreground));
       font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
-      /* Simulate a 390px mobile viewport */
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .device {
+      width: 100%;
       max-width: 390px;
-      margin: 0 auto;
       min-height: 100dvh;
       position: relative;
+      background-color: hsl(var(--background));
       box-shadow: 0 0 48px hsl(220 20% 0% / 0.6);
     }
 
@@ -175,7 +181,7 @@
     .bottom-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
   </style>
 </head>
-<body>
+<body><div class="device">
 
 <!-- Sticky header -->
 <header style="
@@ -461,5 +467,5 @@
   }
 </script>
 
-</body>
+</div></body>
 </html>
