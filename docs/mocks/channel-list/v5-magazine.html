@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Channel List — v5 (Magazine / Editorial)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 8px;
+    }
+
+    /* -------- FEATURED (large) -------- */
+    .featured-card {
+      display: block;
+      text-decoration: none;
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      transition: transform 100ms ease, box-shadow 100ms ease;
+    }
+    .featured-card:hover,
+    .featured-card:focus-visible {
+      transform: scale(1.008);
+      box-shadow: 0 16px 48px hsl(221 83% 60% / 0.3);
+    }
+    .featured-card:active { transform: scale(0.997); opacity: 0.9; }
+
+    .featured-bg {
+      aspect-ratio: 16/9;
+      background:
+        radial-gradient(ellipse at 70% 20%, hsl(241 50% 30% / 0.8) 0%, transparent 60%),
+        radial-gradient(ellipse at 10% 80%, hsl(221 60% 18% / 0.9) 0%, transparent 55%),
+        linear-gradient(160deg, hsl(230 35% 18%) 0%, hsl(222 25% 10%) 100%);
+      position: relative;
+    }
+    /* decorative streaks */
+    .featured-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        105deg,
+        transparent 0px,
+        transparent 48px,
+        hsl(220 60% 60% / 0.04) 48px,
+        hsl(220 60% 60% / 0.04) 50px
+      );
+    }
+
+    .featured-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        hsl(222 28% 7% / 0.98) 0%,
+        hsl(222 28% 7% / 0.6) 40%,
+        transparent 70%
+      );
+    }
+    .featured-meta {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 24px 28px;
+    }
+
+    /* -------- MEDIUM card (2 side-by-side) -------- */
+    .medium-card {
+      display: block;
+      text-decoration: none;
+      border-radius: 12px;
+      overflow: hidden;
+      background-color: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      transition: transform 80ms ease, box-shadow 80ms ease, border-color 80ms ease;
+    }
+    .medium-card:hover,
+    .medium-card:focus-visible {
+      transform: translateY(-2px);
+      border-color: hsl(var(--primary) / 0.45);
+      box-shadow: 0 6px 20px hsl(var(--primary) / 0.18);
+    }
+    .medium-card:active { transform: translateY(0); opacity: 0.82; }
+
+    .medium-thumb {
+      aspect-ratio: 16/9;
+      background:
+        radial-gradient(circle at 40% 50%, hsl(142 50% 20% / 0.7) 0%, transparent 70%),
+        linear-gradient(135deg, hsl(222 22% 18%) 0%, hsl(222 18% 12%) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .medium-thumb.cs-bg {
+      background:
+        radial-gradient(circle at 60% 40%, hsl(38 60% 25% / 0.7) 0%, transparent 70%),
+        linear-gradient(135deg, hsl(222 22% 18%) 0%, hsl(222 18% 12%) 100%);
+    }
+    .medium-thumb-live {
+      position: absolute;
+      top: 8px; left: 8px;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: hsl(0 80% 55%);
+      color: hsl(0 0% 97%);
+      letter-spacing: 0.05em;
+    }
+
+    /* -------- LIST ROWS -------- */
+    .list-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 80ms ease;
+    }
+    .list-row:hover,
+    .list-row:focus-visible {
+      background-color: hsl(var(--muted));
+    }
+    .list-row:active { opacity: 0.75; }
+
+    /* type accents */
+    .accent-gr  { background-color: hsl(221 83% 60%); }
+    .accent-bs  { background-color: hsl(142 70% 48%); }
+    .accent-cs  { background-color: hsl(38 92% 52%); }
+    .badge-gr   { background-color: hsl(221 83% 60% / 0.18); color: hsl(221 83% 72%); }
+    .badge-bs   { background-color: hsl(142 70% 48% / 0.18); color: hsl(142 70% 62%); }
+    .badge-cs   { background-color: hsl(38 92% 52% / 0.18);  color: hsl(38 92% 66%); }
+    .hero-badge-gr { background-color: hsl(221 83% 60% / 0.2); color: hsl(221 83% 80%); border: 1px solid hsl(221 83% 60% / 0.4); }
+    .hero-badge-bs { background-color: hsl(142 70% 48% / 0.2); color: hsl(142 70% 75%); border: 1px solid hsl(142 70% 48% / 0.4); }
+
+    /* progress */
+    .prog-track { height: 3px; background-color: hsl(var(--muted)); border-radius: 9999px; overflow: hidden; }
+    .prog-fill  { height: 100%; border-radius: 9999px; background-color: hsl(var(--primary)); }
+    .prog-fill.urgent { background-color: hsl(var(--destructive)); }
+    .prog-fill.bs { background-color: hsl(142 70% 48%); }
+    .prog-fill.cs { background-color: hsl(38 92% 52%); }
+
+    /* list row progress mini */
+    .mini-prog-track { height: 2px; background-color: hsl(var(--border)); border-radius: 9999px; overflow: hidden; }
+    .mini-prog-fill  { height: 100%; border-radius: 9999px; }
+
+    /* section divider */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      padding: 0 2px;
+    }
+
+    /* filter pills */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 80ms, color 80ms;
+      border: 1px solid hsl(var(--border));
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+      text-decoration: none;
+    }
+    .pill.active {
+      background-color: hsl(var(--primary));
+      border-color: transparent;
+      color: hsl(var(--primary-foreground));
+    }
+    .pill:not(.active):hover {
+      background-color: hsl(var(--muted));
+      color: hsl(var(--foreground));
+    }
+
+    /* ch number avatar */
+    .ch-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* Apple TV-style blurred side panel */
+    .sidebar {
+      width: 260px;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse-dot { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
+    .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- HEADER -->
+  <header style="background-color:hsl(var(--card)); border-bottom:1px solid hsl(var(--border));"
+          class="sticky top-0 z-20">
+    <div class="max-w-screen-xl mx-auto px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <span class="text-base font-bold tracking-tight">KonomiTV</span>
+        <!-- filter pills inline in header -->
+        <nav class="flex items-center gap-1.5" aria-label="チャンネル種別">
+          <a href="#" class="pill active">すべて</a>
+          <a href="#" class="pill">
+            <span class="w-1.5 h-1.5 rounded-full accent-gr inline-block"></span>GR
+          </a>
+          <a href="#" class="pill">
+            <span class="w-1.5 h-1.5 rounded-full accent-bs inline-block"></span>BS
+          </a>
+          <a href="#" class="pill">
+            <span class="w-1.5 h-1.5 rounded-full accent-cs inline-block"></span>CS
+          </a>
+        </nav>
+      </div>
+      <span class="text-sm" style="color:hsl(var(--muted-foreground));">22:14</span>
+    </div>
+  </header>
+
+  <main class="max-w-screen-xl mx-auto px-6 py-6">
+
+    <!-- ===== EDITORIAL LAYOUT ===== -->
+    <!-- Top row: large featured LEFT + 2 medium stacked RIGHT -->
+    <div class="flex gap-4 mb-4" style="align-items:stretch;">
+
+      <!-- FEATURED — ~60% width -->
+      <div class="flex-1" style="min-width:0;">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="w-1.5 h-1.5 rounded-full accent-gr pulse-dot"></span>
+          <span class="section-label">いま視聴中</span>
+        </div>
+        <a href="#" class="featured-card" aria-label="NHK総合 を視聴" style="display:block;">
+          <div class="featured-bg">
+            <!-- channel number watermark -->
+            <div style="position:absolute;bottom:16px;right:20px;font-size:4rem;font-weight:900;
+                        color:hsl(221 83% 70% / 0.08);line-height:1;user-select:none;">1</div>
+            <!-- live badge -->
+            <div style="position:absolute;top:14px;right:14px;display:flex;gap:8px;align-items:center;">
+              <span style="font-size:9px;font-weight:700;padding:3px 7px;border-radius:4px;
+                           background:hsl(0 80% 55%);color:hsl(0 0% 97%);letter-spacing:0.06em;">LIVE</span>
+            </div>
+            <div class="featured-overlay"></div>
+          </div>
+          <div class="featured-meta">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded hero-badge-gr">GR</span>
+              <span class="text-xs font-medium" style="color:hsl(210 20% 72%);">1ch · NHK総合</span>
+              <span class="text-xs" style="color:hsl(210 20% 52%);">21:00〜22:45</span>
+            </div>
+            <h2 class="font-extrabold leading-snug mb-1.5" style="font-size:1.2rem;color:hsl(0 0% 97%);
+               text-shadow:0 2px 10px hsl(0 0% 0% / 0.5);">
+              NHKスペシャル「地球大異変<br>迫りくる海面上昇の脅威」
+            </h2>
+            <p class="text-xs mb-3" style="color:hsl(210 20% 65%);line-height:1.5;">
+              世界各地で加速する海面上昇。科学者たちが警告するその実態に迫る。
+            </p>
+            <div class="flex items-center gap-2 mb-1">
+              <div class="prog-track flex-1">
+                <div class="prog-fill" style="width:62%;"></div>
+              </div>
+              <span class="text-xs whitespace-nowrap" style="color:hsl(210 20% 60%);">残42分</span>
+            </div>
+            <p class="text-xs" style="color:hsl(210 20% 50%);">次: ニュースウオッチ9 &ensp;22:00</p>
+          </div>
+        </a>
+      </div>
+
+      <!-- MEDIUM COLUMN — ~40% -->
+      <div class="sidebar flex flex-col gap-3">
+        <div class="flex items-center gap-2 mb-0">
+          <span class="section-label">注目</span>
+        </div>
+
+        <!-- medium card 1 — BS -->
+        <a href="#" class="medium-card" aria-label="NHK BS を視聴">
+          <div class="medium-thumb">
+            <!-- subtle channel number -->
+            <div style="position:absolute;bottom:6px;right:10px;font-size:2.5rem;font-weight:900;
+                        color:hsl(142 50% 60% / 0.1);line-height:1;">101</div>
+            <span class="medium-thumb-live">LIVE</span>
+          </div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-bs">BS</span>
+                <span class="text-xs" style="color:hsl(var(--muted-foreground));">101ch · NHK BS</span>
+              </div>
+            </div>
+            <p class="text-sm font-bold line-clamp-2 leading-snug mb-1.5" style="color:hsl(var(--card-foreground));">
+              BS世界のドキュメンタリー「北極の氷が語る未来」
+            </p>
+            <div class="flex items-center gap-2">
+              <div class="prog-track flex-1">
+                <div class="prog-fill bs" style="width:20%;"></div>
+              </div>
+              <span class="text-[10px]" style="color:hsl(var(--muted-foreground));">22:00〜22:50</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- medium card 2 — CS -->
+        <a href="#" class="medium-card" aria-label="スカチャン を視聴">
+          <div class="medium-thumb cs-bg">
+            <div style="position:absolute;bottom:6px;right:10px;font-size:2.5rem;font-weight:900;
+                        color:hsl(38 60% 60% / 0.1);line-height:1;">800</div>
+            <span class="medium-thumb-live">LIVE</span>
+          </div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-cs">CS</span>
+                <span class="text-xs" style="color:hsl(var(--muted-foreground));">800ch · スカチャン</span>
+              </div>
+            </div>
+            <p class="text-sm font-bold line-clamp-2 leading-snug mb-1.5" style="color:hsl(var(--card-foreground));">
+              J1リーグ 第32節 浦和vs横浜FM 後半
+            </p>
+            <div class="flex items-center gap-2">
+              <div class="prog-track flex-1">
+                <div class="prog-fill cs" style="width:55%;"></div>
+              </div>
+              <span class="text-[10px]" style="color:hsl(var(--muted-foreground));">21:00〜23:00</span>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- ===== REST AS DENSE LIST ===== -->
+    <div style="border-top:1px solid hsl(var(--border));" class="pt-4">
+      <div class="flex items-center justify-between mb-3">
+        <span class="section-label">その他のチャンネル</span>
+        <span class="text-xs" style="color:hsl(var(--muted-foreground));">8チャンネル</span>
+      </div>
+
+      <!-- list in 2 columns for better use of width -->
+      <div class="grid gap-0" style="grid-template-columns:1fr 1fr;">
+
+        <!-- left column -->
+        <div style="border-right:1px solid hsl(var(--border)); padding-right:12px;" class="space-y-0.5">
+
+          <a href="#" class="list-row" aria-label="NHK Eテレ を視聴">
+            <div class="ch-avatar badge-gr" style="background:hsl(221 83% 60%/0.15);">
+              <span style="color:hsl(221 83% 72%);font-size:10px;font-weight:700;">2</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-xs font-semibold truncate" style="color:hsl(var(--card-foreground));">NHK Eテレ</span>
+                <span class="text-[10px] ml-2 flex-shrink-0 badge-gr px-1.5 py-0.5 rounded font-bold">GR</span>
+              </div>
+              <p class="text-[11px] truncate mb-1" style="color:hsl(var(--muted-foreground));">ハートネットTV「福祉の現場最前線」</p>
+              <div class="mini-prog-track">
+                <div class="mini-prog-fill accent-gr" style="width:78%;"></div>
+              </div>
+            </div>
+          </a>
+
+          <a href="#" class="list-row" aria-label="フジテレビ を視聴">
+            <div class="ch-avatar" style="background:hsl(221 83% 60%/0.15);">
+              <span style="color:hsl(221 83% 72%);font-size:10px;font-weight:700;">8</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-xs font-semibold truncate" style="color:hsl(var(--card-foreground));">フジテレビ</span>
+                <span class="text-[10px] ml-2 flex-shrink-0 badge-gr px-1.5 py-0.5 rounded font-bold">GR</span>
+              </div>
+              <p class="text-[11px] truncate mb-1" style="color:hsl(var(--muted-foreground));">ボクシング世界タイトルマッチ 生中継</p>
+              <div class="mini-prog-track">
+                <div class="mini-prog-fill accent-gr" style="width:45%;"></div>
+              </div>
+            </div>
+          </a>
+
+          <a href="#" class="list-row" aria-label="TBS を視聴">
+            <div class="ch-avatar" style="background:hsl(221 83% 60%/0.15);">
+              <span style="color:hsl(221 83% 72%);font-size:10px;font-weight:700;">6</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-xs font-semibold truncate" style="color:hsl(var(--card-foreground));">TBS</span>
+                <span class="text-[10px] ml-2 flex-shrink-0 badge-gr px-1.5 py-0.5 rounded font-bold">GR</span>
+              </div>
+              <p class="text-[11px] truncate mb-1" style="color:hsl(var(--destructive));">まもなく終了 — ドラマ「家族という名の迷宮」第8話</p>
+              <div class="mini-prog-track">
+                <div class="mini-prog-fill" style="width:91%;background:hsl(var(--destructive));"></div>
+              </div>
+            </div>
+          </a>
+
+          <a href="#" class="list-row" aria-label="テレビ東京 を視聴">
+            <div class="ch-avatar" style="background:hsl(221 83% 60%/0.15);">
+              <span style="color:hsl(221 83% 72%);font-size:10px;font-weight:700;">12</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-xs font-semibold truncate" style="color:hsl(var(--card-foreground));">テレビ東京</span>
+                <span class="text-[10px] ml-2 flex-shrink-0 badge-gr px-1.5 py-0.5 rounded font-bold">GR</span>
+              </div>
+              <p class="text-[11px] truncate mb-1" style="color:hsl(var(--muted-foreground));">アド街ック天国「渋谷篇」</p>
+              <div class="mini-prog-track">
+                <div class="mini-prog-fill accent-gr" style="width:30%;"></div>
+              </div>
+            </div>
+          </a>
+
+        </div>
+
+        <!-- right column -->
+        <div style="padding-left:12px;" class="space-y-0.5">
+
+          <a href="#" class="list-row" aria-label="BS朝日 を視聴">
+            <div class="ch-avatar" style="background:hsl(142 70% 48%/0.15);">
+              <span style="color:hsl(142 70% 62%);font-size:9px;font-weight:700;">151</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-xs font-semibold truncate" style="color:hsl(var(--card-foreground));">BS朝日</span>
+                <span class="text-[10px] ml-2 flex-shrink-0 badge-bs px-1.5 py-0.5 rounded font-bold">BS</span>
+              </div>
+              <p class="text-[11px] truncate mb-1" style="color:hsl(var(--destructive));">まもなく終了 — 旅サラダ「秋の京都」</p>
+              <div class="mini-prog-track">
+                <div class="mini-prog-fill" style="width:93%;background:hsl(var(--destructive));"></div>
+              </div>
+            </div>
+          </a>
+
+          <a href="#" class="list-row" aria-label="BS日テレ を視聴">
+            <div class="ch-avatar" style="background:hsl(142 70% 48%/0.15);">
+              <span style="color:hsl(142 70% 62%);font-size:9px;font-weight:700;">141</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-xs font-semibold truncate" style="color:hsl(var(--card-foreground));">BS日テレ</span>
+                <span class="text-[10px] ml-2 flex-shrink-0 badge-bs px-1.5 py-0.5 rounded font-bold">BS</span>
+              </div>
+              <p class="text-[11px] truncate mb-1" style="color:hsl(var(--muted-foreground));">深夜映画劇場「オールド・ボーイ」</p>
+              <div class="mini-prog-track">
+                <div class="mini-prog-fill accent-bs" style="width:15%;"></div>
+              </div>
+            </div>
+          </a>
+
+          <a href="#" class="list-row" aria-label="WOWOW を視聴">
+            <div class="ch-avatar" style="background:hsl(38 92% 52%/0.15);">
+              <span style="color:hsl(38 92% 66%);font-size:9px;font-weight:700;">191</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-xs font-semibold truncate" style="color:hsl(var(--card-foreground));">WOWOW</span>
+                <span class="text-[10px] ml-2 flex-shrink-0 badge-cs px-1.5 py-0.5 rounded font-bold">CS</span>
+              </div>
+              <p class="text-[11px] truncate mb-1" style="color:hsl(var(--muted-foreground));">映画「インターステラー」(字)</p>
+              <div class="mini-prog-track">
+                <div class="mini-prog-fill accent-cs" style="width:70%;"></div>
+              </div>
+            </div>
+          </a>
+
+          <a href="#" class="list-row" aria-label="FOX を視聴">
+            <div class="ch-avatar" style="background:hsl(38 92% 52%/0.15);">
+              <span style="color:hsl(38 92% 66%);font-size:9px;font-weight:700;">253</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between mb-0.5">
+                <span class="text-xs font-semibold truncate" style="color:hsl(var(--card-foreground));">FOX</span>
+                <span class="text-[10px] ml-2 flex-shrink-0 badge-cs px-1.5 py-0.5 rounded font-bold">CS</span>
+              </div>
+              <p class="text-[11px] truncate mb-1" style="color:hsl(var(--muted-foreground));">24 —TWENTY FOUR— シーズン8 第14話</p>
+              <div class="mini-prog-track">
+                <div class="mini-prog-fill accent-cs" style="width:25%;"></div>
+              </div>
+            </div>
+          </a>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+</body>
+</html>

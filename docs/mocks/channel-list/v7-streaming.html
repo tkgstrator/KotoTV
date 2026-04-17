@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Channel List — v7 (Thumbnail-forward Streaming Grid)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --background: 220 14% 96%;
+      --foreground: 222 20% 16%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 20% 16%;
+      --muted: 220 12% 90%;
+      --muted-foreground: 218 10% 44%;
+      --border: 218 14% 86%;
+      --primary: 346 77% 52%;
+      --primary-foreground: 0 0% 98%;
+      --ring: 346 77% 52%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 220 22% 7%;
+      --foreground: 218 20% 91%;
+      --card: 220 20% 11%;
+      --card-foreground: 218 20% 91%;
+      --muted: 220 18% 16%;
+      --muted-foreground: 218 12% 52%;
+      --border: 220 16% 19%;
+      --primary: 346 77% 60%;
+      --primary-foreground: 220 22% 7%;
+      --ring: 346 77% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 10px;
+    }
+
+    /* ── header ── */
+    .app-header {
+      position: sticky; top: 0; z-index: 40;
+      background: hsl(var(--background) / 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 0 24px;
+      height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { font-size: 1.05rem; font-weight: 800; color: hsl(var(--primary)); letter-spacing: -0.02em; }
+
+    /* ── segmented filter ── */
+    .seg-control {
+      display: inline-flex;
+      background: hsl(var(--muted));
+      border-radius: 10px;
+      padding: 3px; gap: 2px;
+    }
+    .seg-btn {
+      padding: 5px 16px; border-radius: 8px; border: none;
+      background: transparent; color: hsl(var(--muted-foreground));
+      font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .seg-btn.active {
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      box-shadow: 0 1px 3px hsl(220 20% 4% / 0.3);
+    }
+    .seg-btn:hover:not(.active) { color: hsl(var(--foreground)); }
+
+    /* ── grid ── */
+    .tile-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 24px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    @media (max-width: 1200px) { .tile-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 800px)  { .tile-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* ── tile card ── */
+    .tile {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .tile:hover { transform: scale(1.025); box-shadow: 0 8px 32px hsl(220 20% 4% / 0.55); }
+    .tile:hover .tile-overlay { opacity: 1; }
+    .tile:hover .tile-thumb-inner { filter: brightness(0.55); }
+
+    /* 16:9 thumbnail */
+    .tile-thumb {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 */
+      overflow: hidden;
+    }
+    .tile-thumb-inner {
+      position: absolute; inset: 0;
+      transition: filter 0.18s ease;
+    }
+
+    /* gradient thumbnails per channel — evoke TV broadcast feel */
+    .gr-1  { background: linear-gradient(135deg, hsl(225 80% 32%) 0%, hsl(280 60% 40%) 60%, hsl(320 70% 30%) 100%); }
+    .gr-2  { background: linear-gradient(135deg, hsl(215 75% 28%) 0%, hsl(195 80% 38%) 60%, hsl(170 60% 28%) 100%); }
+    .gr-3  { background: linear-gradient(135deg, hsl(230 70% 22%) 0%, hsl(260 65% 42%) 60%, hsl(240 80% 35%) 100%); }
+    .gr-4  { background: linear-gradient(135deg, hsl(210 72% 30%) 0%, hsl(240 58% 48%) 60%, hsl(270 60% 38%) 100%); }
+    .gr-5  { background: linear-gradient(135deg, hsl(220 78% 26%) 0%, hsl(200 70% 40%) 60%, hsl(185 65% 32%) 100%); }
+    .gr-6  { background: linear-gradient(135deg, hsl(235 65% 30%) 0%, hsl(255 72% 44%) 60%, hsl(275 68% 36%) 100%); }
+    .bs-1  { background: linear-gradient(135deg, hsl(145 72% 22%) 0%, hsl(165 68% 38%) 60%, hsl(185 60% 32%) 100%); }
+    .bs-2  { background: linear-gradient(135deg, hsl(140 65% 18%) 0%, hsl(160 75% 34%) 60%, hsl(200 58% 38%) 100%); }
+    .bs-3  { background: linear-gradient(135deg, hsl(155 70% 20%) 0%, hsl(175 65% 36%) 60%, hsl(155 80% 28%) 100%); }
+    .bs-4  { background: linear-gradient(135deg, hsl(135 68% 18%) 0%, hsl(170 72% 32%) 60%, hsl(190 64% 36%) 100%); }
+    .cs-1  { background: linear-gradient(135deg, hsl(28 88% 32%) 0%, hsl(48 82% 48%) 60%, hsl(32 90% 38%) 100%); }
+    .cs-2  { background: linear-gradient(135deg, hsl(20 80% 28%) 0%, hsl(40 85% 44%) 60%, hsl(15 75% 36%) 100%); }
+
+    /* noise texture overlay for realism */
+    .tile-thumb-inner::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+      opacity: 0.18;
+      pointer-events: none;
+    }
+
+    /* program title overlay — always visible bottom gradient */
+    .tile-bottom-overlay {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 28px 10px 8px;
+      background: linear-gradient(to top, hsl(220 22% 7% / 0.95) 0%, transparent 100%);
+    }
+    .tile-prog-title {
+      font-size: 0.8125rem; font-weight: 700;
+      color: hsl(218 20% 95%);
+      line-height: 1.25;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      text-shadow: 0 1px 4px hsl(220 22% 4% / 0.7);
+    }
+
+    /* time + progress row */
+    .tile-time-row {
+      display: flex; align-items: center; gap: 6px;
+      margin-top: 4px;
+    }
+    .tile-time-text {
+      font-size: 0.6rem; color: hsl(218 20% 75%);
+      flex-shrink: 0;
+    }
+    .tile-prog-bar {
+      flex: 1; height: 3px; border-radius: 2px;
+      background: hsl(218 20% 91% / 0.2);
+      overflow: hidden;
+    }
+    .tile-prog-fill {
+      height: 100%; border-radius: 2px;
+      background: hsl(var(--primary));
+      transition: width 0.3s ease;
+    }
+    .tile-prog-fill.urgent { background: hsl(var(--destructive)); }
+
+    /* channel badge top-left */
+    .ch-badge {
+      position: absolute; top: 8px; left: 8px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 0.625rem; font-weight: 700;
+      letter-spacing: 0.04em;
+      backdrop-filter: blur(6px);
+    }
+    .ch-badge.gr { background: hsl(221 83% 60% / 0.85); color: hsl(218 20% 97%); }
+    .ch-badge.bs { background: hsl(142 70% 40% / 0.85); color: hsl(218 20% 97%); }
+    .ch-badge.cs { background: hsl(38 92% 52% / 0.85); color: hsl(220 22% 10%); }
+
+    /* live dot top-right */
+    .live-dot {
+      position: absolute; top: 8px; right: 8px;
+      display: flex; align-items: center; gap: 4px;
+      padding: 2px 7px; border-radius: 5px;
+      background: hsl(0 80% 55% / 0.85);
+      font-size: 0.575rem; font-weight: 800; color: hsl(218 20% 97%);
+      letter-spacing: 0.08em;
+      backdrop-filter: blur(6px);
+    }
+    .live-dot::before {
+      content: '';
+      width: 5px; height: 5px; border-radius: 50%;
+      background: hsl(218 20% 97%);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* hover overlay — synopsis + next */
+    .tile-overlay {
+      position: absolute; inset: 0;
+      background: hsl(220 22% 7% / 0.88);
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 14px;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+      pointer-events: none;
+    }
+    .tile:hover .tile-overlay { pointer-events: auto; }
+    .overlay-ch-name {
+      font-size: 0.6875rem; color: hsl(var(--muted-foreground));
+      margin-bottom: 4px;
+    }
+    .overlay-prog-title {
+      font-size: 0.875rem; font-weight: 800;
+      color: hsl(var(--foreground));
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+    .overlay-synopsis {
+      font-size: 0.6875rem; color: hsl(var(--muted-foreground));
+      line-height: 1.5;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .overlay-next {
+      font-size: 0.625rem; color: hsl(var(--muted-foreground));
+      border-top: 1px solid hsl(var(--border));
+      padding-top: 6px;
+    }
+    .overlay-next span { color: hsl(var(--foreground)); font-weight: 600; }
+    .overlay-watch-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-top: 10px;
+      padding: 7px 14px; border-radius: 7px;
+      background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+      font-size: 0.75rem; font-weight: 700; border: none; cursor: pointer;
+      width: 100%;
+      gap: 5px;
+      transition: opacity 0.12s;
+    }
+    .overlay-watch-btn:hover { opacity: 0.88; }
+
+    /* info row below tile */
+    .tile-meta {
+      padding: 8px 10px 10px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .tile-ch-name {
+      font-size: 0.75rem; font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tile-ch-num {
+      font-size: 0.6875rem; color: hsl(var(--muted-foreground));
+      flex-shrink: 0; margin-left: 6px;
+    }
+
+    /* section header */
+    .section-label {
+      padding: 8px 24px 0;
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em;
+      color: hsl(var(--muted-foreground));
+      text-transform: uppercase;
+      max-width: 1440px; margin: 0 auto;
+    }
+
+    /* loading skeleton */
+    .skeleton { background: hsl(var(--muted)); border-radius: 8px; animation: shimmer 1.6s ease-in-out infinite; }
+    @keyframes shimmer {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* dark/light toggle */
+    .theme-btn {
+      padding: 5px 12px; border-radius: 8px; border: 1px solid hsl(var(--border));
+      background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+      font-size: 0.75rem; cursor: pointer; font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── App Header ── -->
+<header class="app-header">
+  <div style="display:flex;align-items:center;gap:20px;">
+    <span class="logo">KonomiTV</span>
+    <nav class="seg-control">
+      <button class="seg-btn active" onclick="filterType('ALL',this)">すべて</button>
+      <button class="seg-btn" onclick="filterType('GR',this)">GR</button>
+      <button class="seg-btn" onclick="filterType('BS',this)">BS</button>
+      <button class="seg-btn" onclick="filterType('CS',this)">CS</button>
+    </nav>
+  </div>
+  <button class="theme-btn" onclick="document.documentElement.classList.toggle('dark')">
+    ライト / ダーク
+  </button>
+</header>
+
+<!-- ── GR Section ── -->
+<div class="section-label" id="sec-gr">GR — 地上デジタル</div>
+<div class="tile-grid" id="grid-gr">
+
+  <!-- GR ch 1 -->
+  <a href="/live/1" class="tile" data-type="GR" tabindex="0" aria-label="NHK総合 を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner gr-1"></div>
+      <span class="ch-badge gr">GR · 1</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">ニュース7 — 今夜の主要ニュース</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">19:00–20:00</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:42%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">NHK総合</div>
+        <div class="overlay-prog-title">ニュース7 — 今夜の主要ニュース</div>
+        <div class="overlay-synopsis">国内外の主要ニュースをキャスターが丁寧に解説。経済・政治・社会の最新情報をお届けします。</div>
+        <div class="overlay-next">次: <span>クローズアップ現代</span> 20:00〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">NHK総合</span>
+      <span class="tile-ch-num">ch.1</span>
+    </div>
+  </a>
+
+  <!-- GR ch 2 -->
+  <a href="/live/2" class="tile" data-type="GR" tabindex="0" aria-label="NHKEテレ を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner gr-2"></div>
+      <span class="ch-badge gr">GR · 2</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">趣味の園芸 — 春の寄せ植え特集</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">18:30–19:00</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill urgent" style="width:92%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">NHK Eテレ</div>
+        <div class="overlay-prog-title">趣味の園芸 — 春の寄せ植え特集</div>
+        <div class="overlay-synopsis">春爛漫、色鮮やかな草花で彩る寄せ植えの作り方を専門家が丁寧に解説。初心者でも楽しめる実践的なヒントが満載。</div>
+        <div class="overlay-next" style="color:hsl(0 72% 58%)">まもなく終了</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">NHK Eテレ</span>
+      <span class="tile-ch-num">ch.2</span>
+    </div>
+  </a>
+
+  <!-- GR ch 4 -->
+  <a href="/live/4" class="tile" data-type="GR" tabindex="0" aria-label="日本テレビ を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner gr-3"></div>
+      <span class="ch-badge gr">GR · 4</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">ザ！世界仰天ニュース 2時間SP</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">19:00–21:00</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:28%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">日本テレビ</div>
+        <div class="overlay-prog-title">ザ！世界仰天ニュース 2時間SP</div>
+        <div class="overlay-synopsis">世界中の信じられない実話をドラマ仕立てで再現。今回は奇跡の生還劇と医学ミステリーを特集。</div>
+        <div class="overlay-next">次: <span>ニュースZERO</span> 23:00〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">日本テレビ</span>
+      <span class="tile-ch-num">ch.4</span>
+    </div>
+  </a>
+
+  <!-- GR ch 6 -->
+  <a href="/live/6" class="tile" data-type="GR" tabindex="0" aria-label="TBS を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner gr-4"></div>
+      <span class="ch-badge gr">GR · 6</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">水曜日のダウンタウン</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">22:00–23:00</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:15%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">TBS</div>
+        <div class="overlay-prog-title">水曜日のダウンタウン</div>
+        <div class="overlay-synopsis">松本人志・浜田雅功が「説」の真相を大実験。今夜も芸人が体を張った検証が続出。</div>
+        <div class="overlay-next">次: <span>NEWS23</span> 23:00〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">TBS</span>
+      <span class="tile-ch-num">ch.6</span>
+    </div>
+  </a>
+
+  <!-- GR ch 8 -->
+  <a href="/live/8" class="tile" data-type="GR" tabindex="0" aria-label="フジテレビ を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner gr-5"></div>
+      <span class="ch-badge gr">GR · 8</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">全力!脱力タイムズ</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">23:00–23:30</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:55%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">フジテレビ</div>
+        <div class="overlay-prog-title">全力!脱力タイムズ</div>
+        <div class="overlay-synopsis">有田哲平が司会を務めるニュース風バラエティ。著名人が珍説・奇説を真顔で語る爆笑トーク。</div>
+        <div class="overlay-next">次: <span>FNN Live News α</span> 23:30〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">フジテレビ</span>
+      <span class="tile-ch-num">ch.8</span>
+    </div>
+  </a>
+
+  <!-- GR ch 10 -->
+  <a href="/live/10" class="tile" data-type="GR" tabindex="0" aria-label="テレビ朝日 を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner gr-6"></div>
+      <span class="ch-badge gr">GR · 10</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">ドラえもん × クレヨンしんちゃん 合同2時間SP</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">18:00–20:00</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:70%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">テレビ朝日</div>
+        <div class="overlay-prog-title">ドラえもん × クレヨンしんちゃん 合同2時間SP</div>
+        <div class="overlay-synopsis">国民的アニメ2作品がコラボ。春の特別編として描き下ろしエピソードを放送。家族全員で楽しめる2時間。</div>
+        <div class="overlay-next">次: <span>報道ステーション</span> 21:54〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">テレビ朝日</span>
+      <span class="tile-ch-num">ch.10</span>
+    </div>
+  </a>
+
+</div><!-- /grid-gr -->
+
+<!-- ── BS Section ── -->
+<div class="section-label" id="sec-bs" style="margin-top:8px">BS — BSデジタル</div>
+<div class="tile-grid" id="grid-bs">
+
+  <!-- BS ch 101 -->
+  <a href="/live/101" class="tile" data-type="BS" tabindex="0" aria-label="NHK BS1 を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner bs-1"></div>
+      <span class="ch-badge bs">BS · 101</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">BSニュース — 深夜の国際情勢</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">22:00–23:00</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:35%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">NHK BS1</div>
+        <div class="overlay-prog-title">BSニュース — 深夜の国際情勢</div>
+        <div class="overlay-synopsis">世界各地の特派員リポートを交え、国際ニュースを深く掘り下げる。ヨーロッパ情勢を中心に解説。</div>
+        <div class="overlay-next">次: <span>スポーツニュース</span> 23:00〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">NHK BS1</span>
+      <span class="tile-ch-num">ch.101</span>
+    </div>
+  </a>
+
+  <!-- BS ch 103 -->
+  <a href="/live/103" class="tile" data-type="BS" tabindex="0" aria-label="NHK BSプレミアム を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner bs-2"></div>
+      <span class="ch-badge bs">BS · 103</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">プレミアムシネマ「マトリックス」</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">21:00–23:30</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:60%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">NHK BSプレミアム</div>
+        <div class="overlay-prog-title">プレミアムシネマ「マトリックス」</div>
+        <div class="overlay-synopsis">1999年公開のSFアクション映画。ウォシャウスキー姉妹監督。キアヌ・リーブス主演、仮想現実と救世主の壮大な物語。</div>
+        <div class="overlay-next">次: <span>未来世紀ジパング</span> 23:30〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">NHK BSプレミアム</span>
+      <span class="tile-ch-num">ch.103</span>
+    </div>
+  </a>
+
+  <!-- BS ch 141 -->
+  <a href="/live/141" class="tile" data-type="BS" tabindex="0" aria-label="BS日テレ を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner bs-3"></div>
+      <span class="ch-badge bs">BS · 141</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">深夜食堂〜Tokyo Stories〜 再放送</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">23:00–00:00</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:22%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">BS日テレ</div>
+        <div class="overlay-prog-title">深夜食堂〜Tokyo Stories〜 再放送</div>
+        <div class="overlay-synopsis">深夜0時に開く食堂を舞台に、訪れる人々の人生模様を描く。今夜は「タコウインナー」の回。</div>
+        <div class="overlay-next">次: <span>謎解き!江戸のススメ</span> 00:00〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">BS日テレ</span>
+      <span class="tile-ch-num">ch.141</span>
+    </div>
+  </a>
+
+  <!-- BS ch 161 -->
+  <a href="/live/161" class="tile" data-type="BS" tabindex="0" aria-label="BS朝日 を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner bs-4"></div>
+      <span class="ch-badge bs">BS · 161</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">ドキュメンタリー72時間 傑作選</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">22:30–23:30</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:48%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">BS朝日</div>
+        <div class="overlay-prog-title">ドキュメンタリー72時間 傑作選</div>
+        <div class="overlay-synopsis">ある場所に3日間カメラを据え、訪れる人々を記録する人気ドキュメンタリーの傑作をセレクション放送。</div>
+        <div class="overlay-next">次: <span>BS朝日ニュース</span> 23:30〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">BS朝日</span>
+      <span class="tile-ch-num">ch.161</span>
+    </div>
+  </a>
+
+</div><!-- /grid-bs -->
+
+<!-- ── CS Section ── -->
+<div class="section-label" id="sec-cs" style="margin-top:8px">CS — スカパー！</div>
+<div class="tile-grid" id="grid-cs" style="padding-bottom:40px">
+
+  <!-- CS ch 200 -->
+  <a href="/live/200" class="tile" data-type="CS" tabindex="0" aria-label="日テレNEWS を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner cs-1"></div>
+      <span class="ch-badge cs">CS · 200</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">Jリーグ中継 川崎vs横浜FM ハイライト</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">21:00–22:00</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:80%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">スカパー！スポーツ</div>
+        <div class="overlay-prog-title">Jリーグ中継 川崎vs横浜FM ハイライト</div>
+        <div class="overlay-synopsis">今シーズン注目のダービーマッチ、川崎フロンターレvs横浜F・マリノスの全ゴールシーンを収録したハイライト。</div>
+        <div class="overlay-next">次: <span>プレミアリーグ ハイライト</span> 22:00〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">スカパー！スポーツ</span>
+      <span class="tile-ch-num">ch.200</span>
+    </div>
+  </a>
+
+  <!-- CS ch 211 -->
+  <a href="/live/211" class="tile" data-type="CS" tabindex="0" aria-label="アニメシアターX を視聴">
+    <div class="tile-thumb">
+      <div class="tile-thumb-inner cs-2"></div>
+      <span class="ch-badge cs">CS · 211</span>
+      <span class="live-dot">LIVE</span>
+      <div class="tile-bottom-overlay">
+        <div class="tile-prog-title">機動戦士ガンダム 水星の魔女 #18</div>
+        <div class="tile-time-row">
+          <span class="tile-time-text">22:00–22:30</span>
+          <div class="tile-prog-bar"><div class="tile-prog-fill" style="width:66%"></div></div>
+        </div>
+      </div>
+      <div class="tile-overlay">
+        <div class="overlay-ch-name">アニメシアターX</div>
+        <div class="overlay-prog-title">機動戦士ガンダム 水星の魔女 #18</div>
+        <div class="overlay-synopsis">宇宙世紀2000年代を舞台にした新シリーズ。スレッタとミオリネの運命が再び交差する第18話。</div>
+        <div class="overlay-next">次: <span>進撃の巨人 Final Season</span> 22:30〜</div>
+        <button class="overlay-watch-btn" tabindex="-1">▶ 視聴する</button>
+      </div>
+    </div>
+    <div class="tile-meta">
+      <span class="tile-ch-name">アニメシアターX</span>
+      <span class="tile-ch-num">ch.211</span>
+    </div>
+  </a>
+
+</div><!-- /grid-cs -->
+
+<!-- ── empty / error state (hidden by default, shown when no results) ── -->
+<div id="empty-state" style="display:none;padding:80px 24px;text-align:center;">
+  <div style="font-size:2rem;margin-bottom:12px;opacity:0.3;">📺</div>
+  <p style="font-size:0.875rem;color:hsl(var(--muted-foreground))">表示できるチャンネルがありません</p>
+</div>
+
+<script>
+  function filterType(type, btn) {
+    // update active button
+    document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const sections = { GR: ['sec-gr','grid-gr'], BS: ['sec-bs','grid-bs'], CS: ['sec-cs','grid-cs'] };
+    if (type === 'ALL') {
+      Object.values(sections).flat().forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = '';
+      });
+    } else {
+      Object.entries(sections).forEach(([t, [sec, grid]]) => {
+        const show = t === type;
+        ['display'].forEach(_ => {
+          document.getElementById(sec).style.display = show ? '' : 'none';
+          document.getElementById(grid).style.display = show ? '' : 'none';
+        });
+      });
+    }
+  }
+</script>
+
+</body>
+</html>
