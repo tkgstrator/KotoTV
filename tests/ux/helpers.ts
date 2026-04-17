@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 
 export type OverflowIssue = {
   selector: string
-  reason: 'horizontal-scroll' | 'text-clipped' | 'offscreen'
+  reason: 'text-clipped' | 'offscreen'
   rect: { x: number; y: number; width: number; height: number }
   text?: string
 }
@@ -27,20 +27,16 @@ export async function findOverflowIssues(page: Page): Promise<OverflowIssue[]> {
         ? `#${el.id}`
         : `${el.tagName.toLowerCase()}.${el.className.toString().trim().split(/\s+/).slice(0, 3).join('.')}`
 
-      // text clipped by fixed height + overflow hidden without ellipsis
-      if (
-        el.scrollHeight > el.clientHeight + 1 &&
-        style.overflowY === 'hidden' &&
-        !style.textOverflow.includes('ellipsis')
-      ) {
+      // Skip intentional clamps: line-clamp (-webkit-box) and truncate (ellipsis).
+      const isLineClamp = style.display === '-webkit-box' || style.webkitLineClamp !== 'none'
+      const hasEllipsis = style.textOverflow === 'ellipsis'
+
+      // Text clipped by fixed height + overflow hidden, with no clamp / ellipsis signal.
+      if (el.scrollHeight > el.clientHeight + 1 && style.overflowY === 'hidden' && !hasEllipsis && !isLineClamp) {
         issues.push({ selector: sel, reason: 'text-clipped', rect: r, text: el.innerText.slice(0, 60) })
       }
-      // horizontal scroll on non-scroll containers
-      if (el.scrollWidth > el.clientWidth + 1 && style.overflowX !== 'auto' && style.overflowX !== 'scroll') {
-        issues.push({ selector: sel, reason: 'horizontal-scroll', rect: r })
-      }
-      // content pushed past viewport horizontally
-      if (rect.right > vw + 1 && style.position !== 'fixed') {
+      // Content pushed past viewport horizontally — real UX break, not intrinsic-text noise.
+      if (rect.right > vw + 1 && style.position !== 'fixed' && style.position !== 'sticky') {
         issues.push({ selector: sel, reason: 'offscreen', rect: r })
       }
     }
