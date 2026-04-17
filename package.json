@@ -1,0 +1,17 @@
+{
+  "name": "telemax",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev": "bun run --cwd packages/server dev",
+    "typecheck": "bunx tsc -b --noEmit",
+    "lint": "bunx biome check .",
+    "lint:fix": "bunx biome check --write .",
+    "format": "bunx biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.11",
+    "typescript": "^5.8.3"
+  }
+}
