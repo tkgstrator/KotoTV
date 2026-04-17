@@ -5,14 +5,13 @@
   "scripts": {
     "dev": "bun --hot run src/index.ts",
     "typecheck": "tsc -b --noEmit",
-    "db:migrate": "prisma migrate dev",
-    "db:generate": "prisma generate"
+    "db:migrate": "bun ./node_modules/prisma/build/index.js migrate dev",
+    "db:generate": "bun ./node_modules/prisma/build/index.js generate"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.0",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
-    "dotenv": "^17.4.2",
     "hono": "^4.7.10",
     "pg": "^8.13.1",
     "pino": "^9.6.0",
