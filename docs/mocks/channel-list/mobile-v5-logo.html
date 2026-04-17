@@ -136,26 +136,34 @@
     .badge-bs { background: hsl(142 70% 48% / 0.18); color: hsl(142 70% 60%); }
     .badge-cs { background: hsl(38 92% 52% / 0.18); color: hsl(38 92% 65%); }
 
-    .filter-pill {
-      padding: 5px 13px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      border: 1px solid hsl(var(--border));
+    /* Segmented control */
+    .seg-track {
+      display: flex;
+      background: hsl(var(--muted));
+      border-radius: 9999px;
+      padding: 3px;
+    }
+    .seg {
+      flex: 1;
+      height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8125rem; font-weight: 600;
+      border-radius: 9999px;
       background: transparent;
       color: hsl(var(--muted-foreground));
-      cursor: pointer;
+      border: none; cursor: pointer;
       white-space: nowrap;
-      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      transition: color 150ms;
     }
-    .filter-pill.active {
-      background: hsl(var(--primary));
-      color: hsl(var(--primary-foreground));
-      border-color: transparent;
+    .seg.seg-active {
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      box-shadow: 0 1px 4px hsl(220 20% 0% / 0.18);
+      transition: background 200ms, color 150ms, box-shadow 200ms;
     }
-    .filter-pill:focus-visible {
+    .seg:focus-visible {
       outline: 2px solid hsl(var(--ring));
-      outline-offset: 2px;
+      outline-offset: -2px;
     }
 
     .section-label {
@@ -189,12 +197,14 @@
       ダーク切替
     </button>
   </div>
-  <!-- Filter pills (horizontally scrollable) -->
-  <div style="overflow-x:auto;scrollbar-width:none;padding:10px 16px 12px;display:flex;gap:6px;" id="pills-row">
-    <button class="filter-pill active" onclick="filterType('ALL',this)">すべて</button>
-    <button class="filter-pill" onclick="filterType('GR',this)">地上波 GR</button>
-    <button class="filter-pill" onclick="filterType('BS',this)">衛星 BS</button>
-    <button class="filter-pill" onclick="filterType('CS',this)">CS</button>
+  <!-- Segmented filter control -->
+  <div style="padding:8px 16px 12px;">
+    <div class="seg-track" role="tablist" aria-label="チャンネル種別">
+      <button class="seg seg-active" role="tab" aria-selected="true" onclick="filterType('ALL',this)">すべて</button>
+      <button class="seg" role="tab" aria-selected="false" onclick="filterType('GR',this)">GR</button>
+      <button class="seg" role="tab" aria-selected="false" onclick="filterType('BS',this)">BS</button>
+      <button class="seg" role="tab" aria-selected="false" onclick="filterType('CS',this)">CS</button>
+    </div>
   </div>
 </header>
 
@@ -442,8 +452,12 @@
 
 <script>
   function filterType(type, btn) {
-    document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    document.querySelectorAll('.seg-track .seg').forEach(b => {
+      b.classList.remove('seg-active');
+      b.setAttribute('aria-selected', 'false');
+    });
+    btn.classList.add('seg-active');
+    btn.setAttribute('aria-selected', 'true');
     const show = (id, on) => {
       document.getElementById(id).style.display = on ? 'block' : 'none';
     };
