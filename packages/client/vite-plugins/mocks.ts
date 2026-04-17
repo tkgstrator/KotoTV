@@ -42,7 +42,7 @@ function renderIndex(entries: WalkEntry[]): string {
     if (extname(e.rel) !== '.html') continue
     const dir = posix.dirname(e.rel) === '.' ? '(root)' : posix.dirname(e.rel)
     if (!groups.has(dir)) groups.set(dir, [])
-    groups.get(dir)!.push(e.rel)
+    groups.get(dir)?.push(e.rel)
   }
   const readmes = entries.filter((e) => !e.isDir && posix.basename(e.rel) === 'README.md')
 
