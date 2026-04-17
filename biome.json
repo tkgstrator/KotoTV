@@ -11,6 +11,8 @@
     "includes": [
       "packages/**/*.{ts,tsx,js,jsx}",
       "packages/**/*.{json,jsonc}",
+      "tests/**/*.{ts,tsx}",
+      "playwright.config.ts",
       "docs/**/*.md",
       "!**/node_modules",
       "!**/dist",
