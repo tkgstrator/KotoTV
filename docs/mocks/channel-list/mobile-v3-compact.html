@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Channel List — mobile-v3 Ultra-Compact</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      background: hsl(220 20% 5%);
+      min-height: 100dvh;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      /* Mobile simulation: constrain to phone width */
+      max-width: 390px;
+      margin: 0 auto;
+      min-height: 100dvh;
+      box-shadow: 0 0 48px hsl(220 20% 0% / 0.6);
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+      border-radius: 3px;
+    }
+
+    /* Row: 60px fixed height */
+    .ch-row {
+      display: flex;
+      align-items: stretch;
+      height: 60px;
+      border-bottom: 1px solid hsl(var(--border));
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+      transition: background 0.08s;
+    }
+    .ch-row:hover, .ch-row:focus-visible { background: hsl(var(--muted) / 0.45); }
+    .ch-row:active { opacity: 0.72; }
+
+    /* Left panel: ch number + name — fixed 72px */
+    .ch-left {
+      width: 72px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 6px 0 12px;
+      border-right: 1px solid hsl(var(--border));
+      position: relative;
+    }
+    /* Type accent left stripe */
+    .ch-left::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 3px;
+      border-radius: 0 2px 2px 0;
+      background: var(--type-color);
+    }
+
+    .type-gr { --type-color: hsl(221 83% 60%); }
+    .type-bs { --type-color: hsl(142 70% 48%); }
+    .type-cs { --type-color: hsl(38 92% 52%); }
+
+    /* Right panel: program info */
+    .ch-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 6px 10px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Progress bar — absolute at bottom of right panel */
+    .prog-track {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: hsl(var(--muted));
+    }
+    .prog-fill {
+      height: 100%;
+      border-radius: 0 1px 1px 0;
+      background: hsl(var(--primary));
+    }
+    .prog-fill.urgent { background: hsl(var(--destructive)); }
+
+    /* Section header — sticky */
+    .section-hd {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      background: hsl(var(--background));
+      border-bottom: 1px solid hsl(var(--border));
+      position: sticky;
+      top: 92px;
+      z-index: 8;
+    }
+    .section-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    /* Filter pills */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      height: 26px;
+      padding: 0 12px;
+      border-radius: 13px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      border: 1px solid hsl(var(--border));
+      color: hsl(var(--muted-foreground));
+      background: transparent;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+    .pill.active-gr {
+      background: hsl(221 83% 60% / 0.15);
+      color: hsl(221 83% 70%);
+      border-color: hsl(221 83% 60% / 0.4);
+    }
+    .pill.active-all {
+      background: hsl(var(--primary) / 0.15);
+      color: hsl(var(--primary));
+      border-color: hsl(var(--primary) / 0.4);
+    }
+    .pill:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 13px;
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Header -->
+  <header style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));"
+          class="sticky top-0 z-20">
+    <div class="flex items-center gap-2 px-4" style="height:44px;">
+      <span class="font-bold text-sm tracking-tight">KonomiTV</span>
+      <time style="font-size:0.7rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;margin-left:auto;">21:47</time>
+    </div>
+    <!-- Filter pill strip -->
+    <div class="flex gap-2 px-3 pb-2 overflow-x-auto" style="scrollbar-width:none;" role="tablist" aria-label="チャンネル種別">
+      <button class="pill active-all" role="tab" aria-selected="true">すべて</button>
+      <button class="pill" role="tab" aria-selected="false">GR</button>
+      <button class="pill" role="tab" aria-selected="false">BS</button>
+      <button class="pill" role="tab" aria-selected="false">CS</button>
+    </div>
+  </header>
+
+  <!-- GR section -->
+  <div class="section-hd type-gr">
+    <span class="section-dot" style="background:hsl(221 83% 60%);"></span>
+    地上波 GR
+  </div>
+
+  <a href="/live/gr-1" class="ch-row type-gr" tabindex="0" aria-label="NHK総合 を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(221 83% 65%);">1</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">NHK<br>総合</span>
+    </div>
+    <div class="ch-right">
+      <div class="flex items-baseline gap-1.5" style="margin-bottom:2px;">
+        <span style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">ニュース7</span>
+        <span style="font-size:0.6rem;color:hsl(0 72% 58%);font-weight:600;white-space:nowrap;">まもなく終了</span>
+      </div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">21:00–21:30 → クローズアップ現代 21:30〜</div>
+      <div class="prog-track"><div class="prog-fill urgent" style="width:94%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/gr-2" class="ch-row type-gr" tabindex="0" aria-label="NHK Eテレ を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(221 83% 65%);">2</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">NHK<br>Eテレ</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">趣味どきっ！水彩スケッチ</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">21:30–22:00 → ETV特集 22:00〜</div>
+      <div class="prog-track"><div class="prog-fill" style="width:28%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/gr-4" class="ch-row type-gr" tabindex="0" aria-label="日本テレビ を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(221 83% 65%);">4</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">日テレ</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">踊る！さんま御殿！！3時間SP</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">21:00–24:00 → ZIP! 5:50〜</div>
+      <div class="prog-track"><div class="prog-fill" style="width:26%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/gr-6" class="ch-row type-gr" tabindex="0" aria-label="TBSテレビ を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(221 83% 65%);">6</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">TBS</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">火曜ドラマ「あのクズを燃やせ」</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">21:00–21:54 → JNNニュース 22:00〜</div>
+      <div class="prog-track"><div class="prog-fill" style="width:55%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/gr-8" class="ch-row type-gr" tabindex="0" aria-label="フジテレビ を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(221 83% 65%);">8</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">フジ<br>テレビ</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">ゴールデン洋画劇場</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">21:00–23:10 → FNNプライムニュース 23:30〜</div>
+      <div class="prog-track"><div class="prog-fill" style="width:35%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/gr-10" class="ch-row type-gr" tabindex="0" aria-label="テレビ朝日 を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(221 83% 65%);">10</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">テレ<br>朝日</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">相棒 season22 傑作選</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">21:00–22:54 → 報道ステーション 23:10〜</div>
+      <div class="prog-track"><div class="prog-fill" style="width:40%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/gr-12" class="ch-row type-gr" tabindex="0" aria-label="テレビ東京 を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(221 83% 65%);">12</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">テレ<br>東京</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">ガイアの夜明け</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">22:00–23:00 → WBSトレたま 23:00〜</div>
+      <div class="prog-track"><div class="prog-fill" style="width:62%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/gr-mx" class="ch-row type-gr" tabindex="0" aria-label="TOKYO MX を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(221 83% 65%);">MX</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">TOKYO<br>MX</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">Re:ゼロから始める異世界生活</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">21:30–22:00 → フルーツバスケット 22:00〜</div>
+      <div class="prog-track"><div class="prog-fill" style="width:72%;"></div></div>
+    </div>
+  </a>
+
+  <!-- BS section -->
+  <div class="section-hd type-bs">
+    <span class="section-dot" style="background:hsl(142 70% 48%);"></span>
+    衛星放送 BS
+  </div>
+
+  <a href="/live/bs-1" class="ch-row type-bs" tabindex="0" aria-label="NHK BS を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(142 70% 55%);">BS1</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">NHK<br>BS</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">BSニュース</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">21:00–21:50 → BS世界のドキュメンタリー 22:00〜</div>
+      <div class="prog-track"><div class="prog-fill" style="background:hsl(142 70% 48%);width:55%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/bs-101" class="ch-row type-bs" tabindex="0" aria-label="BS日テレ を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(142 70% 55%);">101</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">BS<br>日テレ</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">THE・世界仰天ニュース 傑作選</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">20:00–22:00 → ブラックリスト 22:00〜</div>
+      <div class="prog-track"><div class="prog-fill" style="background:hsl(142 70% 48%);width:87%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/bs-103" class="ch-row type-bs" tabindex="0" aria-label="BS朝日 を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(142 70% 55%);">103</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">BS<br>朝日</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">歴史探偵</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">21:00–22:00 → ポツンと一軒家 22:00〜</div>
+      <div class="prog-track"><div class="prog-fill" style="background:hsl(142 70% 48%);width:45%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/bs-161" class="ch-row type-bs" tabindex="0" aria-label="BS松竹東急 を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(142 70% 55%);">161</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">BS<br>松竹</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">松竹映画「男はつらいよ」</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">20:00–22:10 → 午前十時の映画祭 22:30〜</div>
+      <div class="prog-track"><div class="prog-fill" style="background:hsl(142 70% 48%);width:80%;"></div></div>
+    </div>
+  </a>
+
+  <!-- CS section -->
+  <div class="section-hd type-cs">
+    <span class="section-dot" style="background:hsl(38 92% 52%);"></span>
+    CS放送 CS
+  </div>
+
+  <a href="/live/cs-fuji" class="ch-row type-cs" tabindex="0" aria-label="フジテレビNEXT を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(38 92% 58%);">CS5</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">フジ<br>NEXT</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">プロ野球 DeNA vs 阪神 ライブ</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">18:00–22:00 → プロ野球ニュース 22:00〜</div>
+      <div class="prog-track"><div class="prog-fill" style="background:hsl(38 92% 52%);width:92%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/cs-anime" class="ch-row type-cs" tabindex="0" aria-label="AT-X を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(38 92% 58%);">CS15</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">AT-X<br>アニメ</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">鬼滅の刃 刀鍛冶の里編 一挙</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">20:00–24:00 → 進撃の巨人 0:00〜</div>
+      <div class="prog-track"><div class="prog-fill" style="background:hsl(38 92% 52%);width:47%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/cs-movie" class="ch-row type-cs" tabindex="0" aria-label="ムービープラス を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(38 92% 58%);">CS11</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">ムービー<br>プラス</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">「インターステラー」(2014 米)</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">19:00–22:50 → マトリックス 23:00〜</div>
+      <div class="prog-track"><div class="prog-fill" style="background:hsl(38 92% 52%);width:70%;"></div></div>
+    </div>
+  </a>
+
+  <a href="/live/cs-sport" class="ch-row type-cs" tabindex="0" aria-label="GAORA SPORTS を視聴">
+    <div class="ch-left">
+      <span style="font-size:0.7rem;font-weight:800;color:hsl(38 92% 58%);">CS25</span>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;margin-top:1px;">GAORA<br>SPORTS</span>
+    </div>
+    <div class="ch-right">
+      <div style="font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">Jリーグ ハイライト 全ゴール集</div>
+      <div style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:3px;">21:00–22:00 → プレミアリーグ 生中継 22:30〜</div>
+      <div class="prog-track"><div class="prog-fill" style="background:hsl(38 92% 52%);width:47%;"></div></div>
+    </div>
+  </a>
+
+  <!-- Safe area spacer for phones -->
+  <div style="height:env(safe-area-inset-bottom, 16px);"></div>
+
+</body>
+</html>

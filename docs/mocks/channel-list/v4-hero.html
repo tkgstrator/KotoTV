@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Channel List — v4 (Hero + Grid)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 8px;
+    }
+
+    /* Hero card */
+    .hero-card {
+      position: relative;
+      aspect-ratio: 16/9;
+      border-radius: 12px;
+      overflow: hidden;
+      display: block;
+      text-decoration: none;
+      transition: transform 100ms ease, box-shadow 100ms ease;
+    }
+    .hero-card:hover,
+    .hero-card:focus-visible {
+      transform: scale(1.005);
+      box-shadow: 0 12px 40px hsl(221 83% 60% / 0.35);
+    }
+    .hero-card:active { transform: scale(0.998); opacity: 0.9; }
+
+    /* hero bg — simulated broadcast still with noise texture */
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 60% 30%, hsl(221 40% 28% / 0.8) 0%, transparent 70%),
+        radial-gradient(ellipse at 20% 70%, hsl(265 40% 20% / 0.6) 0%, transparent 60%),
+        linear-gradient(135deg, hsl(222 30% 16%) 0%, hsl(222 22% 12%) 100%);
+    }
+    /* subtle noise overlay */
+    .hero-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity: 0.4;
+    }
+
+    /* gradient overlay at bottom for text legibility */
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        hsl(222 25% 8% / 0.97) 0%,
+        hsl(222 25% 8% / 0.75) 35%,
+        hsl(222 25% 8% / 0.1) 65%,
+        transparent 100%
+      );
+    }
+
+    .hero-content {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 28px 32px;
+    }
+
+    /* Small grid channel tiles */
+    .ch-tile {
+      display: block;
+      text-decoration: none;
+      background-color: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 10px;
+      overflow: hidden;
+      transition: transform 80ms ease, box-shadow 80ms ease, border-color 80ms ease;
+    }
+    .ch-tile:hover,
+    .ch-tile:focus-visible {
+      transform: translateY(-2px);
+      border-color: hsl(var(--primary) / 0.5);
+      box-shadow: 0 4px 16px hsl(var(--primary) / 0.2);
+    }
+    .ch-tile:active { transform: translateY(0); opacity: 0.8; }
+
+    /* type colours */
+    .accent-gr  { background-color: hsl(221 83% 60%); }
+    .accent-bs  { background-color: hsl(142 70% 48%); }
+    .accent-cs  { background-color: hsl(38 92% 52%); }
+    .badge-gr   { background-color: hsl(221 83% 60% / 0.18); color: hsl(221 83% 72%); }
+    .badge-bs   { background-color: hsl(142 70% 48% / 0.18); color: hsl(142 70% 62%); }
+    .badge-cs   { background-color: hsl(38 92% 52% / 0.18);  color: hsl(38 92% 66%); }
+    .hero-badge-gr { background-color: hsl(221 83% 60% / 0.25); color: hsl(221 83% 80%); border: 1px solid hsl(221 83% 60% / 0.4); }
+
+    /* segmented filter */
+    .seg-btn {
+      padding: 5px 16px;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 80ms ease, color 80ms ease;
+      border: none;
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+    }
+    .seg-btn.active {
+      background-color: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+    .seg-btn:not(.active):hover {
+      background-color: hsl(var(--muted));
+      color: hsl(var(--foreground));
+    }
+
+    /* progress bar */
+    .prog-track { height: 3px; background-color: hsl(var(--muted)); border-radius: 9999px; overflow: hidden; }
+    .prog-fill  { height: 100%; border-radius: 9999px; background-color: hsl(var(--primary)); }
+    .prog-fill.urgent { background-color: hsl(var(--destructive)); }
+
+    /* hero progress bar — slightly taller */
+    .hero-prog-track { height: 4px; background-color: hsl(255 20% 100% / 0.2); border-radius: 9999px; overflow: hidden; }
+    .hero-prog-fill  { height: 100%; border-radius: 9999px; background-color: hsl(var(--primary)); }
+
+    /* "last watched" pulse dot */
+    @keyframes pulse-dot { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
+    .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- APP HEADER -->
+  <header style="background-color:hsl(var(--card)); border-bottom:1px solid hsl(var(--border));"
+          class="sticky top-0 z-20 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-base font-bold tracking-tight" style="color:hsl(var(--foreground));">KonomiTV</span>
+      <span class="text-xs px-2 py-0.5 rounded-full" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground));">ライブ</span>
+    </div>
+    <!-- segmented type filter -->
+    <div class="flex items-center gap-0.5 rounded-lg p-1" style="background:hsl(var(--muted));">
+      <button class="seg-btn active" onclick="setFilter('ALL',this)">すべて</button>
+      <button class="seg-btn" onclick="setFilter('GR',this)">GR</button>
+      <button class="seg-btn" onclick="setFilter('BS',this)">BS</button>
+      <button class="seg-btn" onclick="setFilter('CS',this)">CS</button>
+    </div>
+    <div class="flex items-center gap-2 text-xs" style="color:hsl(var(--muted-foreground));">
+      <span>22:14</span>
+    </div>
+  </header>
+
+  <main class="max-w-screen-xl mx-auto px-6 py-6 space-y-6">
+
+    <!-- HERO CARD — last-watched / first GR channel -->
+    <section>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-2 h-2 rounded-full pulse-dot" style="background:hsl(var(--primary));"></span>
+        <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">前回視聴 · 引き続き再生</span>
+      </div>
+
+      <a href="#" class="hero-card" aria-label="NHK総合 を視聴">
+        <!-- simulated broadcast background -->
+        <div class="hero-bg"></div>
+        <!-- decorative broadcast elements -->
+        <div style="position:absolute;top:20px;right:24px;display:flex;align-items:center;gap:8px;">
+          <span class="text-xs font-bold px-2 py-0.5 rounded" style="background:hsl(0 80% 55%);color:hsl(0 0% 97%);">LIVE</span>
+          <span class="text-xs" style="color:hsl(210 20% 80% / 0.7);">1ch · NHK総合</span>
+        </div>
+        <!-- gradient overlay -->
+        <div class="hero-overlay"></div>
+        <!-- content -->
+        <div class="hero-content">
+          <div class="flex items-end justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <!-- channel meta -->
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-semibold px-2 py-0.5 rounded hero-badge-gr">GR</span>
+                <span class="text-sm font-semibold" style="color:hsl(210 20% 88%);">NHK総合・東京</span>
+                <span class="text-xs" style="color:hsl(210 20% 60%);">21:00〜22:45</span>
+              </div>
+              <!-- program title -->
+              <h2 class="text-2xl font-extrabold leading-tight mb-1" style="color:hsl(0 0% 97%); text-shadow:0 2px 8px hsl(0 0%0%/0.6);">
+                NHKスペシャル「地球大異変 迫りくる海面上昇の脅威」
+              </h2>
+              <!-- synopsis -->
+              <p class="text-sm mb-3 line-clamp-1" style="color:hsl(210 20% 70%);">
+                世界各地で加速する海面上昇。水没の危機に直面する都市を取材し、科学者たちが警告するその実態に迫る。
+              </p>
+              <!-- progress -->
+              <div class="flex items-center gap-3">
+                <div class="hero-prog-track flex-1">
+                  <div class="hero-prog-fill" style="width:62%;"></div>
+                </div>
+                <span class="text-xs font-medium whitespace-nowrap" style="color:hsl(210 20% 65%);">62% · 残42分</span>
+              </div>
+              <!-- next program -->
+              <p class="text-xs mt-2" style="color:hsl(210 20% 52%);">
+                次: ニュースウオッチ9 &nbsp;22:00
+              </p>
+            </div>
+            <!-- watch CTA -->
+            <div class="flex-shrink-0">
+              <div class="flex items-center justify-center w-16 h-16 rounded-full"
+                   style="background:hsl(var(--primary));box-shadow:0 0 24px hsl(var(--primary)/0.6);">
+                <!-- play icon -->
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"
+                     style="color:hsl(var(--primary-foreground));margin-left:3px;">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </a>
+    </section>
+
+    <!-- GRID SECTION -->
+    <section>
+      <h3 class="text-sm font-semibold mb-3" style="color:hsl(var(--muted-foreground));">すべてのチャンネル</h3>
+
+      <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+
+        <!-- tile: NHK Eテレ GR -->
+        <a href="#" class="ch-tile" aria-label="NHK Eテレ を視聴">
+          <div class="h-1 accent-gr"></div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">2ch · NHK Eテレ</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-gr">GR</span>
+            </div>
+            <p class="text-sm font-bold leading-snug line-clamp-2 mb-1.5" style="color:hsl(var(--card-foreground));">
+              ハートネットTV「福祉の現場最前線」
+            </p>
+            <p class="text-[10px] mb-1.5" style="color:hsl(var(--muted-foreground));">21:00〜21:30</p>
+            <div class="prog-track mb-1">
+              <div class="prog-fill" style="width:78%;"></div>
+            </div>
+            <p class="text-[10px]" style="color:hsl(var(--muted-foreground));">次: 映像詩 里山 22:00</p>
+          </div>
+        </a>
+
+        <!-- tile: フジテレビ GR -->
+        <a href="#" class="ch-tile" aria-label="フジテレビ を視聴">
+          <div class="h-1 accent-gr"></div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">8ch · フジテレビ</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-gr">GR</span>
+            </div>
+            <p class="text-sm font-bold leading-snug line-clamp-2 mb-1.5" style="color:hsl(var(--card-foreground));">
+              ボクシング世界タイトルマッチ 生中継
+            </p>
+            <p class="text-[10px] mb-1.5" style="color:hsl(var(--muted-foreground));">21:00〜23:15</p>
+            <div class="prog-track mb-1">
+              <div class="prog-fill" style="width:45%;"></div>
+            </div>
+            <p class="text-[10px]" style="color:hsl(var(--muted-foreground));">次: Mr.サンデー 23:30</p>
+          </div>
+        </a>
+
+        <!-- tile: TBS GR -->
+        <a href="#" class="ch-tile" aria-label="TBS を視聴">
+          <div class="h-1 accent-gr"></div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">6ch · TBS</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-gr">GR</span>
+            </div>
+            <p class="text-sm font-bold leading-snug line-clamp-2 mb-1.5" style="color:hsl(var(--card-foreground));">
+              ドラマ「家族という名の迷宮」第8話
+            </p>
+            <p class="text-[10px] mb-1.5" style="color:hsl(var(--muted-foreground));">22:00〜22:54</p>
+            <div class="prog-track mb-1">
+              <div class="prog-fill urgent" style="width:91%;"></div>
+            </div>
+            <p class="text-[10px]" style="color:hsl(var(--destructive));">まもなく終了</p>
+          </div>
+        </a>
+
+        <!-- tile: テレビ東京 GR -->
+        <a href="#" class="ch-tile" aria-label="テレビ東京 を視聴">
+          <div class="h-1 accent-gr"></div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">12ch · テレ東</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-gr">GR</span>
+            </div>
+            <p class="text-sm font-bold leading-snug line-clamp-2 mb-1.5" style="color:hsl(var(--card-foreground));">
+              アド街ック天国「渋谷篇」
+            </p>
+            <p class="text-[10px] mb-1.5" style="color:hsl(var(--muted-foreground));">21:54〜22:54</p>
+            <div class="prog-track mb-1">
+              <div class="prog-fill" style="width:30%;"></div>
+            </div>
+            <p class="text-[10px]" style="color:hsl(var(--muted-foreground));">次: WBS 23:00</p>
+          </div>
+        </a>
+
+        <!-- tile: NHK BS GR -->
+        <a href="#" class="ch-tile" aria-label="NHK BS を視聴">
+          <div class="h-1 accent-bs"></div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">101ch · NHK BS</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-bs">BS</span>
+            </div>
+            <p class="text-sm font-bold leading-snug line-clamp-2 mb-1.5" style="color:hsl(var(--card-foreground));">
+              BS世界のドキュメンタリー「北極の氷が語る未来」
+            </p>
+            <p class="text-[10px] mb-1.5" style="color:hsl(var(--muted-foreground));">22:00〜22:50</p>
+            <div class="prog-track mb-1">
+              <div class="prog-fill" style="width:20%;"></div>
+            </div>
+            <p class="text-[10px]" style="color:hsl(var(--muted-foreground));">次: クラシック俱楽部 23:00</p>
+          </div>
+        </a>
+
+        <!-- tile: BS日テレ BS -->
+        <a href="#" class="ch-tile" aria-label="BS日テレ を視聴">
+          <div class="h-1 accent-bs"></div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">141ch · BS日テレ</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-bs">BS</span>
+            </div>
+            <p class="text-sm font-bold leading-snug line-clamp-2 mb-1.5" style="color:hsl(var(--card-foreground));">
+              深夜映画劇場「オールド・ボーイ」
+            </p>
+            <p class="text-[10px] mb-1.5" style="color:hsl(var(--muted-foreground));">22:05〜00:15</p>
+            <div class="prog-track mb-1">
+              <div class="prog-fill" style="width:15%;"></div>
+            </div>
+            <p class="text-[10px]" style="color:hsl(var(--muted-foreground));">次: 終了 00:15</p>
+          </div>
+        </a>
+
+        <!-- tile: BS朝日 BS -->
+        <a href="#" class="ch-tile" aria-label="BS朝日 を視聴">
+          <div class="h-1 accent-bs"></div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">151ch · BS朝日</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-bs">BS</span>
+            </div>
+            <p class="text-sm font-bold leading-snug line-clamp-2 mb-1.5" style="color:hsl(var(--card-foreground));">
+              旅サラダ「秋の京都 紅葉を求めて」
+            </p>
+            <p class="text-[10px] mb-1.5" style="color:hsl(var(--muted-foreground));">21:00〜21:54</p>
+            <div class="prog-track mb-1">
+              <div class="prog-fill urgent" style="width:93%;"></div>
+            </div>
+            <p class="text-[10px]" style="color:hsl(var(--destructive));">まもなく終了</p>
+          </div>
+        </a>
+
+        <!-- tile: CS WOWOW CS -->
+        <a href="#" class="ch-tile" aria-label="WOWOW を視聴">
+          <div class="h-1 accent-cs"></div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">191ch · WOWOW</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-cs">CS</span>
+            </div>
+            <p class="text-sm font-bold leading-snug line-clamp-2 mb-1.5" style="color:hsl(var(--card-foreground));">
+              映画「インターステラー」(字)
+            </p>
+            <p class="text-[10px] mb-1.5" style="color:hsl(var(--muted-foreground));">19:30〜22:40</p>
+            <div class="prog-track mb-1">
+              <div class="prog-fill" style="width:70%;"></div>
+            </div>
+            <p class="text-[10px]" style="color:hsl(var(--muted-foreground));">次: 映画「ゼロ・グラビティ」 22:50</p>
+          </div>
+        </a>
+
+        <!-- tile: CS スカチャン CS -->
+        <a href="#" class="ch-tile" aria-label="スカチャン を視聴">
+          <div class="h-1 accent-cs"></div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">800ch · スカチャン</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-cs">CS</span>
+            </div>
+            <p class="text-sm font-bold leading-snug line-clamp-2 mb-1.5" style="color:hsl(var(--card-foreground));">
+              J1リーグ 第32節 浦和レッズvs横浜F・マリノス
+            </p>
+            <p class="text-[10px] mb-1.5" style="color:hsl(var(--muted-foreground));">21:00〜23:00</p>
+            <div class="prog-track mb-1">
+              <div class="prog-fill" style="width:55%;"></div>
+            </div>
+            <p class="text-[10px]" style="color:hsl(var(--muted-foreground));">次: ハイライト 23:10</p>
+          </div>
+        </a>
+
+        <!-- tile: CS FOX CS -->
+        <a href="#" class="ch-tile" aria-label="FOX を視聴">
+          <div class="h-1 accent-cs"></div>
+          <div class="p-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-medium" style="color:hsl(var(--muted-foreground));">253ch · FOX</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded badge-cs">CS</span>
+            </div>
+            <p class="text-sm font-bold leading-snug line-clamp-2 mb-1.5" style="color:hsl(var(--card-foreground));">
+              24 —TWENTY FOUR— シーズン8 第14話
+            </p>
+            <p class="text-[10px] mb-1.5" style="color:hsl(var(--muted-foreground));">22:00〜22:54</p>
+            <div class="prog-track mb-1">
+              <div class="prog-fill" style="width:25%;"></div>
+            </div>
+            <p class="text-[10px]" style="color:hsl(var(--muted-foreground));">次: 第15話 23:00</p>
+          </div>
+        </a>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function setFilter(type, btn) {
+      // update active button
+      document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // in a real implementation this would navigate to ?type=GR etc.
+      // for the mock, just reflect visually
+    }
+  </script>
+
+</body>
+</html>

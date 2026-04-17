@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Channel List — v1 (Top Tabs + Grid + EPG)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+    }
+
+    body { background-color: hsl(var(--background)); color: hsl(var(--foreground)); font-family: system-ui, sans-serif; }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
+    .channel-card {
+      transition: transform 80ms ease, box-shadow 80ms ease;
+    }
+    .channel-card:hover,
+    .channel-card:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px hsl(var(--primary) / 0.25);
+    }
+    .channel-card:active { transform: translateY(0); }
+
+    .tab-active {
+      border-bottom: 2px solid hsl(var(--primary));
+      color: hsl(var(--primary));
+    }
+    .tab-inactive {
+      border-bottom: 2px solid transparent;
+      color: hsl(var(--muted-foreground));
+    }
+
+    /* Type accent bar */
+    .accent-bar {
+      height: 3px;
+      border-radius: 2px;
+      margin-bottom: 10px;
+    }
+    .accent-gr { background: hsl(221 83% 60%); }
+    .accent-bs { background: hsl(142 70% 48%); }
+    .accent-cs { background: hsl(38 92% 52%); }
+
+    /* Progress bar */
+    .prog-track {
+      height: 3px;
+      border-radius: 99px;
+      background: hsl(var(--muted));
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .prog-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: hsl(var(--primary));
+      transition: width 0.3s ease;
+    }
+    /* Near-end urgency */
+    .prog-fill.urgent { background: hsl(0 72% 58%); }
+
+    @keyframes shimmer {
+      0% { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg,
+        hsl(var(--muted)) 25%,
+        hsl(var(--border)) 50%,
+        hsl(var(--muted)) 75%
+      );
+      background-size: 800px 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Header -->
+  <header style="background-color: hsl(var(--card)); border-bottom: 1px solid hsl(var(--border));"
+          class="sticky top-0 z-10 px-4 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <svg class="w-6 h-6" style="color: hsl(var(--primary));" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M21 3H3C2 3 1 4 1 5v14c0 1.1.9 2 2 2h18c1 0 2-.9 2-2V5c0-1-.9-2-2-2zm0 16H3V5h18v14zM8 15l5-3-5-3v6z"/>
+      </svg>
+      <span class="font-semibold text-base tracking-tight">telemax</span>
+    </div>
+    <button
+      onclick="document.documentElement.classList.toggle('dark')"
+      class="text-xs px-3 py-1.5 rounded-md transition-colors"
+      style="background-color: hsl(var(--muted)); color: hsl(var(--muted-foreground));"
+      tabindex="0"
+    >Toggle theme</button>
+  </header>
+
+  <!-- Type filter: top tabs -->
+  <div style="background-color: hsl(var(--card)); border-bottom: 1px solid hsl(var(--border));"
+       class="sticky top-14 z-10 px-4" role="tablist" aria-label="チャンネル種別">
+    <div class="flex gap-0 -mb-px">
+      <button role="tab" aria-selected="true" class="tab-active px-5 py-3 text-sm font-medium transition-colors" tabindex="0">地上波 GR</button>
+      <button role="tab" aria-selected="false" class="tab-inactive px-5 py-3 text-sm font-medium transition-colors" tabindex="0">BS</button>
+      <button role="tab" aria-selected="false" class="tab-inactive px-5 py-3 text-sm font-medium transition-colors" tabindex="0">CS</button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <main class="px-4 py-6 max-w-5xl mx-auto">
+
+    <p class="text-sm mb-4" style="color: hsl(var(--muted-foreground));">8 チャンネル</p>
+
+    <ul role="list" class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+
+      <!-- NHK 総合 — 40% through ニュース -->
+      <li>
+        <a href="#" class="channel-card block rounded-lg overflow-hidden focus-visible:outline-none"
+           style="background-color: hsl(var(--card)); border: 1px solid hsl(var(--border));"
+           role="button" tabindex="0" aria-label="NHK 総合 を視聴">
+          <div class="accent-bar accent-gr"></div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style="background-color: hsl(221 83% 60% / 0.15); color: hsl(221 83% 62%);">GR</span>
+              <span class="text-xs" style="color: hsl(var(--muted-foreground));">1ch · NHK-G</span>
+            </div>
+            <p class="text-xs font-medium mb-0.5" style="color: hsl(var(--muted-foreground));">NHK 総合</p>
+            <!-- Current program — dominant -->
+            <p class="font-bold text-sm leading-snug mb-1" style="color: hsl(var(--card-foreground));">ニュースウォッチ9</p>
+            <p class="text-xs mb-1" style="color: hsl(var(--muted-foreground));">21:00 – 21:54</p>
+            <!-- Progress bar 40% -->
+            <div class="prog-track"><div class="prog-fill" style="width:40%;"></div></div>
+            <!-- Next program -->
+            <p class="text-xs mt-2" style="color: hsl(var(--muted-foreground));">次: ドキュメント72時間 <span style="color: hsl(var(--muted-foreground));">22:00</span></p>
+            <!-- Synopsis -->
+            <p class="text-xs mt-1 leading-snug" style="color: hsl(var(--muted-foreground)); opacity: 0.75;">国内外の最新ニュースをわかりやすくお届け。</p>
+          </div>
+        </a>
+      </li>
+
+      <!-- NHK Eテレ — 10% into 理科の時間 -->
+      <li>
+        <a href="#" class="channel-card block rounded-lg overflow-hidden focus-visible:outline-none"
+           style="background-color: hsl(var(--card)); border: 1px solid hsl(var(--border));"
+           role="button" tabindex="0" aria-label="NHK Eテレ を視聴">
+          <div class="accent-bar accent-gr"></div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style="background-color: hsl(221 83% 60% / 0.15); color: hsl(221 83% 62%);">GR</span>
+              <span class="text-xs" style="color: hsl(var(--muted-foreground));">2ch · NHK-E</span>
+            </div>
+            <p class="text-xs font-medium mb-0.5" style="color: hsl(var(--muted-foreground));">NHK Eテレ</p>
+            <p class="font-bold text-sm leading-snug mb-1" style="color: hsl(var(--card-foreground));">趣味の園芸</p>
+            <p class="text-xs mb-1" style="color: hsl(var(--muted-foreground));">21:00 – 21:30</p>
+            <div class="prog-track"><div class="prog-fill" style="width:10%;"></div></div>
+            <p class="text-xs mt-2" style="color: hsl(var(--muted-foreground));">次: 日本語ナビ <span>21:30</span></p>
+            <p class="text-xs mt-1 leading-snug" style="color: hsl(var(--muted-foreground)); opacity: 0.75;">初夏に楽しめるプランター栽培を特集。</p>
+          </div>
+        </a>
+      </li>
+
+      <!-- 日本テレビ — 65% through バラエティ -->
+      <li>
+        <a href="#" class="channel-card block rounded-lg overflow-hidden focus-visible:outline-none"
+           style="background-color: hsl(var(--card)); border: 1px solid hsl(var(--border));"
+           role="button" tabindex="0" aria-label="日本テレビ を視聴">
+          <div class="accent-bar accent-gr"></div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style="background-color: hsl(221 83% 60% / 0.15); color: hsl(221 83% 62%);">GR</span>
+              <span class="text-xs" style="color: hsl(var(--muted-foreground));">4ch · NTV</span>
+            </div>
+            <p class="text-xs font-medium mb-0.5" style="color: hsl(var(--muted-foreground));">日本テレビ</p>
+            <p class="font-bold text-sm leading-snug mb-1" style="color: hsl(var(--card-foreground));">ダウンタウンDX</p>
+            <p class="text-xs mb-1" style="color: hsl(var(--muted-foreground));">19:00 – 20:54</p>
+            <div class="prog-track"><div class="prog-fill" style="width:65%;"></div></div>
+            <p class="text-xs mt-2" style="color: hsl(var(--muted-foreground));">次: news every. <span>21:00</span></p>
+            <p class="text-xs mt-1 leading-snug" style="color: hsl(var(--muted-foreground)); opacity: 0.75;">芸能人が本音で語るトークバラエティ。</p>
+          </div>
+        </a>
+      </li>
+
+      <!-- TBS — 95% through ドラマ → urgent -->
+      <li>
+        <a href="#" class="channel-card block rounded-lg overflow-hidden focus-visible:outline-none"
+           style="background-color: hsl(var(--card)); border: 1px solid hsl(var(--border));"
+           role="button" tabindex="0" aria-label="TBS テレビ を視聴">
+          <div class="accent-bar accent-gr"></div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style="background-color: hsl(221 83% 60% / 0.15); color: hsl(221 83% 62%);">GR</span>
+              <span class="text-xs" style="color: hsl(var(--muted-foreground));">6ch · TBS</span>
+            </div>
+            <p class="text-xs font-medium mb-0.5" style="color: hsl(var(--muted-foreground));">TBS テレビ</p>
+            <p class="font-bold text-sm leading-snug mb-1" style="color: hsl(var(--card-foreground));">日曜劇場「海に眠るダイヤモンド」</p>
+            <p class="text-xs mb-1" style="color: hsl(var(--muted-foreground));">21:00 – 22:00</p>
+            <!-- Urgent: 95% + red bar -->
+            <div class="prog-track"><div class="prog-fill urgent" style="width:95%;"></div></div>
+            <p class="text-xs mt-2" style="color: hsl(0 72% 58%);">まもなく終了</p>
+            <p class="text-xs mt-1 leading-snug" style="color: hsl(var(--muted-foreground)); opacity: 0.75;">高度経済成長期を生きた人々の人生を描く大河ドラマ。</p>
+          </div>
+        </a>
+      </li>
+
+      <!-- テレビ朝日 — 55% through 報道 -->
+      <li>
+        <a href="#" class="channel-card block rounded-lg overflow-hidden focus-visible:outline-none"
+           style="background-color: hsl(var(--card)); border: 1px solid hsl(var(--border));"
+           role="button" tabindex="0" aria-label="テレビ朝日 を視聴">
+          <div class="accent-bar accent-gr"></div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style="background-color: hsl(221 83% 60% / 0.15); color: hsl(221 83% 62%);">GR</span>
+              <span class="text-xs" style="color: hsl(var(--muted-foreground));">5ch · EX</span>
+            </div>
+            <p class="text-xs font-medium mb-0.5" style="color: hsl(var(--muted-foreground));">テレビ朝日</p>
+            <p class="font-bold text-sm leading-snug mb-1" style="color: hsl(var(--card-foreground));">報道ステーション</p>
+            <p class="text-xs mb-1" style="color: hsl(var(--muted-foreground));">21:54 – 23:10</p>
+            <div class="prog-track"><div class="prog-fill" style="width:55%;"></div></div>
+            <p class="text-xs mt-2" style="color: hsl(var(--muted-foreground));">次: サタデーナイトニュース <span>23:10</span></p>
+            <p class="text-xs mt-1 leading-snug" style="color: hsl(var(--muted-foreground)); opacity: 0.75;">その日最も重要なニュースを深掘り解説。</p>
+          </div>
+        </a>
+      </li>
+
+      <!-- フジテレビ — 30% through バラエティ -->
+      <li>
+        <a href="#" class="channel-card block rounded-lg overflow-hidden focus-visible:outline-none"
+           style="background-color: hsl(var(--card)); border: 1px solid hsl(var(--border));"
+           role="button" tabindex="0" aria-label="フジテレビ を視聴">
+          <div class="accent-bar accent-gr"></div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style="background-color: hsl(221 83% 60% / 0.15); color: hsl(221 83% 62%);">GR</span>
+              <span class="text-xs" style="color: hsl(var(--muted-foreground));">8ch · CX</span>
+            </div>
+            <p class="text-xs font-medium mb-0.5" style="color: hsl(var(--muted-foreground));">フジテレビ</p>
+            <p class="font-bold text-sm leading-snug mb-1" style="color: hsl(var(--card-foreground));">ホンマでっか!? TV</p>
+            <p class="text-xs mb-1" style="color: hsl(var(--muted-foreground));">21:00 – 21:57</p>
+            <div class="prog-track"><div class="prog-fill" style="width:30%;"></div></div>
+            <p class="text-xs mt-2" style="color: hsl(var(--muted-foreground));">次: FNN Live News α <span>22:00</span></p>
+            <p class="text-xs mt-1 leading-snug" style="color: hsl(var(--muted-foreground)); opacity: 0.75;">専門家たちの独自視点で日常の謎を解明。</p>
+          </div>
+        </a>
+      </li>
+
+      <!-- テレビ東京 — 80% through ドキュメンタリー -->
+      <li>
+        <a href="#" class="channel-card block rounded-lg overflow-hidden focus-visible:outline-none"
+           style="background-color: hsl(var(--card)); border: 1px solid hsl(var(--border));"
+           role="button" tabindex="0" aria-label="テレビ東京 を視聴">
+          <div class="accent-bar accent-gr"></div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style="background-color: hsl(221 83% 60% / 0.15); color: hsl(221 83% 62%);">GR</span>
+              <span class="text-xs" style="color: hsl(var(--muted-foreground));">7ch · TX</span>
+            </div>
+            <p class="text-xs font-medium mb-0.5" style="color: hsl(var(--muted-foreground));">テレビ東京</p>
+            <p class="font-bold text-sm leading-snug mb-1" style="color: hsl(var(--card-foreground));">ガイアの夜明け</p>
+            <p class="text-xs mb-1" style="color: hsl(var(--muted-foreground));">22:00 – 22:54</p>
+            <div class="prog-track"><div class="prog-fill" style="width:80%;"></div></div>
+            <p class="text-xs mt-2" style="color: hsl(var(--muted-foreground));">次: WBSニュース <span>23:00</span></p>
+            <p class="text-xs mt-1 leading-snug" style="color: hsl(var(--muted-foreground)); opacity: 0.75;">最前線で働くビジネスパーソンの姿を追う。</p>
+          </div>
+        </a>
+      </li>
+
+      <!-- TOKYO MX — 20% through アニメ -->
+      <li>
+        <a href="#" class="channel-card block rounded-lg overflow-hidden focus-visible:outline-none"
+           style="background-color: hsl(var(--card)); border: 1px solid hsl(var(--border));"
+           role="button" tabindex="0" aria-label="TOKYO MX を視聴">
+          <div class="accent-bar accent-gr"></div>
+          <div class="px-4 pb-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style="background-color: hsl(221 83% 60% / 0.15); color: hsl(221 83% 62%);">GR</span>
+              <span class="text-xs" style="color: hsl(var(--muted-foreground));">9ch · MX</span>
+            </div>
+            <p class="text-xs font-medium mb-0.5" style="color: hsl(var(--muted-foreground));">TOKYO MX</p>
+            <p class="font-bold text-sm leading-snug mb-1" style="color: hsl(var(--card-foreground));">葬送のフリーレン</p>
+            <p class="text-xs mb-1" style="color: hsl(var(--muted-foreground));">22:00 – 22:30</p>
+            <div class="prog-track"><div class="prog-fill" style="width:20%;"></div></div>
+            <p class="text-xs mt-2" style="color: hsl(var(--muted-foreground));">次: ダンジョン飯 <span>22:30</span></p>
+            <p class="text-xs mt-1 leading-snug" style="color: hsl(var(--muted-foreground)); opacity: 0.75;">魔法使いフリーレンと仲間たちの旅を描く名作。</p>
+          </div>
+        </a>
+      </li>
+
+    </ul>
+
+    <!-- Loading state -->
+    <details class="mt-10">
+      <summary class="text-xs cursor-pointer mb-3" style="color: hsl(var(--muted-foreground));">
+        [Designer note] Loading skeleton (click to expand)
+      </summary>
+      <ul class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+        <li class="rounded-lg overflow-hidden" style="border: 1px solid hsl(var(--border));">
+          <div class="skeleton" style="height:3px;"></div>
+          <div class="p-4 flex flex-col gap-3">
+            <div class="flex justify-between"><div class="skeleton" style="width:32px;height:14px;"></div><div class="skeleton" style="width:60px;height:12px;"></div></div>
+            <div class="skeleton" style="height:16px;width:80%;"></div>
+            <div class="skeleton" style="height:12px;width:50%;"></div>
+            <div class="skeleton" style="height:3px;"></div>
+            <div class="skeleton" style="height:11px;width:65%;"></div>
+          </div>
+        </li>
+        <li class="rounded-lg overflow-hidden" style="border: 1px solid hsl(var(--border));">
+          <div class="skeleton" style="height:3px;"></div>
+          <div class="p-4 flex flex-col gap-3">
+            <div class="flex justify-between"><div class="skeleton" style="width:32px;height:14px;"></div><div class="skeleton" style="width:60px;height:12px;"></div></div>
+            <div class="skeleton" style="height:16px;width:70%;"></div>
+            <div class="skeleton" style="height:12px;width:50%;"></div>
+            <div class="skeleton" style="height:3px;"></div>
+            <div class="skeleton" style="height:11px;width:55%;"></div>
+          </div>
+        </li>
+        <li class="rounded-lg overflow-hidden" style="border: 1px solid hsl(var(--border));">
+          <div class="skeleton" style="height:3px;"></div>
+          <div class="p-4 flex flex-col gap-3">
+            <div class="flex justify-between"><div class="skeleton" style="width:32px;height:14px;"></div><div class="skeleton" style="width:60px;height:12px;"></div></div>
+            <div class="skeleton" style="height:16px;width:90%;"></div>
+            <div class="skeleton" style="height:12px;width:50%;"></div>
+            <div class="skeleton" style="height:3px;"></div>
+            <div class="skeleton" style="height:11px;width:70%;"></div>
+          </div>
+        </li>
+      </ul>
+    </details>
+
+    <!-- Error state -->
+    <details class="mt-6">
+      <summary class="text-xs cursor-pointer mb-3" style="color: hsl(var(--muted-foreground));">
+        [Designer note] Error state (click to expand)
+      </summary>
+      <div class="rounded-lg p-6 text-center"
+           style="background-color: hsl(var(--card)); border: 1px solid hsl(0 72% 50% / 0.4);">
+        <p class="text-sm font-medium mb-1">Mirakc に接続できません</p>
+        <p class="text-xs mb-4" style="color: hsl(var(--muted-foreground));">チューナーサービスの起動を確認してください</p>
+        <button class="text-xs px-4 py-2 rounded-md font-medium"
+                style="background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground));" tabindex="0">再試行</button>
+      </div>
+    </details>
+
+    <!-- Empty state -->
+    <details class="mt-6">
+      <summary class="text-xs cursor-pointer mb-3" style="color: hsl(var(--muted-foreground));">
+        [Designer note] Empty state (click to expand)
+      </summary>
+      <div class="rounded-lg p-8 text-center"
+           style="background-color: hsl(var(--card)); border: 1px solid hsl(var(--border));">
+        <p class="text-sm font-medium mb-1">CS チャンネルがありません</p>
+        <p class="text-xs" style="color: hsl(var(--muted-foreground));">Mirakc の設定でチャンネルスキャンを実行してください</p>
+      </div>
+    </details>
+
+  </main>
+</body>
+</html>

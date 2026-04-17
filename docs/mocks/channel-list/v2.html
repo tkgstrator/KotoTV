@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Channel List — v2 (Left Sidebar + Compact List + EPG)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 262 80% 58%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 262 80% 58%;
+    }
+    .dark {
+      --background: 224 20% 9%;
+      --foreground: 210 20% 92%;
+      --card: 224 18% 13%;
+      --card-foreground: 210 20% 92%;
+      --muted: 224 16% 18%;
+      --muted-foreground: 215 12% 52%;
+      --border: 224 16% 20%;
+      --primary: 262 80% 65%;
+      --primary-foreground: 224 20% 9%;
+      --ring: 262 80% 65%;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
+    .sidebar-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; border-radius: 8px; cursor: pointer;
+      transition: background 80ms; font-size: 0.875rem; font-weight: 500;
+      text-decoration: none; color: hsl(var(--muted-foreground));
+      border: none; background: transparent; width: 100%; text-align: left;
+    }
+    .sidebar-item:hover { background-color: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .sidebar-item.active { background-color: hsl(var(--primary) / 0.12); color: hsl(var(--primary)); }
+
+    /* Channel row — now taller to accommodate EPG */
+    .channel-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid hsl(var(--border));
+      text-decoration: none;
+      color: inherit;
+      transition: background 60ms;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+    }
+    .channel-row:hover { background-color: hsl(var(--muted)); }
+    .channel-row:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; border-radius: 4px; }
+    .channel-row:last-child { border-bottom: none; }
+    .channel-row.row-gr { border-left-color: hsl(221 83% 60%); }
+    .channel-row.row-bs { border-left-color: hsl(142 70% 48%); }
+    .channel-row.row-cs { border-left-color: hsl(38 92% 52%); }
+
+    .ch-num {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+      background-color: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+    }
+
+    .badge { font-size: 0.625rem; font-weight: 700; padding: 2px 6px; border-radius: 999px; letter-spacing: 0.05em; }
+    .badge-gr { background: hsl(221 83% 60% / 0.15); color: hsl(221 83% 65%); }
+    .badge-bs { background: hsl(142 70% 45% / 0.15); color: hsl(142 70% 50%); }
+    .badge-cs { background: hsl(38 92% 50% / 0.15); color: hsl(38 92% 55%); }
+
+    /* Progress bar */
+    .prog-track {
+      height: 3px; border-radius: 99px;
+      background: hsl(var(--muted));
+      overflow: hidden; margin-top: 4px; margin-bottom: 4px;
+    }
+    .prog-fill { height: 100%; border-radius: 99px; background: hsl(var(--primary)); }
+    .prog-fill.urgent { background: hsl(0 72% 58%); }
+
+    .watch-btn {
+      margin-left: auto; flex-shrink: 0;
+      display: flex; align-items: center; gap: 4px;
+      font-size: 0.75rem; font-weight: 600; padding: 6px 12px;
+      border-radius: 6px; background-color: hsl(var(--primary));
+      color: hsl(var(--primary-foreground)); border: none; cursor: pointer;
+      transition: opacity 80ms; align-self: flex-start;
+    }
+    .watch-btn:hover { opacity: 0.85; }
+
+    @keyframes shimmer {
+      0% { background-position: -600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%);
+      background-size: 1200px 100%; animation: shimmer 1.4s infinite; border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header style="background-color: hsl(var(--card)); border-bottom: 1px solid hsl(var(--border));"
+          class="sticky top-0 z-20 h-14 flex items-center px-5 justify-between">
+    <div class="flex items-center gap-2.5">
+      <svg class="w-5 h-5" style="color: hsl(var(--primary));" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M21 3H3C2 3 1 4 1 5v14c0 1.1.9 2 2 2h18c1 0 2-.9 2-2V5c0-1-.9-2-2-2zm0 16H3V5h18v14zM8 15l5-3-5-3v6z"/>
+      </svg>
+      <span style="font-weight:600; font-size:0.9375rem;">telemax</span>
+    </div>
+    <button
+      onclick="document.documentElement.classList.toggle('dark')"
+      style="font-size:0.75rem; padding:5px 10px; border-radius:6px; border:1px solid hsl(var(--border)); background:transparent; color:hsl(var(--muted-foreground)); cursor:pointer;"
+      tabindex="0">Toggle theme</button>
+  </header>
+
+  <div style="display:flex; flex:1; min-height:0;">
+
+    <!-- Sidebar -->
+    <nav style="width:180px; flex-shrink:0; background-color:hsl(var(--card)); border-right:1px solid hsl(var(--border)); padding:20px 10px;"
+         aria-label="チャンネル種別">
+      <p style="font-size:0.6875rem; font-weight:600; letter-spacing:0.07em; color:hsl(var(--muted-foreground)); padding:0 8px; margin-bottom:8px; text-transform:uppercase;">種別</p>
+      <button class="sidebar-item active" tabindex="0">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        地上波 GR
+        <span style="margin-left:auto; font-size:0.6875rem; font-weight:700; background:hsl(var(--muted)); padding:2px 6px; border-radius:999px;">8</span>
+      </button>
+      <button class="sidebar-item" tabindex="0">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        BS
+        <span style="margin-left:auto; font-size:0.6875rem; font-weight:700; background:hsl(var(--muted)); padding:2px 6px; border-radius:999px;">4</span>
+      </button>
+      <button class="sidebar-item" tabindex="0">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        CS
+        <span style="margin-left:auto; font-size:0.6875rem; font-weight:700; background:hsl(var(--muted)); padding:2px 6px; border-radius:999px;">3</span>
+      </button>
+    </nav>
+
+    <!-- Main -->
+    <main style="flex:1; overflow-y:auto; padding:20px 24px;">
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h1 style="font-size:1.0625rem; font-weight:600;">地上波 GR <span style="font-size:0.8125rem; font-weight:400; color:hsl(var(--muted-foreground)); margin-left:6px;">8 チャンネル</span></h1>
+      </div>
+
+      <div style="background-color:hsl(var(--card)); border:1px solid hsl(var(--border)); border-radius:10px; overflow:hidden;">
+        <ul role="list">
+
+          <!-- NHK 総合 40% -->
+          <li>
+            <a href="#" class="channel-row row-gr" tabindex="0" aria-label="NHK 総合 を視聴">
+              <div class="ch-num">1</div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="font-size:0.9375rem; font-weight:600;">NHK 総合</span>
+                  <span class="badge badge-gr">GR</span>
+                  <span style="font-size:0.75rem; color:hsl(var(--muted-foreground));">NHK-G</span>
+                </div>
+                <!-- Program title — most prominent -->
+                <p style="font-size:0.875rem; font-weight:700; color:hsl(var(--card-foreground)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px;">ニュースウォッチ9</p>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground)); margin-top:1px;">21:00 – 21:54</p>
+                <div class="prog-track" style="max-width:260px;"><div class="prog-fill" style="width:40%;"></div></div>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground));">次: ドキュメント72時間 22:00</p>
+              </div>
+              <button class="watch-btn" tabindex="-1" aria-label="NHK 総合を視聴">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>視聴
+              </button>
+            </a>
+          </li>
+
+          <!-- NHK Eテレ 10% -->
+          <li>
+            <a href="#" class="channel-row row-gr" tabindex="0" aria-label="NHK Eテレ を視聴">
+              <div class="ch-num">2</div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="font-size:0.9375rem; font-weight:600;">NHK Eテレ</span>
+                  <span class="badge badge-gr">GR</span>
+                  <span style="font-size:0.75rem; color:hsl(var(--muted-foreground));">NHK-E</span>
+                </div>
+                <p style="font-size:0.875rem; font-weight:700; color:hsl(var(--card-foreground));">趣味の園芸</p>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground)); margin-top:1px;">21:00 – 21:30</p>
+                <div class="prog-track" style="max-width:260px;"><div class="prog-fill" style="width:10%;"></div></div>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground));">次: 日本語ナビ 21:30</p>
+              </div>
+              <button class="watch-btn" tabindex="-1">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>視聴
+              </button>
+            </a>
+          </li>
+
+          <!-- 日本テレビ 65% -->
+          <li>
+            <a href="#" class="channel-row row-gr" tabindex="0" aria-label="日本テレビ を視聴">
+              <div class="ch-num">4</div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="font-size:0.9375rem; font-weight:600;">日本テレビ</span>
+                  <span class="badge badge-gr">GR</span>
+                  <span style="font-size:0.75rem; color:hsl(var(--muted-foreground));">NTV</span>
+                </div>
+                <p style="font-size:0.875rem; font-weight:700; color:hsl(var(--card-foreground));">ダウンタウンDX</p>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground)); margin-top:1px;">19:00 – 20:54</p>
+                <div class="prog-track" style="max-width:260px;"><div class="prog-fill" style="width:65%;"></div></div>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground));">次: news every. 21:00</p>
+              </div>
+              <button class="watch-btn" tabindex="-1">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>視聴
+              </button>
+            </a>
+          </li>
+
+          <!-- TBS 95% urgent -->
+          <li>
+            <a href="#" class="channel-row row-gr" tabindex="0" aria-label="TBS テレビ を視聴">
+              <div class="ch-num">6</div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="font-size:0.9375rem; font-weight:600;">TBS テレビ</span>
+                  <span class="badge badge-gr">GR</span>
+                  <span style="font-size:0.75rem; color:hsl(var(--muted-foreground));">TBS</span>
+                </div>
+                <p style="font-size:0.875rem; font-weight:700; color:hsl(var(--card-foreground));">日曜劇場「海に眠るダイヤモンド」</p>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground)); margin-top:1px;">21:00 – 22:00</p>
+                <div class="prog-track" style="max-width:260px;"><div class="prog-fill urgent" style="width:95%;"></div></div>
+                <p style="font-size:0.6875rem; color:hsl(0 72% 58%);">まもなく終了</p>
+              </div>
+              <button class="watch-btn" tabindex="-1">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>視聴
+              </button>
+            </a>
+          </li>
+
+          <!-- テレビ朝日 55% -->
+          <li>
+            <a href="#" class="channel-row row-gr" tabindex="0" aria-label="テレビ朝日 を視聴">
+              <div class="ch-num">5</div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="font-size:0.9375rem; font-weight:600;">テレビ朝日</span>
+                  <span class="badge badge-gr">GR</span>
+                  <span style="font-size:0.75rem; color:hsl(var(--muted-foreground));">EX</span>
+                </div>
+                <p style="font-size:0.875rem; font-weight:700; color:hsl(var(--card-foreground));">報道ステーション</p>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground)); margin-top:1px;">21:54 – 23:10</p>
+                <div class="prog-track" style="max-width:260px;"><div class="prog-fill" style="width:55%;"></div></div>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground));">次: サタデーナイトニュース 23:10</p>
+              </div>
+              <button class="watch-btn" tabindex="-1">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>視聴
+              </button>
+            </a>
+          </li>
+
+          <!-- フジテレビ 30% -->
+          <li>
+            <a href="#" class="channel-row row-gr" tabindex="0" aria-label="フジテレビ を視聴">
+              <div class="ch-num">8</div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="font-size:0.9375rem; font-weight:600;">フジテレビ</span>
+                  <span class="badge badge-gr">GR</span>
+                  <span style="font-size:0.75rem; color:hsl(var(--muted-foreground));">CX</span>
+                </div>
+                <p style="font-size:0.875rem; font-weight:700; color:hsl(var(--card-foreground));">ホンマでっか!? TV</p>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground)); margin-top:1px;">21:00 – 21:57</p>
+                <div class="prog-track" style="max-width:260px;"><div class="prog-fill" style="width:30%;"></div></div>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground));">次: FNN Live News α 22:00</p>
+              </div>
+              <button class="watch-btn" tabindex="-1">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>視聴
+              </button>
+            </a>
+          </li>
+
+          <!-- テレビ東京 80% -->
+          <li>
+            <a href="#" class="channel-row row-gr" tabindex="0" aria-label="テレビ東京 を視聴">
+              <div class="ch-num">7</div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="font-size:0.9375rem; font-weight:600;">テレビ東京</span>
+                  <span class="badge badge-gr">GR</span>
+                  <span style="font-size:0.75rem; color:hsl(var(--muted-foreground));">TX</span>
+                </div>
+                <p style="font-size:0.875rem; font-weight:700; color:hsl(var(--card-foreground));">ガイアの夜明け</p>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground)); margin-top:1px;">22:00 – 22:54</p>
+                <div class="prog-track" style="max-width:260px;"><div class="prog-fill" style="width:80%;"></div></div>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground));">次: WBSニュース 23:00</p>
+              </div>
+              <button class="watch-btn" tabindex="-1">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>視聴
+              </button>
+            </a>
+          </li>
+
+          <!-- TOKYO MX 20% -->
+          <li>
+            <a href="#" class="channel-row row-gr" tabindex="0" aria-label="TOKYO MX を視聴">
+              <div class="ch-num">9</div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="font-size:0.9375rem; font-weight:600;">TOKYO MX</span>
+                  <span class="badge badge-gr">GR</span>
+                  <span style="font-size:0.75rem; color:hsl(var(--muted-foreground));">MX</span>
+                </div>
+                <p style="font-size:0.875rem; font-weight:700; color:hsl(var(--card-foreground));">葬送のフリーレン</p>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground)); margin-top:1px;">22:00 – 22:30</p>
+                <div class="prog-track" style="max-width:260px;"><div class="prog-fill" style="width:20%;"></div></div>
+                <p style="font-size:0.6875rem; color:hsl(var(--muted-foreground));">次: ダンジョン飯 22:30</p>
+              </div>
+              <button class="watch-btn" tabindex="-1">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>視聴
+              </button>
+            </a>
+          </li>
+
+        </ul>
+      </div>
+
+      <!-- Loading skeleton -->
+      <details class="mt-8">
+        <summary style="font-size:0.75rem; cursor:pointer; color:hsl(var(--muted-foreground)); margin-bottom:12px;">
+          [Designer note] Loading skeleton (click to expand)
+        </summary>
+        <div style="background-color:hsl(var(--card)); border:1px solid hsl(var(--border)); border-radius:10px; overflow:hidden;">
+          <div style="display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:flex-start; gap:12px; padding:14px 16px; border-bottom:1px solid hsl(var(--border));">
+              <div class="skeleton" style="width:36px; height:36px; border-radius:8px; flex-shrink:0;"></div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
+                <div class="skeleton" style="height:14px; width:35%;"></div>
+                <div class="skeleton" style="height:16px; width:55%;"></div>
+                <div class="skeleton" style="height:3px; width:60%;"></div>
+                <div class="skeleton" style="height:11px; width:45%;"></div>
+              </div>
+              <div class="skeleton" style="width:56px; height:30px; border-radius:6px;"></div>
+            </div>
+            <div style="display:flex; align-items:flex-start; gap:12px; padding:14px 16px;">
+              <div class="skeleton" style="width:36px; height:36px; border-radius:8px; flex-shrink:0;"></div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
+                <div class="skeleton" style="height:14px; width:30%;"></div>
+                <div class="skeleton" style="height:16px; width:65%;"></div>
+                <div class="skeleton" style="height:3px; width:60%;"></div>
+                <div class="skeleton" style="height:11px; width:40%;"></div>
+              </div>
+              <div class="skeleton" style="width:56px; height:30px; border-radius:6px;"></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Error state -->
+      <details class="mt-6">
+        <summary style="font-size:0.75rem; cursor:pointer; color:hsl(var(--muted-foreground)); margin-bottom:12px;">
+          [Designer note] Error state (click to expand)
+        </summary>
+        <div style="background-color:hsl(var(--card)); border:1px solid hsl(0 72% 50% / 0.4); border-radius:10px; padding:24px; text-align:center;">
+          <p style="font-size:0.875rem; font-weight:600; margin-bottom:4px;">Mirakc に接続できません</p>
+          <p style="font-size:0.75rem; color:hsl(var(--muted-foreground)); margin-bottom:16px;">チューナーサービスの起動を確認してください</p>
+          <button style="font-size:0.75rem; padding:6px 16px; border-radius:6px; background:hsl(var(--primary)); color:hsl(var(--primary-foreground)); border:none; cursor:pointer; font-weight:600;" tabindex="0">再試行</button>
+        </div>
+      </details>
+
+    </main>
+  </div>
+
+</body>
+</html>
