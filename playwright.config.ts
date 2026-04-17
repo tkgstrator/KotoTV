@@ -40,6 +40,11 @@ export default defineConfig({
       name: 'ux-audit',
       testDir: './tests/ux',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } }
+    },
+    {
+      name: 'ux-mobile',
+      testDir: './tests/ux',
+      use: { ...devices['Pixel 7'] }
     }
   ]
 })
