@@ -36,20 +36,20 @@
 - [ ] app サービスに `MIRAKC_URL=http://mirakc:40772` を注入 — `docker-compose.yml`
 
 ### backend
-- [ ] Mirakc REST API (`GET /api/services`) を `fetch` でラップするクライアントを実装 — `packages/server/src/services/mirakc-client.ts`
-- [ ] Mirakc レスポンスの Zod スキーマ (`MirakcServiceSchema`) を定義 — `packages/server/src/schemas/Channel.dto.ts`
-- [ ] アプリ内で使う `ChannelSchema` / `ChannelListResponseSchema` を定義 — `packages/server/src/schemas/Channel.dto.ts`
-- [ ] `GET /api/channels` ルートを実装 (`?type=GR|BS|CS` クエリを `zValidator` で検証) — `packages/server/src/routes/channels.ts`
-- [ ] channels ルートを `app.ts` にマウントし `AppType` を更新 — `packages/server/src/app.ts`
-- [ ] `MIRAKC_URL` が疎通できない場合に `HTTPException(502)` を返すエラーハンドリング — `packages/server/src/services/mirakc-client.ts`
-- [ ] Mirakc の `service.type === 0x01` (TV) のみフィルタして返す
+- [x] Mirakc REST API (`GET /api/services`) を `fetch` でラップするクライアントを実装 — `packages/server/src/services/mirakc-client.ts`
+- [x] Mirakc レスポンスの Zod スキーマ (`MirakcServiceSchema`) を定義 — `packages/server/src/schemas/Channel.dto.ts`
+- [x] アプリ内で使う `ChannelSchema` / `ChannelListResponseSchema` を定義 — `packages/server/src/schemas/Channel.dto.ts`
+- [x] `GET /api/channels` ルートを実装 (`?type=GR|BS|CS` クエリを `zValidator` で検証) — `packages/server/src/routes/channels.ts`
+- [x] channels ルートを `app.ts` にマウントし `AppType` を更新 — `packages/server/src/app.ts`
+- [x] `MIRAKC_URL` が疎通できない場合のフォールバック (Phase 1 はモック fixture にフォールバック + pino warn、Phase 2 以降で HTTPException(502) に変更検討) — `packages/server/src/services/mirakc-client.ts`
+- [x] Mirakc の `service.type === 0x01` (TV) のみフィルタして返す
 
 ### frontend
-- [ ] `useChannels` フックを作成、`useQuery` で `/api/channels` を取得 (query key: `["channels", type]`) — `packages/client/src/hooks/useChannels.ts`
-- [ ] `ChannelCard` コンポーネントを Shadcn `Card` ベースで作成 — `packages/client/src/components/channel/ChannelCard.tsx`
-- [ ] `ChannelList` コンポーネントを作成 (チャンネル種別フィルタ `GR/BS/CS` 対応) — `packages/client/src/components/channel/ChannelList.tsx`
-- [ ] トップページにチャンネル一覧を組み込む — `packages/client/src/routes/index.tsx`
-- [ ] ローディング・エラー状態のスケルトン UI (Shadcn `Skeleton`) — `packages/client/src/components/channel/ChannelList.tsx`
+- [x] `useChannels` フックを作成、`useQuery` で `/api/channels` を取得 (query key: `["channels", type]`) — `packages/client/src/hooks/useChannels.ts`
+- [x] `ChannelRow` コンポーネントを作成 (v6-tvguide / mobile-v3-compact 互換、レスポンシブ) — `packages/client/src/components/channel/ChannelRow.tsx`
+- [x] `ChannelList` コンポーネントを作成 (チャンネル種別フィルタ `GR/BS/CS` 対応、`TypeFilter` でアンダーライン tabs) — `packages/client/src/components/channel/ChannelList.tsx`
+- [x] トップページにチャンネル一覧を組み込む — `packages/client/src/routes/index.tsx`
+- [x] ローディング・エラー状態のスケルトン UI (Shadcn `Skeleton`) — `packages/client/src/components/channel/ChannelList.tsx`
 
 ### qa
 - [ ] 型検査 + Biome
