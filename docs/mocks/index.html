@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mocks — Telemax</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f8fa;
+        --surface: #ffffff;
+        --border: #e5e7eb;
+        --fg: #18181b;
+        --muted: #71717a;
+        --accent: #3b82f6;
+        --pick: #16a34a;
+      }
+      html.dark {
+        --bg: #0f1115;
+        --surface: #17191f;
+        --border: #2a2d35;
+        --fg: #e4e4e7;
+        --muted: #9ca3af;
+        --accent: #60a5fa;
+        --pick: #4ade80;
+      }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          "Hiragino Kaku Gothic ProN",
+          "Noto Sans JP",
+          sans-serif;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+      }
+      .chip {
+        background: color-mix(in srgb, var(--fg) 8%, transparent);
+        color: var(--fg);
+      }
+      .chip-pick {
+        background: color-mix(in srgb, var(--pick) 18%, transparent);
+        color: var(--pick);
+        border: 1px solid color-mix(in srgb, var(--pick) 40%, transparent);
+      }
+      .chip-mobile {
+        background: color-mix(in srgb, var(--accent) 16%, transparent);
+        color: var(--accent);
+      }
+      .preview-wrap {
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+        aspect-ratio: 16 / 10;
+        overflow: hidden;
+        position: relative;
+      }
+      .preview-wrap iframe {
+        width: 1440px;
+        height: 900px;
+        border: 0;
+        transform: scale(0.25);
+        transform-origin: top left;
+        pointer-events: none;
+      }
+      .preview-wrap[data-vp="mobile"] iframe {
+        width: 390px;
+        height: 780px;
+        transform: scale(0.5);
+      }
+      .scroll-shadow {
+        box-shadow: inset 0 -20px 20px -20px color-mix(in srgb, var(--fg) 10%, transparent);
+      }
+      [data-hidden="true"] {
+        display: none !important;
+      }
+      details summary::-webkit-details-marker {
+        display: none;
+      }
+      details summary {
+        cursor: pointer;
+        list-style: none;
+      }
+      .screen-chevron {
+        transition: transform 0.15s ease;
+      }
+      details[open] .screen-chevron {
+        transform: rotate(90deg);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen">
+    <header
+      class="sticky top-0 z-20 border-b px-6 py-4 backdrop-blur"
+      style="background: color-mix(in srgb, var(--surface) 80%, transparent); border-color: var(--border)"
+    >
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4">
+        <h1 class="text-lg font-semibold">Telemax モック閲覧</h1>
+        <span class="text-xs" style="color: var(--muted)">変更は <code>docs/mocks/</code> に反映するだけで OK</span>
+        <div class="ml-auto flex items-center gap-3">
+          <input
+            id="search"
+            type="search"
+            placeholder="screen / variant 検索…"
+            class="w-64 rounded border px-3 py-1.5 text-sm"
+            style="background: var(--surface); border-color: var(--border); color: var(--fg)"
+          />
+          <label class="flex items-center gap-1.5 text-xs">
+            <input id="filter-picked" type="checkbox" />
+            picked のみ
+          </label>
+          <button
+            id="toggle-theme"
+            type="button"
+            class="rounded border px-2.5 py-1 text-xs"
+            style="background: var(--surface); border-color: var(--border)"
+          >
+            🌓
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-6 py-6">
+      <div id="screens" class="space-y-6"></div>
+      <p id="empty" class="py-10 text-center text-sm" style="color: var(--muted); display: none">
+        該当する variant はありません
+      </p>
+    </main>
+
+    <script>
+      // Registry — update this array when mocks are added / renamed / picked.
+      // One entry per screen. `picks` is a set of filenames chosen by the user
+      // (desktop / mobile separate is fine — just mark both).
+      const SCREENS = [
+        {
+          slug: 'channel-list',
+          title: 'チャンネル一覧',
+          phase: 'Phase 1',
+          picks: ['v6-tvguide.html', 'mobile-v3-compact.html'],
+          variants: [
+            { file: 'v1.html', label: 'v1 — top tabs + card grid', vp: 'desktop' },
+            { file: 'v2.html', label: 'v2 — sidebar + compact list', vp: 'desktop' },
+            { file: 'v3.html', label: 'v3 — segmented + dense grid', vp: 'desktop' },
+            { file: 'v4-hero.html', label: 'v4 — hero banner', vp: 'desktop' },
+            { file: 'v5-magazine.html', label: 'v5 — magazine', vp: 'desktop' },
+            { file: 'v6-tvguide.html', label: 'v6 — tv guide', vp: 'desktop' },
+            { file: 'v7-streaming.html', label: 'v7 — streaming tile', vp: 'desktop' },
+            { file: 'v8-logo-grid.html', label: 'v8 — logo grid', vp: 'desktop' },
+            { file: 'v9-logo-list.html', label: 'v9 — logo list', vp: 'desktop' },
+            { file: 'mobile-v1.html', label: 'mobile v1', vp: 'mobile' },
+            { file: 'mobile-v2.html', label: 'mobile v2', vp: 'mobile' },
+            { file: 'mobile-v3-compact.html', label: 'mobile v3 — compact', vp: 'mobile' },
+            { file: 'mobile-v4-swipe.html', label: 'mobile v4 — swipe', vp: 'mobile' },
+            { file: 'mobile-v5-logo.html', label: 'mobile v5 — logo', vp: 'mobile' },
+            { file: 'filter-styles.html', label: 'filter styles reference', vp: 'desktop' }
+          ]
+        },
+        {
+          slug: 'live-player',
+          title: 'ライブ視聴',
+          phase: 'Phase 2',
+          picks: [],
+          recommend: 'v2.html',
+          variants: [
+            { file: 'v1.html', label: 'v1 — overlay controls', vp: 'desktop' },
+            { file: 'v2.html', label: 'v2 — persistent controls (tvOS-friendly)', vp: 'desktop' },
+            { file: 'v3.html', label: 'v3 — mobile-first split', vp: 'mobile' }
+          ]
+        }
+        // Additional screens (epg, recordings, recording-player, app-shell, settings, states)
+        // will be appended by the designer agent as they land.
+      ]
+
+      const el = (tag, cls, attrs = {}, children = []) => {
+        const n = document.createElement(tag)
+        if (cls) n.className = cls
+        for (const [k, v] of Object.entries(attrs)) {
+          if (k === 'html') n.innerHTML = v
+          else if (v !== false && v != null) n.setAttribute(k, v)
+        }
+        for (const c of [].concat(children)) {
+          if (c == null) continue
+          n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c)
+        }
+        return n
+      }
+
+      function buildVariantCard(screen, v) {
+        const isPick = screen.picks.includes(v.file)
+        const isRec = screen.recommend === v.file && !isPick
+        const src = `${screen.slug}/${v.file}`
+        const badges = el('div', 'flex flex-wrap gap-1', {}, [
+          isPick ? el('span', 'chip-pick rounded px-1.5 py-0.5 text-[10px] font-semibold', {}, '採択') : null,
+          isRec
+            ? el('span', 'chip rounded px-1.5 py-0.5 text-[10px] font-semibold', { style: 'color: var(--accent)' }, '推奨')
+            : null,
+          v.vp === 'mobile' ? el('span', 'chip-mobile rounded px-1.5 py-0.5 text-[10px]', {}, 'mobile') : null
+        ])
+        const body = el('div', 'flex items-start justify-between gap-3 px-3 py-2', {}, [
+          el('div', 'min-w-0', {}, [
+            el('div', 'truncate text-sm font-medium', { title: v.label }, v.label),
+            el('div', 'text-[11px]', { style: 'color: var(--muted)' }, v.file)
+          ]),
+          badges
+        ])
+        const preview = el(
+          'div',
+          'preview-wrap',
+          { 'data-vp': v.vp },
+          [el('iframe', '', { loading: 'lazy', src, title: v.label, sandbox: 'allow-same-origin' })]
+        )
+        const actions = el('div', 'flex items-center justify-between px-3 py-2 text-xs', { style: 'border-top: 1px solid var(--border)' }, [
+          el('a', 'underline', { href: src, target: '_blank', rel: 'noreferrer' }, '新規タブで開く'),
+          el('a', 'underline', { href: src, target: '_blank', rel: 'noreferrer' }, 'フル表示 →')
+        ])
+        const card = el(
+          'article',
+          'card overflow-hidden rounded-lg transition-shadow hover:shadow-md',
+          { 'data-search': `${screen.title} ${v.label} ${v.file}`.toLowerCase(), 'data-picked': String(isPick) },
+          [body, preview, actions]
+        )
+        return card
+      }
+
+      function buildScreenSection(screen) {
+        const count = screen.variants.length
+        const pickCount = screen.picks.length
+        const summary = el('summary', 'card flex items-center gap-3 rounded-lg px-4 py-3', {}, [
+          el('span', 'screen-chevron text-lg', {}, '›'),
+          el('h2', 'text-base font-semibold', {}, screen.title),
+          el('span', 'chip rounded px-1.5 py-0.5 text-[11px]', {}, screen.phase),
+          el('span', 'text-xs', { style: 'color: var(--muted)' }, `${count} 案`),
+          pickCount ? el('span', 'chip-pick rounded px-1.5 py-0.5 text-[11px] font-semibold', {}, `採択 ${pickCount}`) : null
+        ])
+        const grid = el(
+          'div',
+          'mt-3 grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3',
+          { 'data-screen-grid': screen.slug }
+        )
+        for (const v of screen.variants) grid.appendChild(buildVariantCard(screen, v))
+        const details = el('details', '', { open: true, 'data-screen': screen.slug }, [summary, grid])
+        return details
+      }
+
+      const root = document.getElementById('screens')
+      for (const s of SCREENS) root.appendChild(buildScreenSection(s))
+
+      // Filter
+      const search = document.getElementById('search')
+      const filterPicked = document.getElementById('filter-picked')
+      function applyFilter() {
+        const q = search.value.trim().toLowerCase()
+        const pickedOnly = filterPicked.checked
+        let visibleTotal = 0
+        for (const section of root.querySelectorAll('details[data-screen]')) {
+          let visible = 0
+          for (const card of section.querySelectorAll('article.card')) {
+            const hay = card.dataset.search ?? ''
+            const picked = card.dataset.picked === 'true'
+            const ok = (!q || hay.includes(q)) && (!pickedOnly || picked)
+            card.dataset.hidden = String(!ok)
+            if (ok) visible++
+          }
+          section.dataset.hidden = String(visible === 0)
+          visibleTotal += visible
+        }
+        document.getElementById('empty').style.display = visibleTotal === 0 ? 'block' : 'none'
+      }
+      search.addEventListener('input', applyFilter)
+      filterPicked.addEventListener('change', applyFilter)
+
+      // Theme toggle
+      const themeKey = 'telemax-mocks-theme'
+      function applyTheme(t) {
+        document.documentElement.classList.toggle('dark', t === 'dark')
+        localStorage.setItem(themeKey, t)
+      }
+      const saved = localStorage.getItem(themeKey)
+      applyTheme(saved ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'))
+      document.getElementById('toggle-theme').addEventListener('click', () => {
+        applyTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark')
+      })
+    </script>
+  </body>
+</html>
