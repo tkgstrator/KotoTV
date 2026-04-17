@@ -1,0 +1,55 @@
+{
+  "mcpServers": {
+    "docker": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "--bun",
+        "mcp-server-docker"
+      ],
+      "env": {}
+    },
+    "github": {
+      "type": "stdio",
+      "command": "sh",
+      "args": [
+        "-c",
+        "GITHUB_PERSONAL_ACCESS_TOKEN=$(gh auth token) exec bunx --bun @modelcontextprotocol/server-github"
+      ],
+      "env": {}
+    },
+    "tailwindcss": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "--bun",
+        "tailwindcss-mcp-server"
+      ],
+      "env": {}
+    },
+    "shadcn": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "--bun",
+        "shadcn@latest",
+        "mcp"
+      ],
+      "env": {}
+    },
+    "prisma": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "--bun",
+        "prisma",
+        "mcp"
+      ],
+      "env": {}
+    },
+    "zod": {
+      "type": "sse",
+      "url": "https://mcp.inkeep.com/zod/mcp"
+    }
+  }
+}
