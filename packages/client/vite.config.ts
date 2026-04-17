@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { mocksPlugin } from './vite-plugins/mocks'
 
 export default defineConfig({
   plugins: [
@@ -13,7 +14,8 @@ export default defineConfig({
       autoCodeSplitting: true
     }),
     react(),
-    tailwindcss()
+    tailwindcss(),
+    mocksPlugin(resolve(import.meta.dirname, '../../docs/mocks'))
   ],
   resolve: {
     alias: {
