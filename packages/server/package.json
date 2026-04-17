@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "bun --hot run src/index.ts",
     "typecheck": "tsc -b --noEmit",
-    "db:migrate": "bunx prisma migrate dev",
-    "db:generate": "bunx prisma generate"
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.0",
