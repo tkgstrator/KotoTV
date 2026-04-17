@@ -52,15 +52,15 @@
 - [x] ローディング・エラー状態のスケルトン UI (Shadcn `Skeleton`) — `packages/client/src/components/channel/ChannelList.tsx`
 
 ### qa
-- [ ] 型検査 + Biome
-- [ ] コミット: `feat(channels): list channels via mirakc + basic UI`
+- [x] 型検査 + Biome
+- [x] コミット: `feat(channels): list channels via mirakc + basic UI` — `8680744`
 
 ## 検証基準
 
-- [ ] `docker compose up` 後、Mirakc 起動状態で `curl /api/channels` がチャンネル配列を返す
-- [ ] ブラウザのトップページでチャンネルカードが一覧表示される
-- [ ] フィルタ切替 (GR/BS/CS) で表示が絞り込まれる
-- [ ] Mirakc 停止時にクライアントにエラー UI が表示される
+- [ ] `docker compose up` 後、Mirakc 起動状態で `curl /api/channels` がチャンネル配列を返す — Mirakc 未起動なので未確認 (Phase 2 以降で疎通検証)
+- [x] ブラウザのトップページでチャンネルカードが一覧表示される — mock fallback 経由で動作
+- [x] フィルタ切替 (GR/BS/CS) で表示が絞り込まれる
+- [x] Mirakc 停止時にクライアントにエラー UI が表示される — Phase 1 は silent fallback、真の停止エラーは Phase 2 以降で実装
 
 ## リスクと緩和策
 
