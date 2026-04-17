@@ -1,0 +1,56 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - node_modules:/home/vscode/app/node_modules
+      - ../:/home/vscode/app:cached
+    environment:
+      NODE_OPTIONS: "--no-deprecation"
+    tty: true
+    stdin_open: true
+    ports:
+      - 11575:11575
+      - 5173:5173
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgadmin:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17.9
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: koto
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d koto"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  pgadmin:
+    image: dpage/pgadmin4:9.14.0
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - 8080:80
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/misc/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  node_modules:
+  pgadmin_data:
+  postgres_data:

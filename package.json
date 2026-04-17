@@ -4,7 +4,7 @@
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
-    "dev": "bun run --cwd packages/server dev",
+    "dev": "bun run --filter='*' --parallel dev",
     "typecheck": "bunx tsc -b --noEmit",
     "lint": "bunx biome check .",
     "lint:fix": "bunx biome check --write .",
