@@ -17,15 +17,18 @@
 
 ## 採択デザイン
 
-- 候補: `docs/mocks/channel-list/v1.html`, `v2.html`, `v3.html`
-- 採択: _(未定)_
+- 候補: v1-v9 (desktop) + mobile-v1 〜 mobile-v5 (mobile) — `docs/mocks/channel-list/`
+- **採択 (desktop)**: [`v6-tvguide.html`](../mocks/channel-list/v6-tvguide.html) — 2列高密度、16ch 一画面、TV ガイド的
+- **採択 (mobile)**: [`mobile-v3-compact.html`](../mocks/channel-list/mobile-v3-compact.html) — 60px 行、左 72px ch-left + 右プログラム情報、アンダーライン tab filter
+- 保留 (chunner 制約で非現実的): v7-streaming, mobile-v4-swipe
+- 後回し修正: v6 デスクトップでチャンネル名が折り返す件
 
 ## チェックリスト
 
 ### designer
-- [ ] `docs/mocks/channel-list/` に HTML バリアント 2-3 案を生成 (GR/BS/CS 切替、グリッド密度違い、サイドバー vs タブの選択肢含む)
-- [ ] 各案の `README.md` に意思決定根拠・Shadcn プリミティブ・ハンドオフノート
-- [ ] 推奨案を明記、採択 variant にユーザーが決定するまで待つ
+- [x] `docs/mocks/channel-list/` に HTML バリアント 2-3 案を生成 (GR/BS/CS 切替、グリッド密度違い、サイドバー vs タブの選択肢含む) — 9 desktop + 5 mobile + filter-styles 比較ページで提供
+- [x] 各案の `README.md` に意思決定根拠・Shadcn プリミティブ・ハンドオフノート
+- [x] 推奨案を明記、採択 variant にユーザーが決定するまで待つ — 採択: desktop v6-tvguide, mobile mobile-v3-compact
 
 ### devops
 - [ ] `config/mirakc/config.yml` に DVB チューナ passthrough と最小チャンネル定義 (NHK-G, NHK-E, 地元民放 1 つ) を記載 — `config/mirakc/config.yml`
