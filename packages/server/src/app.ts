@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { requestId } from 'hono/request-id'
 import { logger as pinoLogger } from './lib/logger'
+import channelsRoute from './routes/channels'
 import statusRoute from './routes/status'
 
 const app = new Hono()
@@ -26,6 +27,7 @@ const app = new Hono()
     return c.json({ error: { code: 500, message: 'internal server error' }, requestId: rid }, 500)
   })
   .route('/api/status', statusRoute)
+  .route('/api/channels', channelsRoute)
 
 export { app }
 export type AppType = typeof app
