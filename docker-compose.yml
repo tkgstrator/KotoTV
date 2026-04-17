@@ -1,0 +1,71 @@
+services:
+  mirakc:
+    image: mirakc/mirakc:latest
+    volumes:
+      - ./config/mirakc:/etc/mirakc
+      - epg-data:/var/lib/mirakc
+    devices:
+      - /dev/dvb
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: telemax
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d telemax"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  app:
+    build: .
+    depends_on:
+      mirakc:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://app:${POSTGRES_PASSWORD}@postgres:5432/telemax
+      MIRAKC_URL: http://mirakc:40772
+      PORT: ${PORT:-11575}
+      HW_ACCEL_TYPE: ${HW_ACCEL_TYPE:-none}
+      CODEC: ${CODEC:-avc}
+    tmpfs:
+      - /app/data/hls:size=512M
+    volumes:
+      - recordings:/app/data/recordings
+    ports:
+      - "${PORT:-11575}:${PORT:-11575}"
+    restart: unless-stopped
+
+    # ── NVIDIA NVENC ──────────────────────────────────────────────────────────
+    # Uncomment and set HW_ACCEL_TYPE=nvenc to enable GPU transcoding.
+    # Requires nvidia-container-toolkit installed on the Docker host.
+    #
+    # runtime: nvidia
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu, video]
+
+    # ── Intel QSV / VA-API ────────────────────────────────────────────────────
+    # Uncomment and set HW_ACCEL_TYPE=qsv or vaapi to enable Intel/AMD GPU.
+    # Requires the /dev/dri device to be present on the host.
+    #
+    # devices:
+    #   - /dev/dri:/dev/dri
+
+volumes:
+  epg-data:
+  postgres-data:
+  recordings:
