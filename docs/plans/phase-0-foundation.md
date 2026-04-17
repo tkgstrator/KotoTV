@@ -4,7 +4,7 @@
 |------|-----|
 | **目標** | Bun workspace が構成され、`GET /api/status` が `{ status: "ok" }` を返し、ブラウザで空の React SPA が表示される |
 | **工数** | 1-2 日 |
-| **ステータス** | 未着手 |
+| **ステータス** | 完了 |
 | **前提フェーズ** | なし (最初のフェーズ) |
 
 ## 全体フロー
@@ -17,47 +17,47 @@
 ## チェックリスト
 
 ### devops
-- [ ] ルート `package.json` を `private: true` + `workspaces: ["packages/*"]` で作成 — `package.json`
-- [ ] `tsconfig.base.json` を作成し、`strict: true`、`moduleResolution: "bundler"` 等を設定 — `tsconfig.base.json`
-- [ ] `.env.example` を作成し `DATABASE_URL`、`MIRAKC_URL`、`HW_ACCEL_TYPE`、`PORT` を記載 — `.env.example`
-- [ ] `docker-compose.yml` skeleton を作成 (app + postgres + mirakc、まだビルドしない) — `docker-compose.yml`
-- [ ] `Dockerfile` skeleton を multi-stage (deps / client-build / runtime) で作成、FFmpeg は Phase 2 で入れる — `Dockerfile`
-- [ ] `.gitignore` に `packages/*/dist/`、`packages/*/node_modules/`、`data/`、`.env` を追加
-- [ ] `.github/workflows/ci.yml` を新設し PR で `bun install` + 全 workspace の `typecheck` + `bunx biome check .` を実行 — `.github/workflows/ci.yml`
+- [x] ルート `package.json` を `private: true` + `workspaces: ["packages/*"]` で作成 — `package.json`
+- [x] `tsconfig.base.json` を作成し、`strict: true`、`moduleResolution: "bundler"` 等を設定 — `tsconfig.base.json`
+- [x] `.env.example` を作成し `DATABASE_URL`、`MIRAKC_URL`、`HW_ACCEL_TYPE`、`PORT` を記載 — `.env.example`
+- [x] `docker-compose.yml` skeleton を作成 (app + postgres + mirakc、まだビルドしない) — `docker-compose.yml`
+- [x] `Dockerfile` skeleton を multi-stage (deps / client-build / runtime) で作成、FFmpeg は Phase 2 で入れる — `Dockerfile`
+- [x] `.gitignore` に `packages/*/dist/`、`packages/*/node_modules/`、`data/`、`.env` を追加
+- [x] `.github/workflows/ci.yml` を新設し PR で `bun install` + 全 workspace の `typecheck` + `bunx biome check .` を実行 — `.github/workflows/ci.yml`
 
 ### backend
-- [ ] Bun workspace ルート (`package.json`) に `packages/server` を登録 — `package.json`
-- [ ] `tsconfig.base.json` を作成し、`packages/server/tsconfig.json` で extends — `packages/server/tsconfig.json`
-- [ ] 環境変数を Zod でパースする設定モジュールを実装 (`DATABASE_URL`, `MIRAKC_URL`, `HW_ACCEL_TYPE`, `PORT`) — `packages/server/src/lib/config.ts`
-- [ ] `pino` + `pino-pretty` のロガーを初期化 — `packages/server/src/lib/logger.ts`
-- [ ] `PrismaClient` のシングルトンインスタンスを作成 — `packages/server/src/lib/prisma.ts`
-- [ ] Hono アプリを生成し `AppType` を export (初期ルートは status のみ) — `packages/server/src/app.ts`
-- [ ] `GET /api/status` ルートを実装 — `packages/server/src/routes/status.ts`
-- [ ] `Bun.serve` エントリポイントを実装 — `packages/server/src/index.ts`
-- [ ] `prisma/schema.prisma` の初期スキーマを作成し `bunx prisma migrate dev --name init` を実行 — `packages/server/prisma/schema.prisma`
-- [ ] `hono/request-id` ミドルウェアと `HTTPException` を捕捉するグローバルエラーハンドラを登録 — `packages/server/src/app.ts`
+- [x] Bun workspace ルート (`package.json`) に `packages/server` を登録 — `package.json`
+- [x] `tsconfig.base.json` を作成し、`packages/server/tsconfig.json` で extends — `packages/server/tsconfig.json`
+- [x] 環境変数を Zod でパースする設定モジュールを実装 (`DATABASE_URL`, `MIRAKC_URL`, `HW_ACCEL_TYPE`, `PORT`) — `packages/server/src/lib/config.ts`
+- [x] `pino` + `pino-pretty` のロガーを初期化 — `packages/server/src/lib/logger.ts`
+- [x] `PrismaClient` のシングルトンインスタンスを作成 — `packages/server/src/lib/prisma.ts`
+- [x] Hono アプリを生成し `AppType` を export (初期ルートは status のみ) — `packages/server/src/app.ts`
+- [x] `GET /api/status` ルートを実装 — `packages/server/src/routes/status.ts`
+- [x] `Bun.serve` エントリポイントを実装 — `packages/server/src/index.ts`
+- [x] `prisma/schema.prisma` の初期スキーマを作成し `bunx prisma migrate dev --name init` を実行 — `packages/server/prisma/schema.prisma`
+- [x] `hono/request-id` ミドルウェアと `HTTPException` を捕捉するグローバルエラーハンドラを登録 — `packages/server/src/app.ts`
 
 ### frontend
-- [ ] Vite + React プロジェクトの初期セットアップ、`vite.config.ts` に `@tanstack/router-plugin` と `@vitejs/plugin-react` と `@tailwindcss/vite` を追加 — `packages/client/vite.config.ts`
-- [ ] TanStack Router のファイルベースルーティングを初期化し、ルートレイアウトを作成 — `packages/client/src/routes/__root.tsx`
-- [ ] `QueryClient` + `ThemeProvider` (`next-themes`) + `RouterProvider` をエントリに組み込む — `packages/client/src/main.tsx`
-- [ ] Hono RPC クライアントのシングルトンインスタンスを作成 — `packages/client/src/api/client.ts`
-- [ ] Tailwind CSS v4 を `@import "tailwindcss"` で設定、Shadcn トークンを有効化 — `packages/client/src/index.css`
-- [ ] `cn()` ユーティリティ (`tailwind-merge` + `clsx`) を定義 — `packages/client/src/lib/utils.ts`
-- [ ] `bunx shadcn@latest init` を実行し `components.json` を生成、`Button`/`Card` を追加 — `packages/client/components.json`
-- [ ] トップページ (空 + `GET /api/status` 表示) を作成 — `packages/client/src/routes/index.tsx`
+- [x] Vite + React プロジェクトの初期セットアップ、`vite.config.ts` に `@tanstack/router-plugin` と `@vitejs/plugin-react` と `@tailwindcss/vite` を追加 — `packages/client/vite.config.ts`
+- [x] TanStack Router のファイルベースルーティングを初期化し、ルートレイアウトを作成 — `packages/client/src/routes/__root.tsx`
+- [x] `QueryClient` + `ThemeProvider` (`next-themes`) + `RouterProvider` をエントリに組み込む — `packages/client/src/main.tsx`
+- [x] Hono RPC クライアントのシングルトンインスタンスを作成 — `packages/client/src/api/client.ts`
+- [x] Tailwind CSS v4 を `@import "tailwindcss"` で設定、Shadcn トークンを有効化 — `packages/client/src/index.css`
+- [x] `cn()` ユーティリティ (`tailwind-merge` + `clsx`) を定義 — `packages/client/src/lib/utils.ts`
+- [x] `bunx shadcn@latest init` を実行し `components.json` を生成、`Button`/`Card` を追加 — `packages/client/components.json`
+- [x] トップページ (空 + `GET /api/status` 表示) を作成 — `packages/client/src/routes/index.tsx`
 
 ### qa
-- [ ] 各 workspace で `bunx tsc -b --noEmit` が通ることを確認
-- [ ] `bunx biome check .` が clean
-- [ ] 初回コミット: `chore(foundation): scaffold bun workspace + hono + vite`
+- [x] 各 workspace で `bunx tsc -b --noEmit` が通ることを確認
+- [x] `bunx biome check .` が clean
+- [x] 初回コミット: `chore(foundation): scaffold bun workspace + hono + vite`
 
 ## 検証基準 (Phase 完了条件)
 
-- [ ] `bun run --cwd packages/server dev` 起動後 `curl http://localhost:11575/api/status` が `{ status: "ok", timestamp: ... }` を返す
-- [ ] `bun run --cwd packages/client dev` でブラウザが開き、ステータス JSON が画面に表示される
-- [ ] CI (GitHub Actions) が PR で green
-- [ ] pgadmin (`http://localhost:8080`) から Postgres に接続でき、空の `_prisma_migrations` テーブルが見える
+- [x] `bun run --cwd packages/server dev` 起動後 `curl http://localhost:11575/api/status` が `{ status: "ok", timestamp: ... }` を返す
+- [x] `bun run --cwd packages/client dev` でブラウザが開き、ステータス JSON が画面に表示される
+- [x] CI (GitHub Actions) が PR で green
+- [x] pgadmin (`http://localhost:8080`) から Postgres に接続でき、空の `_prisma_migrations` テーブルが見える
 
 ## リスクと緩和策
 
