@@ -39,7 +39,12 @@ export function TypeFilter({ value, onChange }: TypeFilterProps) {
   }
 
   return (
-    <div ref={listRef} role='tablist' aria-label='チャンネル種別' className='flex border-b border-border'>
+    <div
+      ref={listRef}
+      role='tablist'
+      aria-label='チャンネル種別'
+      className='sticky top-0 z-20 flex h-12 border-b border-border bg-background'
+    >
       {TABS.map((tab, idx) => (
         <button
           key={tab.value}
@@ -50,7 +55,7 @@ export function TypeFilter({ value, onChange }: TypeFilterProps) {
           onClick={() => onChange(tab.value)}
           onKeyDown={(e) => handleKeyDown(e, idx)}
           className={cn(
-            'flex-1 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
+            'flex-1 text-sm font-medium border-b-2 -mb-px transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
             value === tab.value
               ? 'text-foreground border-foreground font-semibold'
