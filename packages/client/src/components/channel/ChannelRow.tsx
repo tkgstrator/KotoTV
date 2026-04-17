@@ -54,14 +54,24 @@ export function ChannelRow({ channel }: ChannelRowProps) {
       </div>
 
       {/* Current program — takes flex-1 on mobile, fixed 1fr on desktop */}
-      <div className='relative flex min-w-0 flex-1 flex-col justify-center overflow-hidden px-2 py-1 md:border-r md:border-border'>
+      <div className='relative flex min-w-0 flex-1 flex-col justify-center overflow-hidden px-2 py-1 pb-1.5 md:border-r md:border-border'>
         {cur ? (
           <>
             <span className='truncate text-[0.75rem] font-bold leading-[1.2]'>{cur.title}</span>
-            <div className='flex items-baseline gap-1 mt-0.5'>
-              <span className='text-[0.6rem] text-muted-foreground'>{formatTimeRange(cur.startAt, cur.endAt)}</span>
-              {urgent && <span className='text-[0.6rem] font-semibold text-destructive'>まもなく終了</span>}
+            <div className='mt-0.5 flex items-baseline gap-1.5'>
+              <span className='text-[0.6rem] leading-none text-muted-foreground'>
+                {formatTimeRange(cur.startAt, cur.endAt)}
+              </span>
+              {urgent && (
+                <span className='text-[0.6rem] font-semibold leading-none text-destructive'>まもなく終了</span>
+              )}
             </div>
+            {/* Mobile-only next label — inline on its own row so it doesn't collide with time */}
+            {nextLabel && (
+              <span className='mt-0.5 block truncate text-[0.6rem] leading-none text-muted-foreground md:hidden'>
+                {nextLabel}
+              </span>
+            )}
           </>
         ) : (
           <span className='text-[0.7rem] text-muted-foreground'>番組情報なし</span>
@@ -79,7 +89,7 @@ export function ChannelRow({ channel }: ChannelRowProps) {
       </div>
 
       {/* Next program — hidden on mobile, shown on md+ */}
-      <div className='hidden md:flex min-w-0 flex-1 flex-col justify-center overflow-hidden px-2 py-1'>
+      <div className='hidden min-w-0 flex-1 flex-col justify-center overflow-hidden px-2 py-1 md:flex'>
         {next ? (
           <>
             <span className='truncate text-[0.7rem] text-muted-foreground'>{next.title}</span>
@@ -87,13 +97,6 @@ export function ChannelRow({ channel }: ChannelRowProps) {
           </>
         ) : null}
       </div>
-
-      {/* Mobile: next label inline in right panel — shown below current on small screens */}
-      {nextLabel && (
-        <div className='absolute bottom-[3px] left-[76px] right-2 md:hidden'>
-          <span className='truncate text-[0.6rem] text-muted-foreground'>{nextLabel}</span>
-        </div>
-      )}
     </a>
   )
 }
