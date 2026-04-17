@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>モバイル フィルタ UI 比較</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ── Shadcn-style dark tokens ── */
+    :root {
+      --background: 220 20% 9%;
+      --foreground: 218 20% 91%;
+      --card: 220 18% 13%;
+      --card-foreground: 218 20% 91%;
+      --muted: 220 16% 18%;
+      --muted-foreground: 218 12% 48%;
+      --border: 220 16% 21%;
+      --primary: 346 77% 60%;
+      --primary-foreground: 220 20% 9%;
+      --ring: 346 77% 60%;
+
+      /* Type colors */
+      --gr: 221 83% 60%;
+      --bs: 142 70% 48%;
+      --cs: 38 92% 52%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: hsl(220 20% 5%);
+      color: hsl(var(--foreground));
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 40px 24px 64px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: hsl(var(--foreground));
+      margin-bottom: 6px;
+    }
+    .page-sub {
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 48px;
+    }
+
+    /* ── Phone frame ── */
+    .section {
+      width: 100%;
+      max-width: 390px;
+      margin-bottom: 48px;
+    }
+    .section-label {
+      font-size: 0.6875rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 10px;
+    }
+    .section-caption {
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .phone {
+      background: hsl(var(--background));
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 48px hsl(220 30% 0% / 0.7), 0 0 0 1px hsl(var(--border));
+    }
+
+    /* ── Status bar ── */
+    .status {
+      height: 40px;
+      background: hsl(var(--card));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .status-icons { display: flex; gap: 6px; align-items: center; font-size: 0.6875rem; }
+
+    /* ── Header ── */
+    .app-header {
+      background: hsl(var(--card));
+      padding: 10px 16px 10px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .app-header-title { font-size: 1.0625rem; font-weight: 800; letter-spacing: -0.01em; }
+
+    /* ── Filter container ── */
+    .filter-bar {
+      background: hsl(var(--card));
+      padding: 10px 16px 12px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+
+    /* ── Fake channel rows ── */
+    .ch-list { padding: 8px 12px 16px; }
+    .ch-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 8px;
+      border-radius: 10px;
+      border-bottom: 1px solid hsl(var(--border) / 0.5);
+    }
+    .ch-row:last-child { border-bottom: none; }
+    .ch-logo {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: hsl(var(--muted));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.5625rem; font-weight: 800; letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+    .ch-logo.gr { background: hsl(var(--gr) / 0.2); color: hsl(var(--gr)); }
+    .ch-logo.bs { background: hsl(var(--bs) / 0.2); color: hsl(var(--bs)); }
+    .ch-logo.cs { background: hsl(var(--cs) / 0.2); color: hsl(var(--cs)); }
+    .ch-info { flex: 1; min-width: 0; }
+    .ch-name { font-size: 0.8125rem; font-weight: 600; }
+    .ch-prog { font-size: 0.6875rem; color: hsl(var(--muted-foreground)); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ch-badge {
+      font-size: 0.5625rem; font-weight: 700; padding: 2px 6px; border-radius: 9999px;
+      flex-shrink: 0; letter-spacing: 0.04em;
+    }
+    .ch-badge.gr { background: hsl(var(--gr) / 0.18); color: hsl(var(--gr)); }
+    .ch-badge.bs { background: hsl(var(--bs) / 0.18); color: hsl(var(--bs)); }
+    .ch-badge.cs { background: hsl(var(--cs) / 0.18); color: hsl(var(--cs)); }
+
+    /* ════════════════════════════════
+       VARIANT A — Underline Tabs
+       ════════════════════════════════ */
+    .tabs-underline {
+      display: flex;
+      gap: 0;
+    }
+    .tab-ul {
+      flex: 1;
+      height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8125rem; font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 150ms, border-color 150ms;
+      position: relative;
+    }
+    .tab-ul.active {
+      color: hsl(var(--foreground));
+      border-bottom-color: hsl(var(--foreground));
+    }
+    .tab-ul.hover-demo {
+      color: hsl(var(--foreground) / 0.7);
+    }
+    .tab-ul:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+      border-radius: 4px;
+    }
+
+    /* ════════════════════════════════
+       VARIANT B — Type-color chip
+       ════════════════════════════════ */
+    .chips {
+      display: flex;
+      gap: 6px;
+    }
+    .chip {
+      height: 30px;
+      padding: 0 14px;
+      border-radius: 9999px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700;
+      cursor: pointer;
+      background: hsl(var(--muted));
+      color: hsl(var(--muted-foreground));
+      border: 1px solid transparent;
+      transition: background 150ms, color 150ms;
+      letter-spacing: 0.02em;
+    }
+    .chip.active-neutral {
+      background: hsl(var(--foreground));
+      color: hsl(var(--background));
+    }
+    .chip.active-gr {
+      background: hsl(var(--gr));
+      color: hsl(220 30% 8%);
+    }
+    .chip.active-bs {
+      background: hsl(var(--bs));
+      color: hsl(220 30% 8%);
+    }
+    .chip.active-cs {
+      background: hsl(var(--cs));
+      color: hsl(220 30% 8%);
+    }
+    .chip.hover-demo {
+      background: hsl(var(--muted) / 0.8);
+      color: hsl(var(--foreground) / 0.7);
+      border-color: hsl(var(--border));
+    }
+    .chip:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+
+    /* ════════════════════════════════
+       VARIANT C — Ghost Tabs
+       ════════════════════════════════ */
+    .ghost-tabs {
+      display: flex;
+      gap: 6px;
+    }
+    .ghost {
+      height: 30px;
+      padding: 0 14px;
+      border-radius: 9999px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 600;
+      cursor: pointer;
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+      border: 1px solid hsl(var(--border));
+      transition: box-shadow 200ms, color 200ms, border-color 200ms;
+      letter-spacing: 0.02em;
+    }
+    .ghost.active-bs {
+      color: hsl(var(--bs));
+      border-color: hsl(var(--bs) / 0.5);
+      box-shadow: 0 0 0 3px hsl(var(--bs) / 0.12), inset 0 0 0 1px hsl(var(--bs) / 0.2);
+    }
+    .ghost.hover-demo {
+      color: hsl(var(--foreground) / 0.6);
+      border-color: hsl(var(--border) / 0.8);
+      background: hsl(var(--muted) / 0.4);
+    }
+    .ghost:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+
+    /* ════════════════════════════════
+       VARIANT D — Big/small toggle
+       ════════════════════════════════ */
+    .size-tabs {
+      display: flex;
+      gap: 16px;
+      align-items: baseline;
+      padding: 4px 0;
+    }
+    .size-tab {
+      font-weight: 700;
+      cursor: pointer;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.6875rem;
+      line-height: 1;
+      transition: font-size 200ms, color 200ms, font-weight 200ms;
+      letter-spacing: 0.01em;
+    }
+    .size-tab.active {
+      font-size: 1rem;
+      color: hsl(var(--cs));
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+    .size-tab.hover-demo {
+      color: hsl(var(--foreground) / 0.5);
+      font-size: 0.75rem;
+    }
+    .size-tab:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 4px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>モバイル フィルタ UI 比較</h1>
+  <p class="page-sub">現行セグメントコントロールの置き換え候補 — 4 スタイル</p>
+
+  <!-- ══════════════════════════════════════
+       A: Underline Tabs
+       ══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">A : アンダーライン tabs</div>
+    <div class="section-caption">テキストのみ。アクティブ項目に 2px 下線（前景色）。X/Twitter スタイルの編集的ミニマル感。</div>
+    <div class="phone">
+      <div class="status">
+        <span>9:41</span>
+        <div class="status-icons"><span>●●●</span><span>WiFi</span><span>100%</span></div>
+      </div>
+      <div class="app-header">
+        <div class="app-header-title">チャンネル</div>
+      </div>
+      <div class="filter-bar" style="padding-bottom: 0;">
+        <div class="tabs-underline">
+          <button class="tab-ul active">すべて</button>
+          <button class="tab-ul hover-demo">GR</button>
+          <button class="tab-ul">BS</button>
+          <button class="tab-ul">CS</button>
+        </div>
+      </div>
+      <div class="ch-list">
+        <div class="ch-row">
+          <div class="ch-logo gr">NHK</div>
+          <div class="ch-info">
+            <div class="ch-name">NHK総合</div>
+            <div class="ch-prog">ニュース7 • 19:00〜19:30</div>
+          </div>
+          <span class="ch-badge gr">GR</span>
+        </div>
+        <div class="ch-row">
+          <div class="ch-logo bs">BS1</div>
+          <div class="ch-info">
+            <div class="ch-name">NHK BS1</div>
+            <div class="ch-prog">国際報道 2024 • 21:00〜21:50</div>
+          </div>
+          <span class="ch-badge bs">BS</span>
+        </div>
+        <div class="ch-row">
+          <div class="ch-logo cs">CS</div>
+          <div class="ch-info">
+            <div class="ch-name">テレ朝チャンネル</div>
+            <div class="ch-prog">相棒 season 22 • 21:00〜</div>
+          </div>
+          <span class="ch-badge cs">CS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       B: Type-color chip
+       ══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">B : タイプ色チップ</div>
+    <div class="section-caption">アクティブ pill がタイプ色でベタ塗り。カラーシステムとリンクした意図的なブランド感。</div>
+    <div class="phone">
+      <div class="status">
+        <span>9:41</span>
+        <div class="status-icons"><span>●●●</span><span>WiFi</span><span>100%</span></div>
+      </div>
+      <div class="app-header">
+        <div class="app-header-title">チャンネル</div>
+      </div>
+      <div class="filter-bar">
+        <div class="chips">
+          <button class="chip hover-demo">すべて</button>
+          <button class="chip active-gr">GR</button>
+          <button class="chip">BS</button>
+          <button class="chip">CS</button>
+        </div>
+      </div>
+      <div class="ch-list">
+        <div class="ch-row">
+          <div class="ch-logo gr">NHK</div>
+          <div class="ch-info">
+            <div class="ch-name">NHK総合</div>
+            <div class="ch-prog">ニュース7 • 19:00〜19:30</div>
+          </div>
+          <span class="ch-badge gr">GR</span>
+        </div>
+        <div class="ch-row">
+          <div class="ch-logo gr">6ch</div>
+          <div class="ch-info">
+            <div class="ch-name">TBS</div>
+            <div class="ch-prog">日曜劇場 • 21:00〜21:54</div>
+          </div>
+          <span class="ch-badge gr">GR</span>
+        </div>
+        <div class="ch-row">
+          <div class="ch-logo gr">8ch</div>
+          <div class="ch-info">
+            <div class="ch-name">フジテレビ</div>
+            <div class="ch-prog">FNN Live News α • 22:00〜</div>
+          </div>
+          <span class="ch-badge gr">GR</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       C: Ghost tabs
+       ══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">C : ゴースト tabs</div>
+    <div class="section-caption">1px ボーダーのみの pill。アクティブ時にタイプ色のグロー＋テキスト変色。ハイエンドでサイレント。</div>
+    <div class="phone">
+      <div class="status">
+        <span>9:41</span>
+        <div class="status-icons"><span>●●●</span><span>WiFi</span><span>100%</span></div>
+      </div>
+      <div class="app-header">
+        <div class="app-header-title">チャンネル</div>
+      </div>
+      <div class="filter-bar">
+        <div class="ghost-tabs">
+          <button class="ghost hover-demo">すべて</button>
+          <button class="ghost">GR</button>
+          <button class="ghost active-bs">BS</button>
+          <button class="ghost">CS</button>
+        </div>
+      </div>
+      <div class="ch-list">
+        <div class="ch-row">
+          <div class="ch-logo bs">BS1</div>
+          <div class="ch-info">
+            <div class="ch-name">NHK BS1</div>
+            <div class="ch-prog">国際報道 2024 • 21:00〜21:50</div>
+          </div>
+          <span class="ch-badge bs">BS</span>
+        </div>
+        <div class="ch-row">
+          <div class="ch-logo bs">BSP</div>
+          <div class="ch-info">
+            <div class="ch-name">NHK BSプレミアム</div>
+            <div class="ch-prog">ブラタモリ • 19:30〜20:15</div>
+          </div>
+          <span class="ch-badge bs">BS</span>
+        </div>
+        <div class="ch-row">
+          <div class="ch-logo bs">BS4</div>
+          <div class="ch-info">
+            <div class="ch-name">BS日テレ</div>
+            <div class="ch-prog">ドラマスペシャル • 21:00〜</div>
+          </div>
+          <span class="ch-badge bs">BS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       D: Big/small toggle
+       ══════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">D : 大小トグル</div>
+    <div class="section-caption">アクティブ項目が大きく太く変化。非アクティブは極小でミュート。Instagram Stories 型の躍動感。</div>
+    <div class="phone">
+      <div class="status">
+        <span>9:41</span>
+        <div class="status-icons"><span>●●●</span><span>WiFi</span><span>100%</span></div>
+      </div>
+      <div class="app-header">
+        <div class="app-header-title">チャンネル</div>
+      </div>
+      <div class="filter-bar">
+        <div class="size-tabs">
+          <button class="size-tab">すべて</button>
+          <button class="size-tab hover-demo">GR</button>
+          <button class="size-tab">BS</button>
+          <button class="size-tab active">CS</button>
+        </div>
+      </div>
+      <div class="ch-list">
+        <div class="ch-row">
+          <div class="ch-logo cs">CS1</div>
+          <div class="ch-info">
+            <div class="ch-name">テレ朝チャンネル1</div>
+            <div class="ch-prog">相棒 season 22 • 21:00〜</div>
+          </div>
+          <span class="ch-badge cs">CS</span>
+        </div>
+        <div class="ch-row">
+          <div class="ch-logo cs">CS2</div>
+          <div class="ch-info">
+            <div class="ch-name">テレ朝チャンネル2</div>
+            <div class="ch-prog">ドラマセレクション • 20:00〜</div>
+          </div>
+          <span class="ch-badge cs">CS</span>
+        </div>
+        <div class="ch-row">
+          <div class="ch-logo cs">TBS</div>
+          <div class="ch-info">
+            <div class="ch-name">TBSチャンネル</div>
+            <div class="ch-prog">水曜日のダウンタウン • 22:00〜</div>
+          </div>
+          <span class="ch-badge cs">CS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
