@@ -1,0 +1,53 @@
+# mirakc configuration skeleton
+# Full reference: https://mirakc.github.io/mirakc/config/
+#
+# Update `tuners` and `channels` to match your tuner hardware and
+# regional broadcast lineup before deploying.
+
+server:
+  addrs:
+    - !Http
+      host: "0.0.0.0"
+      port: 40772
+
+epg:
+  cache-dir: /var/lib/mirakc/epg
+
+# ─── Tuners ───────────────────────────────────────────────────────────────────
+# Example for a single ISDB-T/BS/CS USB tuner (px4 / px-w3u4 / etc.).
+# Adjust `command` to match your tuner driver recpt1 / dvbv5-zap / recdvb.
+tuners:
+  - name: Tuner0
+    types:
+      - GR
+      - BS
+      - CS
+    command: >-
+      recpt1 --device /dev/dvb/adapter0/frontend0 {{{channel}}} - -
+
+# ─── Channels ─────────────────────────────────────────────────────────────────
+# Add entries for your local broadcast area.
+# type: GR (terrestrial), BS, CS
+# Example (Kanto terrestrial):
+channels:
+  - name: NHK総合
+    type: GR
+    channel: "27"
+  - name: NHK Eテレ
+    type: GR
+    channel: "26"
+  - name: 日本テレビ
+    type: GR
+    channel: "25"
+  - name: テレビ朝日
+    type: GR
+    channel: "24"
+  - name: TBSテレビ
+    type: GR
+    channel: "22"
+  - name: テレビ東京
+    type: GR
+    channel: "23"
+  - name: フジテレビ
+    type: GR
+    channel: "21"
