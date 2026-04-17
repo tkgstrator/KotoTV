@@ -39,14 +39,20 @@
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: hsl(220 22% 4%); min-height: 100dvh; }
     body {
-      background: hsl(var(--background));
       color: hsl(var(--foreground));
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
       min-height: 100dvh;
-      /* simulate iPhone frame — max 430px wide */
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .device {
+      width: 100%;
       max-width: 430px;
-      margin: 0 auto;
+      min-height: 100dvh;
+      background: hsl(var(--background));
       border-left: 1px solid hsl(var(--border));
       border-right: 1px solid hsl(var(--border));
       box-shadow: 0 0 48px hsl(220 22% 0% / 0.5);
@@ -303,7 +309,7 @@
     @keyframes shimmer { 0%,100%{opacity:1} 50%{opacity:0.45} }
   </style>
 </head>
-<body>
+<body><div class="device">
 
 <!-- status bar -->
 <div class="status-bar">
@@ -560,5 +566,5 @@
   </a>
 </nav>
 
-</body>
+</div></body>
 </html>
