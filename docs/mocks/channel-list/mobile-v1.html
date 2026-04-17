@@ -66,6 +66,42 @@
     .app-header h1 { font-size: 1.125rem; font-weight: 800; letter-spacing: -0.01em; }
     .app-header .subtitle { font-size: 0.6875rem; color: hsl(var(--muted-foreground)); margin-top: 1px; }
 
+    /* Segmented control */
+    .seg-ctrl {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 8px 16px 10px;
+      flex-shrink: 0;
+    }
+    .seg-track {
+      display: flex;
+      background: hsl(var(--muted));
+      border-radius: 9999px;
+      padding: 3px;
+      gap: 0;
+    }
+    .seg {
+      flex: 1;
+      height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8125rem; font-weight: 600;
+      border-radius: 9999px;
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+      border: none; cursor: pointer;
+      transition: color 150ms;
+    }
+    .seg.seg-active {
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      box-shadow: 0 1px 4px hsl(220 20% 0% / 0.18);
+      transition: background 200ms, color 150ms, box-shadow 200ms;
+    }
+    .seg:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+    }
+
     .scroll-area {
       flex: 1; overflow-y: auto;
       padding: 10px 12px 84px;
@@ -171,6 +207,16 @@
     <div class="app-header">
       <h1>チャンネル一覧</h1>
       <p class="subtitle">地上波・BS・CS · ライブ視聴</p>
+    </div>
+
+    <!-- Segmented filter control -->
+    <div class="seg-ctrl">
+      <div class="seg-track" role="tablist" aria-label="チャンネル種別">
+        <button class="seg seg-active" role="tab" aria-selected="true" onclick="seg1Filter('ALL',this)">すべて</button>
+        <button class="seg" role="tab" aria-selected="false" onclick="seg1Filter('GR',this)">GR</button>
+        <button class="seg" role="tab" aria-selected="false" onclick="seg1Filter('BS',this)">BS</button>
+        <button class="seg" role="tab" aria-selected="false" onclick="seg1Filter('CS',this)">CS</button>
+      </div>
     </div>
 
     <!-- Scrollable list -->
@@ -345,5 +391,35 @@
     </nav>
 
   </div>
+
+<script>
+  function seg1Filter(type, btn) {
+    document.querySelectorAll('.seg-track .seg').forEach(b => {
+      b.classList.remove('seg-active');
+      b.setAttribute('aria-selected', 'false');
+    });
+    btn.classList.add('seg-active');
+    btn.setAttribute('aria-selected', 'true');
+    // v1 uses section labels — scroll to first visible section
+    const map = { GR: '.section-label:first-of-type', ALL: null };
+    // Simple show/hide by section label siblings
+    const sections = ['GR','BS','CS'];
+    sections.forEach(s => {
+      const labels = document.querySelectorAll('.section-label');
+      labels.forEach(lbl => {
+        if (lbl.textContent.includes(s)) {
+          const isVisible = (type === 'ALL' || type === s);
+          lbl.style.display = isVisible ? '' : 'none';
+          // hide all ch-cards until next section-label
+          let sib = lbl.nextElementSibling;
+          while (sib && !sib.classList.contains('section-label')) {
+            sib.style.display = isVisible ? '' : 'none';
+            sib = sib.nextElementSibling;
+          }
+        }
+      });
+    });
+  }
+</script>
 </body>
 </html>
