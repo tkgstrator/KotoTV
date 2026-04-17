@@ -67,26 +67,41 @@
       font-size: 0.6875rem; font-weight: 700; padding: 3px 8px; border-radius: 99px;
     }
 
-    .filter-strip {
-      background: hsl(var(--background)); border-bottom: 1px solid hsl(var(--border));
-      padding: 8px 12px; display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0;
+    /* Segmented control */
+    .seg-ctrl {
+      background: hsl(var(--background));
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 8px 12px 10px;
+      flex-shrink: 0;
     }
-    .filter-strip::-webkit-scrollbar { display: none; }
-
-    .filter-pill {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 5px 12px; border-radius: 99px;
-      font-size: 0.75rem; font-weight: 700; border: 1.5px solid hsl(var(--border));
-      background: hsl(var(--card)); color: hsl(var(--muted-foreground));
-      white-space: nowrap; cursor: pointer; text-decoration: none;
-      transition: border-color 80ms, color 80ms;
+    .seg-track {
+      display: flex;
+      background: hsl(var(--muted));
+      border-radius: 9999px;
+      padding: 3px;
     }
-    .filter-pill:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
-    .filter-pill.active-gr { background: hsl(221 83% 60% / 0.12); border-color: hsl(221 83% 60% / 0.6); color: hsl(221 83% 68%); }
-    .dot { width: 6px; height: 6px; border-radius: 50%; }
-    .dot-gr { background: hsl(221 83% 60%); }
-    .dot-bs { background: hsl(142 70% 48%); }
-    .dot-cs { background: hsl(38 92% 52%); }
+    .seg {
+      flex: 1;
+      height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8125rem; font-weight: 600;
+      border-radius: 9999px;
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+      border: none; cursor: pointer;
+      white-space: nowrap;
+      transition: color 150ms;
+    }
+    .seg.seg-active {
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      box-shadow: 0 1px 4px hsl(220 20% 0% / 0.18);
+      transition: background 200ms, color 150ms, box-shadow 200ms;
+    }
+    .seg:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+    }
 
     .scroll-area { flex: 1; overflow-y: auto; }
     .scroll-area::-webkit-scrollbar { display: none; }
@@ -179,12 +194,14 @@
       <span class="ch-count-badge">8 ch</span>
     </div>
 
-    <!-- Sticky filter strip -->
-    <div class="filter-strip" role="toolbar" aria-label="チャンネル種別フィルター">
-      <a href="#" class="filter-pill active-gr" aria-current="true"><span class="dot dot-gr"></span>GR</a>
-      <a href="#" class="filter-pill"><span class="dot dot-bs"></span>BS</a>
-      <a href="#" class="filter-pill"><span class="dot dot-cs"></span>CS</a>
-      <a href="#" class="filter-pill">すべて</a>
+    <!-- Segmented filter control -->
+    <div class="seg-ctrl">
+      <div class="seg-track" role="tablist" aria-label="チャンネル種別">
+        <button class="seg seg-active" role="tab" aria-selected="true">すべて</button>
+        <button class="seg" role="tab" aria-selected="false">GR</button>
+        <button class="seg" role="tab" aria-selected="false">BS</button>
+        <button class="seg" role="tab" aria-selected="false">CS</button>
+      </div>
     </div>
 
     <!-- Channel rows -->
@@ -331,5 +348,18 @@
     </main>
 
   </div>
+
+<script>
+  document.querySelectorAll('.seg-track .seg').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.seg-track .seg').forEach(b => {
+        b.classList.remove('seg-active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('seg-active');
+      btn.setAttribute('aria-selected', 'true');
+    });
+  });
+</script>
 </body>
 </html>

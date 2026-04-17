@@ -175,36 +175,35 @@
       border-radius: 50%;
     }
 
-    /* Filter pills */
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      height: 26px;
-      padding: 0 12px;
-      border-radius: 13px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      white-space: nowrap;
-      cursor: pointer;
-      border: 1px solid hsl(var(--border));
-      color: hsl(var(--muted-foreground));
+    /* Segmented control */
+    .seg-track {
+      display: flex;
+      background: hsl(var(--muted));
+      border-radius: 9999px;
+      padding: 3px;
+      margin: 0 12px 8px;
+    }
+    .seg {
+      flex: 1;
+      height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8125rem; font-weight: 600;
+      border-radius: 9999px;
       background: transparent;
-      transition: background 0.1s, color 0.1s, border-color 0.1s;
+      color: hsl(var(--muted-foreground));
+      border: none; cursor: pointer;
+      white-space: nowrap;
+      transition: color 150ms;
     }
-    .pill.active-gr {
-      background: hsl(221 83% 60% / 0.15);
-      color: hsl(221 83% 70%);
-      border-color: hsl(221 83% 60% / 0.4);
+    .seg.seg-active {
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      box-shadow: 0 1px 4px hsl(220 20% 0% / 0.18);
+      transition: background 200ms, color 150ms, box-shadow 200ms;
     }
-    .pill.active-all {
-      background: hsl(var(--primary) / 0.15);
-      color: hsl(var(--primary));
-      border-color: hsl(var(--primary) / 0.4);
-    }
-    .pill:focus-visible {
+    .seg:focus-visible {
       outline: 2px solid hsl(var(--ring));
-      outline-offset: 2px;
-      border-radius: 13px;
+      outline-offset: -2px;
     }
   </style>
 </head>
@@ -217,12 +216,12 @@
       <span class="font-bold text-sm tracking-tight">KonomiTV</span>
       <time style="font-size:0.7rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;margin-left:auto;">21:47</time>
     </div>
-    <!-- Filter pill strip -->
-    <div class="flex gap-2 px-3 pb-2 overflow-x-auto" style="scrollbar-width:none;" role="tablist" aria-label="チャンネル種別">
-      <button class="pill active-all" role="tab" aria-selected="true">すべて</button>
-      <button class="pill" role="tab" aria-selected="false">GR</button>
-      <button class="pill" role="tab" aria-selected="false">BS</button>
-      <button class="pill" role="tab" aria-selected="false">CS</button>
+    <!-- Segmented filter control -->
+    <div class="seg-track" role="tablist" aria-label="チャンネル種別">
+      <button class="seg seg-active" role="tab" aria-selected="true">すべて</button>
+      <button class="seg" role="tab" aria-selected="false">GR</button>
+      <button class="seg" role="tab" aria-selected="false">BS</button>
+      <button class="seg" role="tab" aria-selected="false">CS</button>
     </div>
   </header>
 
@@ -442,5 +441,28 @@
   <!-- Safe area spacer for phones -->
   <div style="height:env(safe-area-inset-bottom, 16px);"></div>
 
-</div></body>
+</div>
+
+<script>
+  document.querySelectorAll('.seg-track .seg').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.seg-track .seg').forEach(b => {
+        b.classList.remove('seg-active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('seg-active');
+      btn.setAttribute('aria-selected', 'true');
+      const type = btn.textContent.trim();
+      const typeMap = { 'すべて': null, 'GR': 'gr', 'BS': 'bs', 'CS': 'cs' };
+      const filter = typeMap[type];
+      ['gr','bs','cs'].forEach(t => {
+        const show = filter === null || filter === t;
+        document.querySelectorAll('.type-' + t).forEach(el => {
+          el.style.display = show ? '' : 'none';
+        });
+      });
+    });
+  });
+</script>
+</body>
 </html>
