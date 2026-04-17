@@ -62,13 +62,19 @@
     }
 
     body {
-      background-color: hsl(var(--background));
       color: hsl(var(--foreground));
       font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
-      /* Mobile simulation: constrain to phone width */
-      max-width: 390px;
-      margin: 0 auto;
       min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .device {
+      width: 100%;
+      max-width: 390px;
+      min-height: 100dvh;
+      background-color: hsl(var(--background));
       box-shadow: 0 0 48px hsl(220 20% 0% / 0.6);
     }
 
@@ -202,7 +208,7 @@
     }
   </style>
 </head>
-<body class="min-h-screen">
+<body class="min-h-screen"><div class="device">
 
   <!-- Header -->
   <header style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));"
@@ -436,5 +442,5 @@
   <!-- Safe area spacer for phones -->
   <div style="height:env(safe-area-inset-bottom, 16px);"></div>
 
-</body>
+</div></body>
 </html>
