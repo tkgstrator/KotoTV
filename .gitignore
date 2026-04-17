@@ -246,5 +246,11 @@ packages/*/src/generated/
 # Runtime data (HLS segments, recordings) — never commit
 data/
 
+# Playwright — keep baselines only
+tests/.report/
+tests/.artifacts/
+playwright-report/
+test-results/
+
 # Bun generated type declarations (auto-created by bun install)
 bun.d.ts

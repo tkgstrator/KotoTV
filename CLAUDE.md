@@ -44,6 +44,7 @@ KonomiTV クローン。Bun + Hono (Prisma + Postgres) / Vite + React + TanStack
 | [`streaming`](.claude/agents/streaming.md) | FFmpeg コマンド、`Bun.spawn`、HLS セッション管理、ストリーム HTTP |
 | [`devops`](.claude/agents/devops.md) | `Dockerfile` / `docker-compose.yml` / CI / HW accel 配線 |
 | [`qa`](.claude/agents/qa.md) | 型チェック + biome + commitlint フォーマットでコミット |
+| [`visual-qa`](.claude/agents/visual-qa.md) | Playwright でモック整合 / UX（折返し・スクロール・フォーカス）/ E2E をチェック。修正はしない |
 
 ## スキル（ドメイン別ガイド）
 
