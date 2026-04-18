@@ -198,7 +198,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                 'h-8 font-mono text-[0.8125rem]',
                 keywordRegexError && 'border-destructive focus-visible:ring-destructive'
               )}
-              placeholder='番組タイトルのキーワード'
+              placeholder='検索キーワード'
               aria-invalid={keywordRegexError ? true : undefined}
             />
             {keywordRegexError && (
