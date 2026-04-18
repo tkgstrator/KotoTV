@@ -64,6 +64,11 @@
     /* Mobile bottom-tab nav (app-shell v14 pattern). */
     --mobile-nav-h: 58px;
 
+    /* ── In-page sticky bars ───────────────────────────────────────── */
+    /* Per-page filter/tab bar (channel list type filter, recordings status tabs, etc.).
+     * Lives inside the content area, below any shell chrome. */
+    --filter-bar-h: 48px;
+
     /* ── Player surfaces ───────────────────────────────────────────── */
     /* live-player v10: permanent diagnostic sidebar on desktop. */
     --diag-sidebar-w: 240px;
