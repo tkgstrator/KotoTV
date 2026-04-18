@@ -9,7 +9,8 @@ import {
   type RecordingEvent,
   RecordingListResponseSchema,
   type RecordingSchedule,
-  RecordingScheduleSchema
+  RecordingScheduleSchema,
+  RecordingSchema
 } from '../schemas/Recording.dto'
 
 // Module-level subscriber set; streaming layer calls emitRecordingEvent after importing
@@ -82,7 +83,21 @@ function serializeRecording(row: {
   }
 }
 
+const RecordingParamSchema = z.object({
+  id: z.string().uuid()
+})
+
 const recordingsRoute = new Hono()
+  .get('/:id', zValidator('param', RecordingParamSchema), async (c) => {
+    const { id } = c.req.valid('param')
+
+    const row = await prisma.recording.findUnique({ where: { id } })
+    if (!row) {
+      throw new HTTPException(404, { message: 'recording not found' })
+    }
+
+    return c.json(RecordingSchema.parse(serializeRecording(row)))
+  })
   .get('/', async (c) => {
     const [schedules, recordings] = await Promise.all([
       prisma.recordingSchedule.findMany({ orderBy: { startAt: 'asc' } }),
