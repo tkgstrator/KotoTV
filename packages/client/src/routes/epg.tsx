@@ -222,7 +222,7 @@ function EpgHeader({ windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps)
         onClick={onNow}
         aria-label='現在時刻へジャンプ'
       >
-        今すぐ
+        今日
       </Button>
     </PageHeader>
   )
