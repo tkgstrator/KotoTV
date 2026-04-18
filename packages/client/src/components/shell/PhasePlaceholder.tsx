@@ -1,4 +1,5 @@
 import { StatusChip } from '@/components/shared/status-chip'
+import { PageHeader } from './PageHeader'
 
 interface PhasePlaceholderProps {
   title: string
@@ -8,13 +9,21 @@ interface PhasePlaceholderProps {
 
 export function PhasePlaceholder({ title, phase, note }: PhasePlaceholderProps) {
   return (
-    <div className='flex min-h-[200px] flex-col gap-3 p-6 font-mono'>
-      <div className='flex items-center gap-2'>
-        <StatusChip variant='muted'>SCHED</StatusChip>
-        <span className='text-[0.625rem] font-bold uppercase tracking-[0.1em] text-muted-foreground'>{phase}</span>
-      </div>
-      <h1 className='text-base font-bold tracking-[0.05em] text-foreground'>{title}</h1>
-      {note && <p className='text-[0.75rem] text-muted-foreground'>{note}</p>}
-    </div>
+    <>
+      <PageHeader ariaLabel={`${title} (${phase})`}>
+        <div className='flex h-full w-full items-center gap-3 px-4 font-mono'>
+          <h1 className='text-base font-bold tracking-[0.05em] text-foreground'>{title}</h1>
+          <StatusChip variant='muted' size='sm'>
+            SCHED
+          </StatusChip>
+          <span className='text-[0.625rem] font-bold uppercase tracking-[0.1em] text-muted-foreground'>{phase}</span>
+        </div>
+      </PageHeader>
+      {note && (
+        <div className='p-6 font-mono'>
+          <p className='text-[0.75rem] text-muted-foreground'>{note}</p>
+        </div>
+      )}
+    </>
   )
 }
