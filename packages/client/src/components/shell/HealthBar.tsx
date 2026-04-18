@@ -9,7 +9,7 @@ export function HealthBar() {
     <div
       role='status'
       aria-label='グローバルヘルス'
-      className='sticky top-0 z-[70] flex h-[var(--shell-health-bar-h)] shrink-0 items-center overflow-x-auto border-b border-border bg-[oklch(0.10_0.008_247)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+      className='sticky top-0 z-[70] flex h-[var(--shell-health-bar-h)] shrink-0 items-center overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
     >
       <span className='flex h-full shrink-0 items-center border-r border-border px-3 font-mono text-[0.625rem] font-black uppercase tracking-[0.14em] text-muted-foreground'>
         TELEMAX

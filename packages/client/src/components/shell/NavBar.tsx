@@ -81,7 +81,7 @@ export function NavBar() {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label='モバイルナビゲーション'
-        className='fixed bottom-0 left-0 right-0 z-[60] flex h-[var(--mobile-nav-h)] shrink-0 border-t border-border bg-[oklch(0.10_0.008_247)] sm:hidden'
+        className='fixed bottom-0 left-0 right-0 z-[60] flex h-[var(--mobile-nav-h)] shrink-0 border-t border-border bg-card sm:hidden'
       >
         {[...NAV_ITEMS, SETTINGS_ITEM].map((item) => (
           <Link
