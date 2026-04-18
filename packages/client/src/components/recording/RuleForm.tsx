@@ -217,7 +217,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
               <p className='font-mono text-[0.5625rem] text-destructive'>regex error: {keywordRegexError}</p>
             )}
             <div className='flex flex-wrap gap-2'>
-              <div className='flex flex-col gap-1'>
+              <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
                 <span className='font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
                   MODE
                 </span>
@@ -225,17 +225,23 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                   type='single'
                   value={keywordMode}
                   onValueChange={(v) => v && setValue('keywordMode', v as 'literal' | 'regex')}
-                  className='gap-1'
+                  className='w-full gap-1 sm:w-auto'
                 >
-                  <ToggleGroupItem value='literal' className='h-7 px-2.5 font-mono text-[0.6875rem] font-bold'>
+                  <ToggleGroupItem
+                    value='literal'
+                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
+                  >
                     LITERAL
                   </ToggleGroupItem>
-                  <ToggleGroupItem value='regex' className='h-7 px-2.5 font-mono text-[0.6875rem] font-bold'>
+                  <ToggleGroupItem
+                    value='regex'
+                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
+                  >
                     REGEX
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
-              <div className='flex flex-col gap-1'>
+              <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
                 <span className='font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
                   TARGET
                 </span>
@@ -243,14 +249,17 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                   type='single'
                   value={keywordTarget}
                   onValueChange={(v) => v && setValue('keywordTarget', v as 'title' | 'title_description')}
-                  className='gap-1'
+                  className='w-full gap-1 sm:w-auto'
                 >
-                  <ToggleGroupItem value='title' className='h-7 px-2.5 font-mono text-[0.6875rem] font-bold'>
+                  <ToggleGroupItem
+                    value='title'
+                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
+                  >
                     TITLE
                   </ToggleGroupItem>
                   <ToggleGroupItem
                     value='title_description'
-                    className='h-7 px-2.5 font-mono text-[0.6875rem] font-bold'
+                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
                   >
                     TITLE+DESC
                   </ToggleGroupItem>
