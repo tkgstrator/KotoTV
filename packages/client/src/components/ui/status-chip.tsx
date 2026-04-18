@@ -1,0 +1,91 @@
+/**
+ * StatusChip — shared presentational primitive used across EPG, live player,
+ * recordings, settings health panel, and app-shell. Extracted before any
+ * screen implementation to avoid simultaneous edits in 5–6 files.
+ *
+ * See: docs/mocks/app-shell/README.md §StatusChip
+ */
+import { cva, type VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
+import { cn } from '@/lib/utils'
+
+export type StatusVariant =
+  | 'ok'
+  | 'warn'
+  | 'err'
+  | 'fatal'
+  | 'live'
+  | 'rec'
+  | 'sched'
+  | 'done'
+  | 'info'
+  | 'muted'
+  | 'buf'
+
+const chipVariants = cva(
+  'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] border font-mono text-[0.6875rem] font-bold uppercase tracking-[0.05em]',
+  {
+    variants: {
+      variant: {
+        ok: 'bg-success/12 border-success/35 text-success',
+        warn: 'bg-amber-500/10 border-amber-500/30 text-amber-500',
+        err: 'bg-destructive/12 border-destructive/35 text-destructive',
+        fatal: 'bg-destructive border-destructive text-destructive-foreground',
+        live: 'bg-destructive/12 border-destructive/35 text-destructive',
+        rec: 'bg-destructive/12 border-destructive/35 text-destructive',
+        sched: 'bg-muted border-border text-muted-foreground',
+        done: 'bg-primary/12 border-primary/35 text-primary',
+        info: 'bg-primary/12 border-primary/35 text-primary',
+        buf: 'bg-amber-500/10 border-amber-500/30 text-amber-500',
+        muted: 'bg-muted border-border text-muted-foreground'
+      }
+    },
+    defaultVariants: { variant: 'info' }
+  }
+)
+
+const PULSE_VARIANTS: StatusVariant[] = ['live', 'rec']
+
+export interface StatusChipProps extends VariantProps<typeof chipVariants> {
+  variant: StatusVariant
+  children: React.ReactNode
+  dot?: boolean
+  asLink?: string
+  className?: string
+}
+
+export function StatusChip({ variant, children, dot, asLink, className }: StatusChipProps) {
+  const shouldPulse = dot && PULSE_VARIANTS.includes(variant)
+
+  const dotEl = dot ? (
+    <span
+      aria-hidden='true'
+      className={cn('size-1.5 rounded-full bg-current flex-shrink-0', shouldPulse && 'animate-pulse')}
+    />
+  ) : null
+
+  const inner = (
+    <>
+      {dotEl}
+      {children}
+    </>
+  )
+
+  const classes = cn(chipVariants({ variant }), className)
+
+  if (asLink) {
+    return (
+      <a
+        href={asLink}
+        className={cn(
+          classes,
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-1'
+        )}
+      >
+        {inner}
+      </a>
+    )
+  }
+
+  return <span className={classes}>{inner}</span>
+}
