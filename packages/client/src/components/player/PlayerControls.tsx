@@ -276,7 +276,7 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
           <SelectTrigger
             size='sm'
             aria-label='再生速度'
-            className={cn('h-7 w-[70px] font-mono text-[0.6875rem]', disabledLiveClass)}
+            className={cn('h-7 gap-1.5 px-2 font-mono text-[0.6875rem]', disabledLiveClass)}
           >
             <SelectValue />
           </SelectTrigger>
@@ -291,7 +291,7 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
 
         {/* Quality stub — UI only, no logic yet (Phase 2 range) */}
         <Select value={quality} onValueChange={setQuality}>
-          <SelectTrigger size='sm' aria-label='画質' className='h-7 w-[70px] font-mono text-[0.6875rem]'>
+          <SelectTrigger size='sm' aria-label='画質' className='h-7 gap-1.5 px-2 font-mono text-[0.6875rem]'>
             <SelectValue />
           </SelectTrigger>
           <SelectContent className='font-mono text-[0.6875rem]'>
