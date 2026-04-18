@@ -4,10 +4,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { type Chapter, SeekbarChapters } from '@/components/player/SeekbarChapters'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 const PLAYBACK_RATES = [0.5, 1.0, 1.25, 1.5, 2.0] as const
-const QUALITY_OPTIONS = ['auto', '高', '中', '低'] as const
+const QUALITY_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: 'auto', label: '自動' },
+  { value: 'high', label: '高' },
+  { value: 'medium', label: '中' },
+  { value: 'low', label: '低' }
+] as const
 
 export type { Chapter }
 
@@ -139,10 +145,10 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
     else if (e.key === 'ArrowLeft') skip(-5)
   }
 
-  const handleRateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleRateChange = (value: string) => {
     const v = videoRef.current
     if (!v || isLive) return
-    const rate = Number(e.target.value)
+    const rate = Number(value)
     v.playbackRate = rate
     setPlaybackRate(rate)
   }
@@ -266,41 +272,36 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
         <div className='flex-1' />
 
         {/* Playback rate — live: disabled */}
-        <select
-          aria-label='再生速度'
-          aria-disabled={isLive ? 'true' : undefined}
-          value={playbackRate}
-          onChange={handleRateChange}
-          disabled={isLive}
-          className={cn(
-            'rounded border border-border bg-transparent font-mono text-[0.6875rem] text-foreground px-1.5 py-0.5 cursor-pointer',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            disabledLiveClass
-          )}
-        >
-          {PLAYBACK_RATES.map((r) => (
-            <option key={r} value={r}>
-              {r === 1.0 ? '1.0×' : `${r}×`}
-            </option>
-          ))}
-        </select>
+        <Select value={String(playbackRate)} onValueChange={handleRateChange} disabled={isLive}>
+          <SelectTrigger
+            size='sm'
+            aria-label='再生速度'
+            className={cn('h-7 w-[70px] font-mono text-[0.6875rem]', disabledLiveClass)}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className='font-mono text-[0.6875rem]'>
+            {PLAYBACK_RATES.map((r) => (
+              <SelectItem key={r} value={String(r)}>
+                {r === 1.0 ? '1.0×' : `${r}×`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* Quality stub — UI only, no logic yet (Phase 2 range) */}
-        <select
-          aria-label='画質'
-          value={quality}
-          onChange={(e) => setQuality(e.target.value)}
-          className={cn(
-            'rounded border border-border bg-transparent font-mono text-[0.6875rem] text-foreground px-1.5 py-0.5 cursor-pointer',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-          )}
-        >
-          {QUALITY_OPTIONS.map((q) => (
-            <option key={q} value={q}>
-              {q}
-            </option>
-          ))}
-        </select>
+        <Select value={quality} onValueChange={setQuality}>
+          <SelectTrigger size='sm' aria-label='画質' className='h-7 w-[70px] font-mono text-[0.6875rem]'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className='font-mono text-[0.6875rem]'>
+            {QUALITY_OPTIONS.map((q) => (
+              <SelectItem key={q.value} value={q.value}>
+                {q.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <div aria-hidden='true' className='mx-1 h-5 w-px bg-border shrink-0' />
 
