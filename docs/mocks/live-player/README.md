@@ -67,7 +67,16 @@ Reasoning:
 - Overlay controls are a risk for spatial-nav, but v11 keeps them always-visible in this mock (production would add a `controls-visible` state). The NOW-bar is never hidden, so the essential program context is always reachable.
 - v12's full control stack (disabled skip buttons for live) is a good pattern for recording-player parity — recommend adopting it in v11 as well (see handoff notes below).
 
-**Chosen variant:** v11
+**Designer recommendation:** v11
+**Chosen variant:** **v10** (confirmed by user 2026-04-17)
+
+User picked v10 over designer's v11. Implementation implications:
+
+- Right sidebar is **permanent** on desktop (`≥lg`), not a drawer. Video width shrinks by 240px. At `<lg` the sidebar collapses below the video as a stacked diagnostics panel.
+- Always-visible diagnostics: `STREAM` / `HLS` / `SESSION` / `LOG` sections poll / subscribe at reasonable cadences (target ~1s HLS buffer, ~5s session info).
+- Skip ±10s buttons present but `aria-disabled` on live — cross-screen parity with recording player.
+- NOW-strip pinned above video: title + elapsed + remaining in monospace. Never hidden.
+- `LOG` section shows last ~5 lines with an affordance to open a full log drawer.
 
 ---
 
