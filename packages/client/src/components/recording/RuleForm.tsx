@@ -175,25 +175,28 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
       {/* Form pane */}
       <div className='flex-1 overflow-y-auto border-b border-border lg:min-w-0 lg:border-b-0 lg:border-r'>
         <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-5 p-4'>
-          {/* ── 1. ルール名 */}
+          {/* ── 1. ルール名 + 有効トグル */}
           <div className='flex flex-col gap-1.5'>
             <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
               RULE NAME
             </Label>
-            <Input
-              {...register('name', { required: true })}
-              className='h-8 font-mono text-[0.8125rem]'
-              placeholder='例: NHKスペシャル'
-              autoFocus
-            />
-          </div>
-
-          {/* ── 2. 有効 */}
-          <div className='flex items-center gap-3'>
-            <Switch id='enabled' checked={enabled} onCheckedChange={(v) => setValue('enabled', v)} />
-            <Label htmlFor='enabled' className='cursor-pointer font-mono text-[0.75rem] text-foreground'>
-              {enabled ? 'ENABLED' : 'DISABLED'}
-            </Label>
+            <div className='flex items-center gap-3'>
+              <Input
+                {...register('name', { required: true })}
+                className='h-8 flex-1 font-mono text-[0.8125rem]'
+                placeholder='例: NHKスペシャル'
+                autoFocus
+              />
+              <div className='flex shrink-0 items-center gap-2'>
+                <Switch id='enabled' checked={enabled} onCheckedChange={(v) => setValue('enabled', v)} />
+                <Label
+                  htmlFor='enabled'
+                  className='cursor-pointer font-mono text-[0.6875rem] font-bold tabular-nums text-foreground'
+                >
+                  {enabled ? 'ENABLED' : 'DISABLED'}
+                </Label>
+              </div>
+            </div>
           </div>
 
           {/* ── 3. キーワード */}
