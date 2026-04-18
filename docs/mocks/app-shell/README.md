@@ -80,6 +80,10 @@ All v10+ variants share:
 
 ---
 
+## Chosen variant
+
+**v12 — Full-width 32px health bar + monospace-only text nav** (confirmed by user 2026-04-17, aligned with designer recommendation).
+
 ## Recommendation
 
 **v12** — Full-Width 32px Health Bar + Monospace-Only Text Nav.
