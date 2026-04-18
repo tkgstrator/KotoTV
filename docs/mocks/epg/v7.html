@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPG — v7 Per-channel carousel: one channel strip per column, swipe to next channel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* Genre colours */
+    .g-news    { --g: 221 83% 55%; }
+    .g-sports  { --g: 142 70% 42%; }
+    .g-drama   { --g: 280 60% 52%; }
+    .g-variety { --g: 38 92% 48%; }
+    .g-anime   { --g: 320 70% 52%; }
+    .g-movie   { --g: 15 80% 48%; }
+    .g-docu    { --g: 190 70% 42%; }
+    .g-edu     { --g: 100 55% 42%; }
+    .g-other   { --g: 215 12% 48%; }
+
+    /* App bar */
+    .app-bar {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 16px; height: 48px; flex-shrink: 0; z-index: 50;
+    }
+
+    /* Time ruler: a thin sticky horizontal strip showing the current time */
+    .time-ruler {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      height: 32px;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+    }
+    /* The ruler itself is positioned absolutely, width = 24h * scale */
+    .ruler-track {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+    }
+    .ruler-tick {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 0.55rem;
+      font-variant-numeric: tabular-nums;
+      color: hsl(var(--muted-foreground));
+      font-weight: 700;
+    }
+    .ruler-tick::after {
+      content: '';
+      width: 1px;
+      height: 8px;
+      background: hsl(var(--border));
+      margin-top: 2px;
+    }
+    .now-tick {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: hsl(var(--destructive));
+      z-index: 5;
+    }
+    .now-tick::before {
+      content: '▼';
+      position: absolute;
+      top: 2px;
+      left: -5px;
+      font-size: 0.6rem;
+      color: hsl(var(--destructive));
+    }
+
+    /* Main: horizontal carousel of channel strips */
+    .carousel-area {
+      flex: 1;
+      display: flex;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      gap: 0;
+    }
+    .carousel-area::-webkit-scrollbar { height: 4px; }
+    .carousel-area::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+
+    /* Each channel strip is a full-height column */
+    .ch-strip {
+      flex-shrink: 0;
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      border-right: 2px solid hsl(var(--border));
+      scroll-snap-align: start;
+      overflow: hidden;
+    }
+    @media (min-width: 1024px) {
+      /* On desktop show 4+ strips at once without scroll-snap */
+      .ch-strip { width: 200px; }
+    }
+
+    /* Channel header (sticky top within each strip) */
+    .ch-strip-header {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 8px 10px;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: background 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ch-strip-header:hover { background: hsl(var(--muted) / 0.5); }
+    .ch-strip-header:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+
+    .ch-num-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: hsl(var(--ch-color) / 0.15);
+      color: hsl(var(--ch-color));
+      flex-shrink: 0;
+    }
+
+    .ch-strip-body {
+      flex: 1;
+      overflow-y: auto;
+      position: relative;
+    }
+    .ch-strip-body::-webkit-scrollbar { width: 3px; }
+    .ch-strip-body::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+
+    /* NOW indicator line inside each strip */
+    .now-line-strip {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: hsl(var(--destructive));
+      z-index: 10;
+      pointer-events: none;
+    }
+    .now-line-strip::before {
+      content: 'NOW';
+      position: absolute;
+      left: 4px;
+      top: -8px;
+      font-size: 0.45rem;
+      font-weight: 900;
+      color: hsl(var(--destructive));
+      letter-spacing: 0.08em;
+    }
+
+    /* Program block inside strip */
+    /* Height is proportional: 1px per minute, 60px = 1hr */
+    .prog-block {
+      position: absolute;
+      left: 0;
+      right: 0;
+      padding: 2px 4px;
+      overflow: hidden;
+      cursor: pointer;
+      border-bottom: 1px solid hsl(var(--border) / 0.4);
+    }
+    .prog-block-inner {
+      height: 100%;
+      background: hsl(var(--g) / 0.14);
+      border-left: 3px solid hsl(var(--g));
+      border-radius: 2px;
+      padding: 3px 5px;
+      overflow: hidden;
+      transition: background 0.1s;
+    }
+    .prog-block-inner:hover { background: hsl(var(--g) / 0.24); }
+    .prog-block-inner:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -1px;
+    }
+    .prog-block-inner.on-air {
+      background: hsl(var(--g) / 0.22);
+      border-left-width: 4px;
+    }
+
+    .block-title {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      line-height: 1.3;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+    .block-time {
+      font-size: 0.55rem;
+      color: hsl(var(--muted-foreground));
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+    }
+    .block-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .micro-btn {
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 3px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.1s;
+    }
+    .micro-btn:hover { opacity: 0.8; }
+    .micro-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .btn-watch { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .btn-reserve { background: hsl(var(--destructive)/0.15); color: hsl(var(--destructive)); border: 1px solid hsl(var(--destructive)/0.3); }
+
+    /* Header utility classes */
+    .badge {
+      display: inline-flex; align-items: center;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+      padding: 1px 6px; border-radius: 3px;
+    }
+    .badge-live { background: hsl(0 72% 58% / 0.2); color: hsl(0 72% 70%); }
+    .tab-btn {
+      font-size: 0.7rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 4px;
+      border: none; cursor: pointer;
+    }
+    .tab-btn.active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .tab-btn:not(.active) { background: transparent; color: hsl(var(--muted-foreground)); }
+    .tab-btn:not(.active):hover { background: hsl(var(--muted) / 0.5); }
+    .tab-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .icon-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 6px;
+      border: 1px solid hsl(var(--border));
+      background: transparent; color: hsl(var(--muted-foreground));
+      cursor: pointer;
+    }
+    .icon-btn:hover { background: hsl(var(--muted)/0.5); }
+    .icon-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- Banner -->
+<p style="font-size:0.7rem;color:hsl(var(--muted-foreground));padding:5px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));flex-shrink:0;">
+  EPG v7 · Per-channel carousel: each column = one channel, time flows top→bottom, horizontal swipe to see more channels · dark mode
+</p>
+
+<!-- App bar -->
+<div class="app-bar">
+  <a href="/" style="display:inline-flex;align-items:center;gap:5px;font-size:0.875rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 8px;border-radius:6px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    ライブ
+  </a>
+  <span style="color:hsl(var(--border));">|</span>
+  <span style="font-weight:700;font-size:0.9375rem;">番組表</span>
+  <span class="badge badge-live">● LIVE</span>
+  <div style="flex:1;"></div>
+  <div role="tablist" style="display:flex;gap:2px;">
+    <button role="tab" aria-selected="true" class="tab-btn active">すべて</button>
+    <button role="tab" aria-selected="false" class="tab-btn">GR</button>
+    <button role="tab" aria-selected="false" class="tab-btn">BS</button>
+  </div>
+  <div style="width:1px;height:18px;background:hsl(var(--border));"></div>
+  <button class="icon-btn" aria-label="前日">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <span style="font-size:0.8rem;font-weight:600;padding:0 4px;font-variant-numeric:tabular-nums;">4月17日（木）</span>
+  <button class="icon-btn" aria-label="翌日">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+  <button class="tab-btn active" style="margin-left:6px;">今すぐ</button>
+</div>
+
+<!-- Time ruler (simplified decorative strip) -->
+<div class="time-ruler" aria-label="時刻目盛り">
+  <div style="padding:0 12px;font-size:0.65rem;font-weight:600;color:hsl(var(--muted-foreground));white-space:nowrap;">
+    表示範囲: 20:00 – 翌 00:00 &nbsp;·&nbsp;
+    <span style="color:hsl(var(--destructive));font-weight:700;">▼ NOW 21:13</span>
+    &nbsp;·&nbsp; 縦スクロール = 時間経過 · 横スワイプ = チャンネル切替
+  </div>
+</div>
+
+<!-- Carousel: channel columns -->
+<div class="carousel-area" role="region" aria-label="チャンネル別番組表">
+
+  <!-- ── NHK総合 ── -->
+  <div class="ch-strip" style="--ch-color: 221 83% 60%;" aria-label="NHK総合の番組">
+    <div class="ch-strip-header" tabindex="0" aria-label="NHK総合 ライブ視聴">
+      <div class="ch-num-badge" style="--ch-color: 221 83% 60%;">1</div>
+      <div>
+        <div style="font-size:0.75rem;font-weight:700;">NHK総合</div>
+        <div style="font-size:0.55rem;color:hsl(var(--muted-foreground));">GR</div>
+      </div>
+    </div>
+    <div class="ch-strip-body" style="position:relative;height:480px;">
+      <!-- 1px per minute, 20:00 = offset 0, 24:00 = offset 240px -->
+      <!-- NOW line at 21:13 = 73 min from 20:00 = 73px from top -->
+      <div class="now-line-strip" style="top:73px;"></div>
+
+      <!-- 20:00 ダーウィンが来た 45min = 45px -->
+      <div class="prog-block g-variety" style="top:0;height:45px;" tabindex="0">
+        <div class="prog-block-inner g-variety">
+          <div class="block-title">ダーウィンが来た！</div>
+          <div class="block-time">20:00–20:45</div>
+        </div>
+      </div>
+      <!-- 20:45 大河ドラマ 45min -->
+      <div class="prog-block g-drama" style="top:45px;height:45px;" tabindex="0">
+        <div class="prog-block-inner g-drama">
+          <div class="block-title">大河ドラマ「光る君へ」</div>
+          <div class="block-time">20:45–21:30</div>
+          <div class="block-actions">
+            <button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button>
+          </div>
+        </div>
+      </div>
+      <!-- 21:00 NHKニュース7 ON AIR 30min -->
+      <div class="prog-block g-news" style="top:60px;height:30px;" tabindex="0" aria-label="NHKニュース7 ON AIR">
+        <div class="prog-block-inner g-news on-air">
+          <div class="block-title" style="color:hsl(var(--destructive));">● NHKニュース7</div>
+          <div class="block-time">21:00–21:30</div>
+          <div class="block-actions">
+            <button class="micro-btn btn-watch" onclick="event.stopPropagation()">視聴</button>
+          </div>
+        </div>
+      </div>
+      <!-- 21:30 ガッテン 45min -->
+      <div class="prog-block g-variety" style="top:90px;height:45px;" tabindex="0">
+        <div class="prog-block-inner g-variety">
+          <div class="block-title">ガッテン！</div>
+          <div class="block-time">21:30–22:15</div>
+          <div class="block-actions">
+            <button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button>
+          </div>
+        </div>
+      </div>
+      <!-- 22:15 土曜ドラマ 45min -->
+      <div class="prog-block g-drama" style="top:135px;height:45px;" tabindex="0">
+        <div class="prog-block-inner g-drama">
+          <div class="block-title">土曜ドラマ「春の嵐」</div>
+          <div class="block-time">22:15–23:00</div>
+          <div class="block-actions">
+            <button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button>
+          </div>
+        </div>
+      </div>
+      <!-- 23:00 NHKニュース 30min -->
+      <div class="prog-block g-news" style="top:180px;height:30px;" tabindex="0">
+        <div class="prog-block-inner g-news">
+          <div class="block-title">NHKニュース</div>
+          <div class="block-time">23:00–23:30</div>
+          <div class="block-actions">
+            <button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button>
+          </div>
+        </div>
+      </div>
+      <!-- 23:30 NHKスペシャル 60min -->
+      <div class="prog-block g-docu" style="top:210px;height:60px;" tabindex="0">
+        <div class="prog-block-inner g-docu">
+          <div class="block-title">NHKスペシャル「海洋汚染の真実」</div>
+          <div class="block-time">23:30–00:30</div>
+          <div class="block-actions">
+            <button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NHK Eテレ ── -->
+  <div class="ch-strip" style="--ch-color: 142 70% 48%;" aria-label="NHK Eテレの番組">
+    <div class="ch-strip-header" tabindex="0" aria-label="NHK Eテレ ライブ視聴">
+      <div class="ch-num-badge" style="--ch-color: 142 70% 48%;">2</div>
+      <div>
+        <div style="font-size:0.75rem;font-weight:700;">NHK Eテレ</div>
+        <div style="font-size:0.55rem;color:hsl(var(--muted-foreground));">GR</div>
+      </div>
+    </div>
+    <div class="ch-strip-body" style="position:relative;height:480px;">
+      <div class="now-line-strip" style="top:73px;"></div>
+      <div class="prog-block g-edu" style="top:0;height:30px;" tabindex="0">
+        <div class="prog-block-inner g-edu"><div class="block-title">趣味の園芸</div><div class="block-time">20:00–20:30</div></div>
+      </div>
+      <div class="prog-block g-variety" style="top:30px;height:30px;" tabindex="0">
+        <div class="prog-block-inner g-variety"><div class="block-title">日本の話芸</div><div class="block-time">20:30–21:00</div></div>
+      </div>
+      <div class="prog-block g-edu" style="top:60px;height:25px;" tabindex="0">
+        <div class="prog-block-inner g-edu on-air"><div class="block-title" style="color:hsl(var(--destructive));">● にほんごであそぼ</div><div class="block-time">21:00–21:25</div><div class="block-actions"><button class="micro-btn btn-watch" onclick="event.stopPropagation()">視聴</button></div></div>
+      </div>
+      <div class="prog-block g-anime" style="top:85px;height:30px;" tabindex="0">
+        <div class="prog-block-inner g-anime"><div class="block-title">ゆるキャン△</div><div class="block-time">21:25–21:55</div><div class="block-actions"><button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button></div></div>
+      </div>
+      <div class="prog-block g-other" style="top:115px;height:125px;" tabindex="0">
+        <div class="prog-block-inner g-other"><div class="block-title" style="opacity:0.5;">放送休止</div><div class="block-time">21:55–00:00</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── フジテレビ ── -->
+  <div class="ch-strip" style="--ch-color: 38 92% 52%;" aria-label="フジテレビの番組">
+    <div class="ch-strip-header" tabindex="0" aria-label="フジテレビ ライブ視聴">
+      <div class="ch-num-badge" style="--ch-color: 38 92% 52%;">8</div>
+      <div>
+        <div style="font-size:0.75rem;font-weight:700;">フジテレビ</div>
+        <div style="font-size:0.55rem;color:hsl(var(--muted-foreground));">GR</div>
+      </div>
+    </div>
+    <div class="ch-strip-body" style="position:relative;height:480px;">
+      <div class="now-line-strip" style="top:73px;"></div>
+      <div class="prog-block g-news" style="top:0;height:60px;" tabindex="0">
+        <div class="prog-block-inner g-news"><div class="block-title">FNNニュース</div><div class="block-time">20:00–21:00</div></div>
+      </div>
+      <div class="prog-block g-variety" style="top:60px;height:54px;" tabindex="0">
+        <div class="prog-block-inner g-variety on-air"><div class="block-title" style="color:hsl(var(--destructive));">● VS魂</div><div class="block-time">21:00–21:54</div><div class="block-actions"><button class="micro-btn btn-watch" onclick="event.stopPropagation()">視聴</button></div></div>
+      </div>
+      <div class="prog-block g-drama" style="top:114px;height:54px;" tabindex="0">
+        <div class="prog-block-inner g-drama"><div class="block-title">月9ドラマ「嘘解きレトリック」</div><div class="block-time">21:54–22:48</div><div class="block-actions"><button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button></div></div>
+      </div>
+      <div class="prog-block g-news" style="top:168px;height:52px;" tabindex="0">
+        <div class="prog-block-inner g-news"><div class="block-title">FNNプライムニュース</div><div class="block-time">22:48–23:40</div><div class="block-actions"><button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TBS ── -->
+  <div class="ch-strip" style="--ch-color: 0 72% 58%;" aria-label="TBSの番組">
+    <div class="ch-strip-header" tabindex="0" aria-label="TBS ライブ視聴">
+      <div class="ch-num-badge" style="--ch-color: 0 72% 58%;">6</div>
+      <div>
+        <div style="font-size:0.75rem;font-weight:700;">TBS</div>
+        <div style="font-size:0.55rem;color:hsl(var(--muted-foreground));">GR</div>
+      </div>
+    </div>
+    <div class="ch-strip-body" style="position:relative;height:480px;">
+      <div class="now-line-strip" style="top:73px;"></div>
+      <div class="prog-block g-variety" style="top:0;height:54px;" tabindex="0">
+        <div class="prog-block-inner g-variety"><div class="block-title">マツコの知らない世界</div><div class="block-time">20:00–20:54</div></div>
+      </div>
+      <div class="prog-block g-docu" style="top:54px;height:6px;" tabindex="0">
+        <div class="prog-block-inner g-docu" style="padding:1px 3px;"><div class="block-title" style="font-size:0.5rem;">NEWS</div></div>
+      </div>
+      <div class="prog-block g-news" style="top:60px;height:60px;" tabindex="0">
+        <div class="prog-block-inner g-news on-air"><div class="block-title" style="color:hsl(var(--destructive));">● 報道特集</div><div class="block-time">21:00–22:00</div><div class="block-actions"><button class="micro-btn btn-watch" onclick="event.stopPropagation()">視聴</button></div></div>
+      </div>
+      <div class="prog-block g-drama" style="top:120px;height:60px;" tabindex="0">
+        <div class="prog-block-inner g-drama" style="position:relative;"><div class="block-title">日曜劇場「フォールガイ」</div><div class="block-time">22:00–23:00</div><div class="block-actions"><button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button></div><span style="position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:hsl(var(--destructive));" aria-label="録画予約済み"></span></div>
+      </div>
+      <div class="prog-block g-news" style="top:180px;height:48px;" tabindex="0">
+        <div class="prog-block-inner g-news"><div class="block-title">Nスタ夜</div><div class="block-time">23:00–23:48</div><div class="block-actions"><button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── テレビ朝日 ── -->
+  <div class="ch-strip" style="--ch-color: 190 70% 48%;" aria-label="テレビ朝日の番組">
+    <div class="ch-strip-header" tabindex="0" aria-label="テレビ朝日 ライブ視聴">
+      <div class="ch-num-badge" style="--ch-color: 190 70% 48%;">5</div>
+      <div>
+        <div style="font-size:0.75rem;font-weight:700;">テレビ朝日</div>
+        <div style="font-size:0.55rem;color:hsl(var(--muted-foreground));">GR</div>
+      </div>
+    </div>
+    <div class="ch-strip-body" style="position:relative;height:480px;">
+      <div class="now-line-strip" style="top:73px;"></div>
+      <!-- 熱闘甲子園 19:00-22:00 → within view 20:00-22:00 = 120px -->
+      <div class="prog-block g-sports" style="top:0;height:120px;" tabindex="0">
+        <div class="prog-block-inner g-sports on-air"><div class="block-title" style="color:hsl(var(--destructive));">● 熱闘甲子園SP 2026</div><div class="block-time">19:00–22:00</div><div class="block-actions"><button class="micro-btn btn-watch" onclick="event.stopPropagation()">視聴</button></div></div>
+      </div>
+      <div class="prog-block g-news" style="top:120px;height:54px;" tabindex="0">
+        <div class="prog-block-inner g-news"><div class="block-title">報道ステーション</div><div class="block-time">22:00–22:54</div><div class="block-actions"><button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button></div></div>
+      </div>
+      <div class="prog-block g-drama" style="top:174px;height:54px;" tabindex="0">
+        <div class="prog-block-inner g-drama"><div class="block-title">木曜ドラマ</div><div class="block-time">22:54–23:48</div><div class="block-actions"><button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 日本テレビ ── -->
+  <div class="ch-strip" style="--ch-color: 38 92% 52%;" aria-label="日本テレビの番組">
+    <div class="ch-strip-header" tabindex="0" aria-label="日本テレビ ライブ視聴">
+      <div class="ch-num-badge" style="--ch-color: 38 92% 52%;">4</div>
+      <div>
+        <div style="font-size:0.75rem;font-weight:700;">日本テレビ</div>
+        <div style="font-size:0.55rem;color:hsl(var(--muted-foreground));">GR</div>
+      </div>
+    </div>
+    <div class="ch-strip-body" style="position:relative;height:480px;">
+      <div class="now-line-strip" style="top:73px;"></div>
+      <div class="prog-block g-variety" style="top:0;height:60px;" tabindex="0">
+        <div class="prog-block-inner g-variety"><div class="block-title">有吉ゼミ</div><div class="block-time">20:00–21:00</div></div>
+      </div>
+      <div class="prog-block g-drama" style="top:60px;height:114px;" tabindex="0">
+        <div class="prog-block-inner g-drama on-air"><div class="block-title" style="color:hsl(var(--destructive));">● あなたの番です SP</div><div class="block-time">21:00–22:54</div><div class="block-actions"><button class="micro-btn btn-watch" onclick="event.stopPropagation()">視聴</button></div></div>
+      </div>
+      <div class="prog-block g-news" style="top:174px;height:30px;" tabindex="0">
+        <div class="prog-block-inner g-news"><div class="block-title">Newsevery.</div><div class="block-time">22:54–23:30</div><div class="block-actions"><button class="micro-btn btn-reserve" onclick="event.stopPropagation()">予約</button></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── テレビ東京 ── -->
+  <div class="ch-strip" style="--ch-color: 260 60% 55%;" aria-label="テレビ東京の番組">
+    <div class="ch-strip-header" tabindex="0" aria-label="テレビ東京 ライブ視聴">
+      <div class="ch-num-badge" style="--ch-color: 260 60% 55%;">7</div>
+      <div>
+        <div style="font-size:0.75rem;font-weight:700;">テレビ東京</div>
+        <div style="font-size:0.55rem;color:hsl(var(--muted-foreground));">GR</div>
+      </div>
+    </div>
+    <div class="ch-strip-body" style="position:relative;height:480px;">
+      <div class="now-line-strip" style="top:73px;"></div>
+      <div class="prog-block g-anime" style="top:0;height:60px;" tabindex="0">
+        <div class="prog-block-inner g-anime"><div class="block-title">孤独のグルメ 再</div><div class="block-time">20:00–21:00</div></div>
+      </div>
+      <div class="prog-block g-movie" style="top:60px;height:150px;" tabindex="0">
+        <div class="prog-block-inner g-movie on-air"><div class="block-title" style="color:hsl(var(--destructive));">● 木曜洋画「インターステラー」</div><div class="block-time">21:00–23:30</div><div class="block-actions"><button class="micro-btn btn-watch" onclick="event.stopPropagation()">視聴</button></div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end carousel-area -->
+
+</body>
+</html>

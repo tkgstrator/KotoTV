@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recording Player — v2 Theater Mode + Chapter Thumbnail Rail</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 1px 6px;
+      border-radius: 3px;
+      line-height: 1.6;
+    }
+    .badge-vod { background: hsl(221 83% 60% / 0.2); color: hsl(221 83% 72%); }
+    .badge-ch  { background: hsl(222 16% 20%); color: hsl(215 12% 65%); }
+
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+      color: hsl(var(--foreground));
+      cursor: pointer;
+      transition: background 0.12s;
+      flex-shrink: 0;
+    }
+    .ctrl-btn:hover { background: hsl(var(--muted)); }
+    .ctrl-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      background: hsl(var(--muted) / 0.6);
+    }
+    .ctrl-btn.demo-focus {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      background: hsl(var(--muted) / 0.6);
+    }
+
+    /* Seek bar */
+    .seek-track {
+      position: relative;
+      width: 100%;
+      height: 5px;
+      background: hsl(var(--muted));
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .seek-track:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+    }
+    .seek-buffered {
+      position: absolute; left:0; top:0; height:100%;
+      background: hsl(var(--muted-foreground) / 0.35);
+      border-radius: 3px; width: 70%;
+    }
+    .seek-played {
+      position: absolute; left:0; top:0; height:100%;
+      background: hsl(var(--primary));
+      border-radius: 3px; width: 34%;
+    }
+    .seek-chapter {
+      position: absolute; top:-2px; width:2px; height:9px;
+      background: hsl(var(--foreground) / 0.45);
+      border-radius: 1px; transform: translateX(-50%);
+    }
+    .seek-thumb {
+      position: absolute; top:50%; left:34%;
+      transform: translate(-50%, -50%);
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: hsl(var(--foreground));
+      box-shadow: 0 1px 4px hsl(0 0% 0% / 0.4);
+    }
+
+    /* Chapter thumbnail card */
+    .ch-card {
+      flex-shrink: 0;
+      width: 140px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.12s;
+    }
+    .ch-card:hover { border-color: hsl(var(--primary)/0.5); transform: translateY(-2px); }
+    .ch-card:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+    .ch-card.active { border-color: hsl(var(--primary)); }
+
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid hsl(var(--muted));
+      border-top-color: hsl(var(--primary));
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .skeleton {
+      background: hsl(var(--muted));
+      border-radius: 4px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.45;} }
+
+    /* Theater: wide video, info below, chapters below that */
+    .theater-shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      height: 90vh;
+      min-height: 600px;
+      border: 1px solid hsl(var(--border));
+    }
+    .theater-video-wrap {
+      background: hsl(222 30% 6%);
+      position: relative;
+      flex-shrink: 0;
+      /* 16:9 but capped */
+    }
+    .theater-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: hsl(var(--card));
+    }
+  </style>
+</head>
+<body>
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));">
+  v2 · Theater Mode + Chapter Thumbnail Rail · Desktop — <strong style="color:hsl(var(--foreground))">Playing state</strong>
+</p>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- DESKTOP: Theater layout                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="theater-shell">
+
+  <!-- App bar (thin) -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:44px;display:flex;align-items:center;gap:10px;padding:0 20px;flex-shrink:0;">
+    <a href="/recordings"
+       style="display:inline-flex;align-items:center;gap:5px;font-size:0.8125rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 8px;border-radius:5px;"
+       onmouseover="this.style.background='hsl(var(--muted))'" onmouseout="this.style.background='transparent'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+      録画一覧
+    </a>
+    <div style="width:1px;height:18px;background:hsl(var(--border));"></div>
+    <span class="badge badge-vod">VOD</span>
+    <span style="font-size:0.875rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:400px;">プロジェクトX「黒四ダムの男たち」</span>
+    <span class="badge badge-ch">NHK総合</span>
+    <div style="flex:1;"></div>
+    <!-- Resume indicator -->
+    <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:hsl(var(--muted-foreground));">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      続きから 34:12
+    </div>
+  </div>
+
+  <!-- Video (tall-ish, max ~55% of shell height) -->
+  <div class="theater-video-wrap" style="height:58%;">
+    <div style="position:absolute;inset:0;background:linear-gradient(155deg,hsl(215 40% 7%) 0%,hsl(230 30% 4%) 100%);">
+      <div style="position:absolute;inset:0;opacity:0.03;background:repeating-linear-gradient(0deg,hsl(var(--foreground)) 0px,hsl(var(--foreground)) 1px,transparent 1px,transparent 4px);"></div>
+    </div>
+    <!-- Top-right: time display -->
+    <div style="position:absolute;top:12px;right:16px;font-size:0.6875rem;font-variant-numeric:tabular-nums;color:hsl(var(--foreground)/0.6);background:hsl(0 0% 0% / 0.35);padding:2px 7px;border-radius:4px;">34:12 / 90:00</div>
+  </div>
+
+  <!-- Controls bar -->
+  <div style="background:hsl(var(--card));border-top:1px solid hsl(var(--border));padding:10px 24px 8px;flex-shrink:0;" role="toolbar" aria-label="再生コントロール">
+    <!-- Seekbar -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+      <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;">34:12</span>
+      <div class="seek-track" role="slider" aria-label="再生位置" aria-valuenow="34" aria-valuemin="0" aria-valuemax="90" tabindex="0" style="flex:1;">
+        <div class="seek-buffered"></div>
+        <div class="seek-played"></div>
+        <div class="seek-chapter" style="left:18%;"></div>
+        <div class="seek-chapter" style="left:42%;"></div>
+        <div class="seek-chapter" style="left:67%;"></div>
+        <div class="seek-thumb"></div>
+      </div>
+      <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;">90:00</span>
+    </div>
+
+    <!-- Buttons -->
+    <div style="display:flex;align-items:center;gap:4px;">
+      <!-- Skip back -->
+      <button class="ctrl-btn" aria-label="10秒戻る" style="width:38px;height:38px;" title="-10s">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 4v6h6"/><path d="M3.51 9a9 9 0 1 0 .49-2"/></svg>
+      </button>
+      <!-- Play/Pause -->
+      <button class="ctrl-btn demo-focus" aria-label="一時停止" style="width:44px;height:44px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      <!-- Skip forward -->
+      <button class="ctrl-btn" aria-label="10秒進む" style="width:38px;height:38px;" title="+10s">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M20.49 9a9 9 0 1 1-.49-2"/></svg>
+      </button>
+      <!-- Mute -->
+      <button class="ctrl-btn" aria-label="ミュート" style="width:38px;height:38px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      </button>
+
+      <!-- Time display (compact) -->
+      <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;padding:0 8px;">34:12 / 90:00</span>
+
+      <div style="flex:1;"></div>
+
+      <!-- Watched % pill -->
+      <div style="display:flex;align-items:center;gap:6px;background:hsl(var(--muted)/0.6);padding:4px 10px;border-radius:20px;">
+        <div style="width:40px;height:3px;background:hsl(var(--muted));border-radius:2px;overflow:hidden;">
+          <div style="height:100%;width:38%;background:hsl(var(--primary));border-radius:2px;"></div>
+        </div>
+        <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;">38%</span>
+      </div>
+
+      <!-- Playback rate -->
+      <button class="ctrl-btn" aria-label="再生速度" aria-haspopup="menu"
+              style="width:auto;padding:0 11px;height:34px;font-size:0.75rem;font-weight:700;border:1px solid hsl(var(--border));gap:4px;">
+        1.0×
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+
+      <!-- Quality -->
+      <button class="ctrl-btn" aria-label="画質" aria-haspopup="listbox"
+              style="width:auto;padding:0 11px;height:34px;font-size:0.75rem;font-weight:600;border:1px solid hsl(var(--border));gap:4px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
+        1080p
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+
+      <!-- Fullscreen -->
+      <button class="ctrl-btn" aria-label="フルスクリーン" style="width:38px;height:38px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom section: info + chapter thumbnail rail -->
+  <div class="theater-body">
+
+    <!-- Program info row (compact) -->
+    <div style="padding:12px 24px;border-bottom:1px solid hsl(var(--border));flex-shrink:0;display:flex;gap:20px;align-items:flex-start;">
+      <div style="flex:1;min-width:0;">
+        <h2 style="font-size:0.9375rem;font-weight:700;margin:0 0 3px;">プロジェクトX「黒四ダムの男たち」</h2>
+        <p style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin:0;">NHK総合 · 2026-04-16 20:00–21:30 · 90分 · 3.4 GB</p>
+      </div>
+      <div style="font-size:0.8125rem;color:hsl(var(--foreground));line-height:1.5;max-width:480px;">
+        黒四ダム建設という命がけの工事に挑んだ男たちの物語。昭和31年、北アルプスの山奥…
+      </div>
+    </div>
+
+    <!-- Chapter thumbnail rail (horizontal scroll) -->
+    <div style="padding:14px 24px;flex-shrink:0;">
+      <div style="font-size:0.6875rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:hsl(var(--muted-foreground));margin-bottom:10px;">
+        チャプター (候補)
+      </div>
+      <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;" role="list" aria-label="チャプターサムネイルレール">
+        <!-- Chapter 1 — active -->
+        <div class="ch-card active" role="listitem" tabindex="0" aria-label="工事開始〜トンネル掘削 0:00から再生">
+          <div style="height:79px;background:linear-gradient(135deg,hsl(215 35% 12%) 0%,hsl(222 25% 8%) 100%);position:relative;display:flex;align-items:center;justify-content:center;">
+            <!-- Playing indicator overlay -->
+            <div style="position:absolute;inset:0;background:hsl(var(--primary)/0.15);"></div>
+            <div style="position:relative;width:24px;height:24px;border-radius:50%;background:hsl(var(--primary)/0.9);display:flex;align-items:center;justify-content:center;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <!-- Timecode badge -->
+            <div style="position:absolute;bottom:4px;right:5px;font-size:0.5625rem;font-weight:700;background:hsl(0 0% 0% / 0.6);color:hsl(var(--foreground));padding:1px 4px;border-radius:2px;font-variant-numeric:tabular-nums;">0:00</div>
+          </div>
+          <div style="padding:6px 8px;">
+            <div style="font-size:0.6875rem;font-weight:600;color:hsl(var(--primary));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">工事開始〜掘削</div>
+            <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));">0:00 – 18:24</div>
+          </div>
+        </div>
+
+        <!-- Chapter 2 -->
+        <div class="ch-card" role="listitem" tabindex="0" aria-label="難工事・雪崩との戦い 18:24から再生">
+          <div style="height:79px;background:linear-gradient(135deg,hsl(215 35% 12%) 0%,hsl(222 25% 8%) 100%);position:relative;display:flex;align-items:center;justify-content:center;">
+            <div style="width:22px;height:22px;border-radius:50%;background:hsl(var(--muted));display:flex;align-items:center;justify-content:center;opacity:0.7;">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <div style="position:absolute;bottom:4px;right:5px;font-size:0.5625rem;font-weight:700;background:hsl(0 0% 0% / 0.6);color:hsl(var(--foreground));padding:1px 4px;border-radius:2px;font-variant-numeric:tabular-nums;">18:24</div>
+          </div>
+          <div style="padding:6px 8px;">
+            <div style="font-size:0.6875rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">難工事・雪崩</div>
+            <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));">18:24 – 42:10</div>
+          </div>
+        </div>
+
+        <!-- Chapter 3 -->
+        <div class="ch-card" role="listitem" tabindex="0" aria-label="完成・通水式 42:10から再生">
+          <div style="height:79px;background:linear-gradient(135deg,hsl(215 35% 12%) 0%,hsl(222 25% 8%) 100%);position:relative;display:flex;align-items:center;justify-content:center;">
+            <div style="width:22px;height:22px;border-radius:50%;background:hsl(var(--muted));display:flex;align-items:center;justify-content:center;opacity:0.7;">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <div style="position:absolute;bottom:4px;right:5px;font-size:0.5625rem;font-weight:700;background:hsl(0 0% 0% / 0.6);color:hsl(var(--foreground));padding:1px 4px;border-radius:2px;font-variant-numeric:tabular-nums;">42:10</div>
+          </div>
+          <div style="padding:6px 8px;">
+            <div style="font-size:0.6875rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">完成・通水式</div>
+            <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));">42:10 – 90:00</div>
+          </div>
+        </div>
+
+        <!-- "No more chapters" placeholder slot for extensibility -->
+        <div style="flex-shrink:0;width:140px;border-radius:6px;border:1px dashed hsl(var(--border));display:flex;align-items:center;justify-content:center;min-height:100px;">
+          <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));">チャプターなし</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- LOADING / ERROR                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-top:2px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));margin-top:32px;">
+  v2 · <strong style="color:hsl(var(--foreground))">Loading state</strong>
+</p>
+<div style="max-width:1440px;margin:0 auto;border:1px solid hsl(var(--border));height:55vh;display:flex;flex-direction:column;">
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:44px;display:flex;align-items:center;padding:0 20px;gap:10px;flex-shrink:0;">
+    <a href="/recordings" style="display:inline-flex;align-items:center;gap:5px;font-size:0.8125rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 8px;border-radius:5px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+      録画一覧
+    </a>
+    <div class="skeleton" style="height:16px;width:280px;"></div>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:hsl(222 30% 6%);">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+      <div class="spinner"></div>
+      <div style="text-align:center;">
+        <div style="font-size:0.9375rem;font-weight:600;">録画データを準備しています…</div>
+        <div style="font-size:0.8125rem;color:hsl(var(--muted-foreground));margin-top:4px;">VOD プレイリストを生成中</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-top:2px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));margin-top:32px;">
+  v2 · <strong style="color:hsl(var(--foreground))">Error state</strong>
+</p>
+<div style="max-width:1440px;margin:0 auto;border:1px solid hsl(var(--border));height:40vh;display:flex;flex-direction:column;">
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:44px;display:flex;align-items:center;padding:0 20px;gap:10px;flex-shrink:0;">
+    <a href="/recordings" style="display:inline-flex;align-items:center;gap:5px;font-size:0.8125rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 8px;border-radius:5px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+      録画一覧
+    </a>
+    <span style="font-weight:700;font-size:0.875rem;">プロジェクトX</span>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:hsl(222 30% 6%);">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:340px;">
+      <div style="width:52px;height:52px;border-radius:50%;background:hsl(var(--destructive)/0.12);display:flex;align-items:center;justify-content:center;color:hsl(var(--destructive));">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      </div>
+      <div>
+        <div style="font-size:1rem;font-weight:700;">再生できませんでした</div>
+        <div style="font-size:0.8125rem;color:hsl(var(--muted-foreground));margin-top:5px;line-height:1.5;">録画ファイルが見つからないか破損しています。</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <a href="/recordings" style="display:inline-flex;align-items:center;gap:5px;font-size:0.875rem;font-weight:600;padding:7px 14px;border-radius:6px;background:hsl(var(--muted));color:hsl(var(--foreground));text-decoration:none;border:1px solid hsl(var(--border));">一覧へ</a>
+        <button style="display:inline-flex;align-items:center;gap:5px;font-size:0.875rem;font-weight:600;padding:7px 14px;border-radius:6px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none;cursor:pointer;">再試行</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PORTRAIT MOBILE                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-top:2px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));margin-top:32px;">
+  v2 · Portrait mobile (390px)
+</p>
+
+<div style="max-width:390px;margin:32px auto;border:1px solid hsl(var(--border));border-radius:12px;overflow:hidden;background:hsl(var(--background));">
+  <!-- Top bar -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:44px;display:flex;align-items:center;gap:10px;padding:0 12px;">
+    <a href="/recordings" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;color:hsl(var(--foreground));text-decoration:none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    </a>
+    <span style="font-size:0.8125rem;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">プロジェクトX「黒四ダム」</span>
+    <span class="badge badge-vod">VOD</span>
+  </div>
+
+  <!-- Video -->
+  <div style="position:relative;padding-top:56.25%;background:hsl(222 30% 6%);">
+    <div style="position:absolute;inset:0;background:linear-gradient(155deg,hsl(215 40% 7%),hsl(230 30% 4%));"></div>
+    <div style="position:absolute;bottom:8px;right:10px;font-size:0.625rem;font-variant-numeric:tabular-nums;background:hsl(0 0% 0% / 0.4);color:hsl(var(--foreground)/0.8);padding:1px 5px;border-radius:3px;">34:12 / 90:00</div>
+  </div>
+
+  <!-- Controls -->
+  <div style="background:hsl(var(--card));border-top:1px solid hsl(var(--border));padding:10px 12px;" role="toolbar" aria-label="再生コントロール">
+    <!-- Seekbar -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;min-width:28px;">34:12</span>
+      <div class="seek-track" tabindex="0" role="slider" aria-label="再生位置" style="flex:1;height:5px;">
+        <div class="seek-buffered" style="height:100%;"></div>
+        <div class="seek-played" style="height:100%;"></div>
+        <div class="seek-chapter" style="left:18%;top:-1px;height:7px;"></div>
+        <div class="seek-chapter" style="left:42%;top:-1px;height:7px;"></div>
+        <div class="seek-thumb" style="width:12px;height:12px;"></div>
+      </div>
+      <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;min-width:28px;text-align:right;">90:00</span>
+    </div>
+    <!-- Buttons -->
+    <div style="display:flex;align-items:center;gap:2px;">
+      <button class="ctrl-btn" aria-label="10秒戻る" style="width:36px;height:36px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M1 4v6h6"/><path d="M3.51 9a9 9 0 1 0 .49-2"/></svg>
+      </button>
+      <button class="ctrl-btn demo-focus" aria-label="一時停止" style="width:42px;height:42px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      <button class="ctrl-btn" aria-label="10秒進む" style="width:36px;height:36px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 4v6h-6"/><path d="M20.49 9a9 9 0 1 1-.49-2"/></svg>
+      </button>
+      <button class="ctrl-btn" aria-label="ミュート" style="width:36px;height:36px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      </button>
+      <div style="flex:1;"></div>
+      <button class="ctrl-btn" style="width:auto;padding:0 8px;height:32px;font-size:0.6875rem;font-weight:700;border:1px solid hsl(var(--border));" aria-label="再生速度">1.0×</button>
+      <button class="ctrl-btn" aria-label="フルスクリーン" style="width:36px;height:36px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Program info -->
+  <div style="padding:12px 14px 8px;">
+    <h2 style="font-size:0.9375rem;font-weight:700;margin:0 0 3px;line-height:1.4;">プロジェクトX「黒四ダムの男たち」</h2>
+    <p style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin:0 0 8px;">2026-04-16 · NHK総合 · 90分</p>
+    <!-- Watched progress -->
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="flex:1;height:3px;background:hsl(var(--muted));border-radius:2px;">
+        <div style="height:100%;width:38%;background:hsl(var(--primary));border-radius:2px;"></div>
+      </div>
+      <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));">38%</span>
+    </div>
+  </div>
+
+  <!-- Chapter thumbnail rail (mobile horizontal scroll) -->
+  <div style="border-top:1px solid hsl(var(--border));padding:10px 0 10px 14px;">
+    <div style="font-size:0.6875rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:hsl(var(--muted-foreground));margin-bottom:8px;">チャプター</div>
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-right:14px;padding-bottom:2px;">
+      <!-- Active -->
+      <div class="ch-card active" tabindex="0" style="width:110px;">
+        <div style="height:62px;background:linear-gradient(135deg,hsl(215 35% 12%),hsl(222 25% 8%));position:relative;display:flex;align-items:center;justify-content:center;">
+          <div style="position:absolute;inset:0;background:hsl(var(--primary)/0.15);"></div>
+          <div style="position:relative;width:20px;height:20px;border-radius:50%;background:hsl(var(--primary)/0.9);display:flex;align-items:center;justify-content:center;">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div style="position:absolute;bottom:3px;right:4px;font-size:0.5rem;background:hsl(0 0% 0% / 0.6);color:hsl(var(--foreground));padding:1px 3px;border-radius:2px;">0:00</div>
+        </div>
+        <div style="padding:4px 6px;">
+          <div style="font-size:0.625rem;font-weight:600;color:hsl(var(--primary));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">工事開始</div>
+        </div>
+      </div>
+      <div class="ch-card" tabindex="0" style="width:110px;">
+        <div style="height:62px;background:linear-gradient(135deg,hsl(215 35% 12%),hsl(222 25% 8%));position:relative;display:flex;align-items:center;justify-content:center;">
+          <div style="width:18px;height:18px;border-radius:50%;background:hsl(var(--muted));display:flex;align-items:center;justify-content:center;opacity:0.7;">
+            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div style="position:absolute;bottom:3px;right:4px;font-size:0.5rem;background:hsl(0 0% 0% / 0.6);color:hsl(var(--foreground));padding:1px 3px;border-radius:2px;">18:24</div>
+        </div>
+        <div style="padding:4px 6px;">
+          <div style="font-size:0.625rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">雪崩との戦い</div>
+        </div>
+      </div>
+      <div class="ch-card" tabindex="0" style="width:110px;">
+        <div style="height:62px;background:linear-gradient(135deg,hsl(215 35% 12%),hsl(222 25% 8%));position:relative;display:flex;align-items:center;justify-content:center;">
+          <div style="width:18px;height:18px;border-radius:50%;background:hsl(var(--muted));display:flex;align-items:center;justify-content:center;opacity:0.7;">
+            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div style="position:absolute;bottom:3px;right:4px;font-size:0.5rem;background:hsl(0 0% 0% / 0.6);color:hsl(var(--foreground));padding:1px 3px;border-radius:2px;">42:10</div>
+        </div>
+        <div style="padding:4px 6px;">
+          <div style="font-size:0.625rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">完成・通水式</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:48px;"></div>
+</body>
+</html>
