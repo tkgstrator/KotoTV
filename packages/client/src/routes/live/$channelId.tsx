@@ -242,7 +242,7 @@ function LogLine({ ts, level, children }: { ts: string; level: 'ok' | 'err' | 'i
 
 function LivePage() {
   const { channelId } = Route.useParams()
-  const stream = useStream(channelId)
+  const stream = useStream({ type: 'live', channelId })
   const videoRef = useRef<HTMLVideoElement>(null)
   const clock = useClock()
 
