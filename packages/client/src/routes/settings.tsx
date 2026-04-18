@@ -4,6 +4,7 @@ import { StatusChip } from '@/components/shared/status-chip'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { type Subsystem, useHealth } from '@/hooks/useHealth'
 import { type CodecChoice, type QualityChoice, usePlaybackPrefs } from '@/hooks/usePlaybackPrefs'
 import { type ThemeChoice, useTheme } from '@/hooks/useTheme'
@@ -176,36 +177,27 @@ const THEME_OPTIONS: { value: ThemeChoice; label: string }[] = [
   { value: 'system', label: 'AUTO' }
 ]
 
+const SEGMENT_ITEM_CLASS =
+  'bg-muted text-muted-foreground hover:bg-background/60 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:font-semibold data-[state=on]:hover:bg-primary'
+
 function ThemeSegment() {
   const { theme, setTheme } = useTheme()
 
   return (
-    <fieldset
+    <ToggleGroup
+      type='single'
+      value={theme}
+      onValueChange={(v) => v && setTheme(v as ThemeChoice)}
       aria-label='テーマ選択'
-      className='inline-flex shrink-0 overflow-hidden rounded-[3px] border border-border bg-muted [border:none] [padding:0]'
+      size='sm'
+      className='shrink-0'
     >
       {THEME_OPTIONS.map((opt) => (
-        <button
-          key={opt.value}
-          type='button'
-          onClick={() => setTheme(opt.value)}
-          aria-pressed={theme === opt.value}
-          className={cn(
-            'relative grid place-items-center border-r border-border px-3 py-[5px] font-sans text-[0.75rem] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-            theme === opt.value
-              ? 'bg-primary text-primary-foreground shadow-inner'
-              : 'bg-transparent text-muted-foreground hover:bg-background/60'
-          )}
-        >
-          <span aria-hidden className='invisible col-start-1 row-start-1 font-bold'>
-            {opt.label}
-          </span>
-          <span className={cn('col-start-1 row-start-1', theme === opt.value ? 'font-bold' : 'font-semibold')}>
-            {opt.label}
-          </span>
-        </button>
+        <ToggleGroupItem key={opt.value} value={opt.value} className={SEGMENT_ITEM_CLASS}>
+          {opt.label}
+        </ToggleGroupItem>
       ))}
-    </fieldset>
+    </ToggleGroup>
   )
 }
 
@@ -265,33 +257,20 @@ interface SegmentProps<T extends string> {
 
 function Segment<T extends string>({ ariaLabel, value, options, onChange }: SegmentProps<T>) {
   return (
-    <fieldset
+    <ToggleGroup
+      type='single'
+      value={value}
+      onValueChange={(v) => v && onChange(v as T)}
       aria-label={ariaLabel}
-      className='inline-flex shrink-0 overflow-hidden rounded-[3px] border border-border bg-muted [border:none] [padding:0]'
+      size='sm'
+      className='shrink-0'
     >
       {options.map((opt) => (
-        <button
-          key={opt.value}
-          type='button'
-          onClick={() => onChange(opt.value)}
-          aria-pressed={value === opt.value}
-          className={cn(
-            'relative grid place-items-center border-r border-border px-3 py-[5px] font-sans text-[0.75rem] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-            value === opt.value
-              ? 'bg-primary text-primary-foreground shadow-inner'
-              : 'bg-transparent text-muted-foreground hover:bg-background/60'
-          )}
-        >
-          {/* Reserve bold width so the pill doesn't shift when the weight changes. */}
-          <span aria-hidden className='invisible col-start-1 row-start-1 font-bold'>
-            {opt.label}
-          </span>
-          <span className={cn('col-start-1 row-start-1', value === opt.value ? 'font-bold' : 'font-semibold')}>
-            {opt.label}
-          </span>
-        </button>
+        <ToggleGroupItem key={opt.value} value={opt.value} className={SEGMENT_ITEM_CLASS}>
+          {opt.label}
+        </ToggleGroupItem>
       ))}
-    </fieldset>
+    </ToggleGroup>
   )
 }
 
