@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — v10 Status Console Scroll</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:               'hsl(var(--background))',
+            foreground:               'hsl(var(--foreground))',
+            card:                     'hsl(var(--card))',
+            'card-foreground':        'hsl(var(--card-foreground))',
+            muted:                    'hsl(var(--muted))',
+            'muted-foreground':       'hsl(var(--muted-foreground))',
+            border:                   'hsl(var(--border))',
+            primary:                  'hsl(var(--primary))',
+            'primary-foreground':     'hsl(var(--primary-foreground))',
+            destructive:              'hsl(var(--destructive))',
+            'destructive-foreground': 'hsl(var(--destructive-foreground))',
+            ring:                     'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:             220 16% 93%;
+      --foreground:             222 22% 16%;
+      --card:                   0 0% 99%;
+      --card-foreground:        222 22% 16%;
+      --muted:                  215 12% 87%;
+      --muted-foreground:       215 10% 44%;
+      --border:                 214 14% 82%;
+      --primary:                221 83% 53%;
+      --primary-foreground:     210 40% 98%;
+      --ring:                   221 83% 53%;
+      --destructive:            0 72% 52%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 38%;
+      --warning:                38 92% 46%;
+    }
+    .dark {
+      --background:             222 22% 8%;
+      --foreground:             210 18% 90%;
+      --card:                   222 20% 12%;
+      --card-foreground:        210 18% 90%;
+      --muted:                  222 18% 18%;
+      --muted-foreground:       215 12% 52%;
+      --border:                 222 18% 20%;
+      --primary:                221 83% 60%;
+      --primary-foreground:     222 20% 10%;
+      --ring:                   221 83% 60%;
+      --destructive:            0 72% 58%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 46%;
+      --warning:                38 92% 50%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", ui-monospace, system-ui, "Hiragino Sans", sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 2px;
+    }
+
+    /* ── Status chip — square corners, monospace ── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      padding: 2px 6px;
+      border-radius: 2px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .chip-ok      { background: hsl(var(--success)/0.12); border-color: hsl(var(--success)/0.35); color: hsl(var(--success)); }
+    .chip-warn    { background: hsl(var(--warning)/0.12); border-color: hsl(var(--warning)/0.35); color: hsl(var(--warning)); }
+    .chip-err     { background: hsl(var(--destructive)/0.12); border-color: hsl(var(--destructive)/0.35); color: hsl(var(--destructive)); }
+    .chip-fatal   { background: hsl(var(--destructive)/0.22); border-color: hsl(var(--destructive)/0.6); color: hsl(var(--destructive)); font-weight: 900; }
+    .chip-booting { background: hsl(var(--primary)/0.1); border-color: hsl(var(--primary)/0.3); color: hsl(var(--primary)); }
+    .chip-offline { background: hsl(var(--muted)); border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+
+    /* ── Diagnostic row ── */
+    .diag-row {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      align-items: start;
+      gap: 12px;
+      padding: 8px 12px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .diag-row:last-child { border-bottom: none; }
+    .diag-key {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: 0.04em;
+      padding-top: 1px;
+    }
+    .diag-values {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .diag-val {
+      font-size: 0.75rem;
+      color: hsl(var(--foreground));
+      font-family: inherit;
+    }
+    .diag-meta {
+      font-size: 0.625rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    /* ── Log tail ── */
+    .log-tail {
+      border-top: 1px solid hsl(var(--border));
+      background: hsl(var(--muted)/0.4);
+      padding: 6px 12px;
+    }
+    .log-line {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+      font-size: 0.625rem;
+      color: hsl(var(--muted-foreground));
+      padding: 1px 0;
+    }
+    .log-ts  { color: hsl(var(--muted-foreground)/0.65); flex-shrink: 0; }
+    .log-err { color: hsl(var(--destructive)); }
+    .log-ok  { color: hsl(var(--success)); }
+    .log-warn{ color: hsl(var(--warning)); }
+    .log-info{ color: hsl(var(--primary)); }
+
+    /* ── Progress bar — square ── */
+    .prog-track {
+      height: 4px;
+      background: hsl(var(--muted));
+      border-radius: 1px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .prog-fill-ok   { height: 100%; background: hsl(var(--success)); border-radius: 1px; }
+    .prog-fill-warn { height: 100%; background: hsl(var(--warning)); border-radius: 1px; }
+    .prog-fill-err  { height: 100%; background: hsl(var(--destructive)); border-radius: 1px; }
+
+    /* ── Section heading ── */
+    .sect-head {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      padding: 16px 12px 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sect-head::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: hsl(var(--border));
+    }
+
+    /* ── Card ── */
+    .card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .card-warn  { border-left: 3px solid hsl(var(--warning)); }
+    .card-err   { border-left: 3px solid hsl(var(--destructive)); }
+
+    /* ── Interactive row — non-monospace ── */
+    .int-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid hsl(var(--border));
+      font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif;
+    }
+    .int-row:last-child { border-bottom: none; }
+    .int-label {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: hsl(var(--foreground));
+    }
+    .int-desc {
+      font-size: 0.6875rem;
+      color: hsl(var(--muted-foreground));
+      margin-top: 1px;
+    }
+
+    /* ── Segmented control — square ── */
+    .seg-group {
+      display: inline-flex;
+      border: 1px solid hsl(var(--border));
+      border-radius: 3px;
+      overflow: hidden;
+      background: hsl(var(--muted));
+    }
+    .seg-opt {
+      padding: 4px 10px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-right: 1px solid hsl(var(--border));
+      white-space: nowrap;
+    }
+    .seg-opt:last-child { border-right: none; }
+    .seg-opt.active {
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      font-weight: 700;
+    }
+    .seg-opt:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; border-radius: 1px; }
+    .seg-opt:hover:not(.active) { background: hsl(var(--card)/0.5); color: hsl(var(--foreground)); }
+
+    /* ── Theme toggle button ── */
+    .theme-btn {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 3px;
+      padding: 4px 10px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      font-family: inherit;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      color: hsl(var(--muted-foreground));
+    }
+    .theme-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .theme-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* ── Btn ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      border: 1px solid hsl(var(--border));
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+      transition: background 0.1s;
+    }
+    .btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* ── Log toggle (expandable) ── */
+    details summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: hsl(var(--muted-foreground));
+      border-top: 1px solid hsl(var(--border));
+      background: hsl(var(--muted)/0.3);
+    }
+    details summary::-webkit-details-marker { display: none; }
+    details summary::before {
+      content: '▶';
+      font-size: 0.5rem;
+      transition: transform 0.12s;
+    }
+    details[open] summary::before { transform: rotate(90deg); }
+    details summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+
+    /* ── Scrollable layout ── */
+    .page { max-width: 760px; margin: 0 auto; padding: 0 16px 40px; }
+    @media (max-width: 480px) { .page { padding: 0 8px 40px; } }
+
+    /* Monospace code spans */
+    .mono { font-family: inherit; font-size: 0.6875rem; }
+
+    /* About link */
+    a {
+      color: hsl(var(--primary));
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+    a:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div style="position:sticky;top:0;z-index:50;background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));padding:8px 16px;display:flex;align-items:center;justify-content:space-between;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-weight:700;font-size:0.875rem;letter-spacing:0.04em;">設定</span>
+    <span class="chip chip-warn">WARN</span>
+    <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));">disk low</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));">最終確認 23:14:02</span>
+    <button class="theme-btn" onclick="document.documentElement.classList.toggle('dark')" aria-label="ライト/ダーク切替">LIGHT / DARK</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SECTION: STREAMING                         -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="sect-head">STREAMING</div>
+  <div class="card">
+
+    <!-- mirakc — OK -->
+    <div class="diag-row">
+      <span class="diag-key">mirakc</span>
+      <div class="diag-values">
+        <span class="diag-val">v1.12.0</span>
+        <span class="diag-meta">last poll 23:14:02 &nbsp;·&nbsp; tuners 4/4 available</span>
+      </div>
+      <span class="chip chip-ok">OK</span>
+    </div>
+
+    <!-- ffmpeg — OK -->
+    <div class="diag-row">
+      <span class="diag-key">ffmpeg</span>
+      <div class="diag-values">
+        <span class="diag-val">n7.0.1</span>
+        <span class="diag-meta">hw_accel qsv &nbsp;·&nbsp; sessions 0/4 active</span>
+      </div>
+      <span class="chip chip-ok">OK</span>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SECTION: STORAGE                           -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="sect-head">STORAGE</div>
+  <div class="card card-warn">
+
+    <!-- disk — WARN with log tail auto-open -->
+    <div class="diag-row">
+      <span class="diag-key">disk</span>
+      <div class="diag-values">
+        <span class="diag-val">412 GB free of 2.0 TB</span>
+        <span class="diag-meta">recordings 1.12 TB &nbsp;·&nbsp; hls tmp 2.3 GB &nbsp;·&nbsp; /data</span>
+        <div class="prog-track" style="width:180px;max-width:100%;">
+          <div class="prog-fill-warn" style="width:79%;"></div>
+        </div>
+        <span class="diag-meta" style="margin-top:2px;">79% used</span>
+      </div>
+      <span class="chip chip-warn">WARN</span>
+    </div>
+
+    <!-- auto-open log tail for WARN -->
+    <details open>
+      <summary tabindex="0">最新ログ (3)</summary>
+      <div class="log-tail">
+        <div class="log-line"><span class="log-ts">23:10:01</span><span class="log-warn">[WARN]</span><span>disk usage crossed 75% threshold (/data)</span></div>
+        <div class="log-line"><span class="log-ts">23:10:01</span><span class="log-info">[INFO]</span><span>oldest recording: 2024-01-05_NHK.m2ts (8.2 GB) — auto-delete disabled</span></div>
+        <div class="log-line"><span class="log-ts">22:58:44</span><span class="log-info">[INFO]</span><span>recorded 番組名 (1.1 GB) to /data/recordings/</span></div>
+      </div>
+    </details>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SECTION: RUNTIME                           -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="sect-head">RUNTIME</div>
+  <div class="card">
+
+    <!-- postgres — OK -->
+    <div class="diag-row">
+      <span class="diag-key">postgres</span>
+      <div class="diag-values">
+        <span class="diag-val">17.2</span>
+        <span class="diag-meta">conn 2/10 &nbsp;·&nbsp; latency 1.2 ms</span>
+      </div>
+      <span class="chip chip-ok">OK</span>
+    </div>
+
+    <!-- server — OK -->
+    <div class="diag-row">
+      <span class="diag-key">server</span>
+      <div class="diag-values">
+        <span class="diag-val">bun 1.1.38 &nbsp;/&nbsp; hono 4.6</span>
+        <span class="diag-meta">uptime 14h 22m &nbsp;·&nbsp; mem 128 MB rss</span>
+      </div>
+      <span class="chip chip-ok">OK</span>
+    </div>
+
+  </div>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SECTION: 表示設定 (interactive — non-mono) -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="sect-head">表示設定</div>
+  <div class="card" style="border-radius:4px;">
+
+    <!-- Theme -->
+    <div class="int-row">
+      <div>
+        <div class="int-label">テーマ</div>
+        <div class="int-desc">Light / Dark / システム設定に従う</div>
+      </div>
+      <div class="seg-group" role="group" aria-label="テーマ選択">
+        <button class="seg-opt" tabindex="0">LIGHT</button>
+        <button class="seg-opt active" tabindex="0">DARK</button>
+        <button class="seg-opt" tabindex="0">AUTO</button>
+      </div>
+    </div>
+
+    <!-- Quality -->
+    <div class="int-row">
+      <div>
+        <div class="int-label">画質プリセット</div>
+        <div class="int-desc">ライブ視聴時のデフォルト品質</div>
+      </div>
+      <div class="seg-group" role="group" aria-label="画質プリセット">
+        <button class="seg-opt active" tabindex="0">AUTO</button>
+        <button class="seg-opt" tabindex="0">HIGH</button>
+        <button class="seg-opt" tabindex="0">MED</button>
+        <button class="seg-opt" tabindex="0">LOW</button>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SECTION: ABOUT                             -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="sect-head">ABOUT</div>
+  <div class="card">
+
+    <div class="diag-row" style="border-bottom:1px solid hsl(var(--border));">
+      <span class="diag-key">version</span>
+      <div class="diag-values">
+        <span class="diag-val">0.6.0-alpha</span>
+        <span class="diag-meta">commit <span class="mono" style="color:hsl(var(--foreground));">a3f9c2d</span> &nbsp;·&nbsp; built 2026-04-17T08:00:00Z</span>
+      </div>
+      <span class="chip chip-booting">DEV</span>
+    </div>
+
+    <div class="diag-row" style="border-bottom:none;">
+      <span class="diag-key">links</span>
+      <div class="diag-values">
+        <span><a href="#" tabindex="0">GitHub</a> &nbsp;·&nbsp; <a href="#" tabindex="0">MIT License</a></span>
+        <span class="diag-meta">KonomiTV clone — 外出先ライブ視聴</span>
+      </div>
+      <span></span>
+    </div>
+
+  </div>
+
+</div><!-- /page -->
+
+</body>
+</html>

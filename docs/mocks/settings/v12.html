@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — v12 Tabbed with Pinned Health Strip</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:               'hsl(var(--background))',
+            foreground:               'hsl(var(--foreground))',
+            card:                     'hsl(var(--card))',
+            'card-foreground':        'hsl(var(--card-foreground))',
+            muted:                    'hsl(var(--muted))',
+            'muted-foreground':       'hsl(var(--muted-foreground))',
+            border:                   'hsl(var(--border))',
+            primary:                  'hsl(var(--primary))',
+            'primary-foreground':     'hsl(var(--primary-foreground))',
+            destructive:              'hsl(var(--destructive))',
+            'destructive-foreground': 'hsl(var(--destructive-foreground))',
+            ring:                     'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:             220 16% 93%;
+      --foreground:             222 22% 16%;
+      --card:                   0 0% 99%;
+      --card-foreground:        222 22% 16%;
+      --muted:                  215 12% 87%;
+      --muted-foreground:       215 10% 44%;
+      --border:                 214 14% 82%;
+      --primary:                221 83% 53%;
+      --primary-foreground:     210 40% 98%;
+      --ring:                   221 83% 53%;
+      --destructive:            0 72% 52%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 38%;
+      --warning:                38 92% 46%;
+    }
+    .dark {
+      --background:             222 22% 8%;
+      --foreground:             210 18% 90%;
+      --card:                   222 20% 12%;
+      --card-foreground:        210 18% 90%;
+      --muted:                  222 18% 18%;
+      --muted-foreground:       215 12% 52%;
+      --border:                 222 18% 20%;
+      --primary:                221 83% 60%;
+      --primary-foreground:     222 20% 10%;
+      --ring:                   221 83% 60%;
+      --destructive:            0 72% 58%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 46%;
+      --warning:                38 92% 50%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      /* Diagnostic surfaces: monospace. Interactive surfaces override to system font. */
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", ui-monospace, system-ui, "Hiragino Sans", sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 2px;
+    }
+
+    /* ── Status chip — square corners ── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      padding: 2px 6px;
+      border-radius: 2px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .chip-ok     { background: hsl(var(--success)/0.12);     border-color: hsl(var(--success)/0.35);     color: hsl(var(--success)); }
+    .chip-warn   { background: hsl(var(--warning)/0.12);     border-color: hsl(var(--warning)/0.35);     color: hsl(var(--warning)); }
+    .chip-err    { background: hsl(var(--destructive)/0.15); border-color: hsl(var(--destructive)/0.45); color: hsl(var(--destructive)); }
+    .chip-booting{ background: hsl(var(--primary)/0.1);      border-color: hsl(var(--primary)/0.3);      color: hsl(var(--primary)); }
+
+    /* ── Global app header ── */
+    .app-header {
+      position: sticky; top: 0; z-index: 60;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 7px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    /* ── Pinned health strip — always visible ── */
+    .health-strip {
+      position: sticky;
+      top: 38px; /* height of app-header */
+      z-index: 50;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: stretch;
+      overflow-x: auto;
+      flex-shrink: 0;
+      /* Subtle warning-tint when any subsystem is non-OK */
+      background: hsl(var(--warning)/0.04);
+      border-bottom-color: hsl(var(--warning)/0.3);
+    }
+    .health-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-right: 1px solid hsl(var(--border));
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .health-cell:last-child { border-right: none; }
+    .health-key {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: hsl(var(--muted-foreground));
+    }
+    .health-val {
+      font-size: 0.5625rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    /* ── Tab bar ── */
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .tab {
+      padding: 8px 16px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+    .tab:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)/0.3); }
+    .tab.active { color: hsl(var(--foreground)); border-bottom-color: hsl(var(--primary)); }
+    .tab:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; border-radius: 1px; }
+
+    /* ── Content area ── */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+    }
+    .panel { display: none; max-width: 720px; margin: 0 auto; padding: 0 20px 40px; }
+    .panel.active { display: block; }
+    @media (max-width: 480px) { .panel { padding: 0 10px 32px; } }
+
+    /* ── Section heading ── */
+    .sect-head {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      padding: 18px 0 7px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sect-head::after { content: ''; flex: 1; height: 1px; background: hsl(var(--border)); }
+
+    /* ── Diagnostic rows ── */
+    .card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .card-warn-accent { border-left: 3px solid hsl(var(--warning)); }
+
+    .diag-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      border-bottom: 1px solid hsl(var(--border)/0.7);
+    }
+    .diag-row:last-child { border-bottom: none; }
+    .diag-chip-col {
+      width: 52px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 9px 0 8px;
+      flex-shrink: 0;
+      border-right: 1px solid hsl(var(--border)/0.5);
+    }
+    .diag-content {
+      flex: 1;
+      padding: 7px 12px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+    .diag-left { min-width: 0; }
+    .diag-name {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: hsl(var(--muted-foreground));
+    }
+    .diag-vals {
+      font-size: 0.6875rem;
+      color: hsl(var(--foreground));
+      margin-top: 1px;
+    }
+    .diag-sub {
+      font-size: 0.5625rem;
+      color: hsl(var(--muted-foreground));
+      margin-top: 2px;
+    }
+    .diag-right {
+      flex-shrink: 0;
+      text-align: right;
+      font-size: 0.5625rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    /* progress */
+    .prog-track { height: 3px; background: hsl(var(--muted)); border-radius: 1px; overflow: hidden; margin-top: 4px; }
+    .prog-warn  { height: 100%; background: hsl(var(--warning)); }
+    .prog-ok    { height: 100%; background: hsl(var(--success)); }
+
+    /* ── Log tail ── */
+    .log-section { border-top: 1px solid hsl(var(--border)); background: hsl(var(--muted)/0.2); }
+    details summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: hsl(var(--muted-foreground));
+    }
+    details summary::-webkit-details-marker { display: none; }
+    details summary::before { content: '▶'; font-size: 0.45rem; transition: transform 0.12s; }
+    details[open] summary::before { transform: rotate(90deg); }
+    details summary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; border-radius: 1px; }
+    .log-body { padding: 5px 12px 8px; }
+    .log-line { display: flex; gap: 8px; align-items: baseline; font-size: 0.5625rem; color: hsl(var(--muted-foreground)); padding: 1px 0; }
+    .log-ts   { color: hsl(var(--muted-foreground)/0.6); flex-shrink: 0; }
+    .log-err  { color: hsl(var(--destructive)); }
+    .log-warn { color: hsl(var(--warning)); }
+    .log-ok   { color: hsl(var(--success)); }
+    .log-info { color: hsl(var(--primary)); }
+
+    /* ── Interactive panel — non-monospace override ── */
+    .int-surface {
+      font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif;
+    }
+    .int-card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .int-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 14px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .int-row:last-child { border-bottom: none; }
+    .int-label { font-size: 0.875rem; font-weight: 500; color: hsl(var(--foreground)); }
+    .int-desc  { font-size: 0.75rem; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+
+    /* Segmented control */
+    .seg-group {
+      display: inline-flex;
+      border: 1px solid hsl(var(--border));
+      border-radius: 3px;
+      overflow: hidden;
+      background: hsl(var(--muted));
+      flex-shrink: 0;
+    }
+    .seg-opt {
+      padding: 5px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-right: 1px solid hsl(var(--border));
+      white-space: nowrap;
+    }
+    .seg-opt:last-child { border-right: none; }
+    .seg-opt.active { background: hsl(var(--card)); color: hsl(var(--foreground)); font-weight: 700; }
+    .seg-opt:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; border-radius: 1px; }
+    .seg-opt:hover:not(.active) { background: hsl(var(--card)/0.5); }
+
+    /* theme-btn */
+    .theme-btn {
+      background: transparent;
+      border: 1px solid hsl(var(--border));
+      border-radius: 3px;
+      padding: 3px 9px;
+      font-size: 0.625rem;
+      font-weight: 700;
+      font-family: inherit;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      color: hsl(var(--muted-foreground));
+    }
+    .theme-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .theme-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* About */
+    .about-table { width: 100%; border-collapse: collapse; }
+    .about-table tr { border-bottom: 1px solid hsl(var(--border)/0.6); }
+    .about-table tr:last-child { border-bottom: none; }
+    .about-table td { padding: 6px 12px; font-size: 0.6875rem; vertical-align: top; }
+    .about-key { color: hsl(var(--muted-foreground)); width: 100px; font-weight: 600; letter-spacing: 0.03em; }
+    .about-val { color: hsl(var(--foreground)); }
+
+    a { color: hsl(var(--primary)); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    a:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; border-radius: 2px; }
+
+    /* ── Tab switch logic (CSS only via :target) ── */
+    /* We do a minimal JS toggle since CSS :target doesn't hide well across panels */
+  </style>
+  <script>
+    // Minimal tab switcher — no frameworks, no build
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + tabId).classList.add('active');
+      document.getElementById('panel-' + tabId).classList.add('active');
+    }
+  </script>
+</head>
+<body>
+
+<!-- ── GLOBAL HEADER ── -->
+<div class="app-header">
+  <span style="font-weight:700;font-size:0.875rem;letter-spacing:0.04em;">設定</span>
+  <button class="theme-btn" onclick="document.documentElement.classList.toggle('dark')" aria-label="ライト/ダーク切替">LIGHT / DARK</button>
+</div>
+
+<!-- ── PINNED HEALTH STRIP — always visible ── -->
+<div class="health-strip" role="status" aria-label="システム健全性">
+  <div class="health-cell">
+    <span class="health-key">mirakc</span>
+    <span class="chip chip-ok">OK</span>
+    <span class="health-val">v1.12.0 &nbsp;·&nbsp; 23:14:02</span>
+  </div>
+  <div class="health-cell">
+    <span class="health-key">ffmpeg</span>
+    <span class="chip chip-ok">OK</span>
+    <span class="health-val">qsv &nbsp;·&nbsp; n7.0.1</span>
+  </div>
+  <div class="health-cell">
+    <span class="health-key">postgres</span>
+    <span class="chip chip-ok">OK</span>
+    <span class="health-val">17.2 &nbsp;·&nbsp; 2/10 conn</span>
+  </div>
+  <div class="health-cell">
+    <span class="health-key">disk</span>
+    <span class="chip chip-warn">WARN</span>
+    <span class="health-val" style="color:hsl(var(--warning));">412 GB free &nbsp;·&nbsp; 79% used</span>
+  </div>
+  <div class="health-cell" style="margin-left:auto;">
+    <span class="health-key" style="color:hsl(var(--muted-foreground)/0.6);">更新 30 s</span>
+  </div>
+</div>
+
+<!-- ── TAB BAR ── -->
+<div class="tab-bar" role="tablist">
+  <button id="tab-status" class="tab active" role="tab" aria-selected="true"  tabindex="0" onclick="switchTab('status')">ステータス</button>
+  <button id="tab-display" class="tab"        role="tab" aria-selected="false" tabindex="0" onclick="switchTab('display')">表示設定</button>
+  <button id="tab-about"  class="tab"         role="tab" aria-selected="false" tabindex="0" onclick="switchTab('about')">About</button>
+</div>
+
+<!-- ── CONTENT ── -->
+<div class="content-area">
+
+  <!-- ══ STATUS PANEL ══ -->
+  <div id="panel-status" class="panel active" role="tabpanel">
+
+    <div class="sect-head">STREAMING</div>
+    <div class="card">
+
+      <!-- mirakc OK -->
+      <div class="diag-row">
+        <div class="diag-chip-col"><span class="chip chip-ok">OK</span></div>
+        <div class="diag-content">
+          <div class="diag-left">
+            <div class="diag-name">MIRAKC</div>
+            <div class="diag-vals">v1.12.0 &nbsp;/&nbsp; tuners 4/4 available</div>
+            <div class="diag-sub">last poll 23:14:02</div>
+          </div>
+          <div class="diag-right"></div>
+        </div>
+      </div>
+
+      <!-- ffmpeg OK -->
+      <div class="diag-row">
+        <div class="diag-chip-col"><span class="chip chip-ok">OK</span></div>
+        <div class="diag-content">
+          <div class="diag-left">
+            <div class="diag-name">FFMPEG</div>
+            <div class="diag-vals">n7.0.1 &nbsp;/&nbsp; hw_accel qsv</div>
+            <div class="diag-sub">sessions 0/4 active</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="sect-head">STORAGE</div>
+    <div class="card card-warn-accent">
+
+      <!-- disk WARN -->
+      <div class="diag-row">
+        <div class="diag-chip-col"><span class="chip chip-warn">WARN</span></div>
+        <div class="diag-content" style="flex-direction:column;align-items:flex-start;gap:4px;">
+          <div style="display:flex;justify-content:space-between;width:100%;">
+            <div>
+              <div class="diag-name">DISK — /data</div>
+              <div class="diag-vals">412 GB free of 2.0 TB</div>
+              <div class="diag-sub">recordings 1.12 TB &nbsp;·&nbsp; hls tmp 2.3 GB</div>
+            </div>
+          </div>
+          <div class="prog-track" style="width:220px;max-width:100%;">
+            <div class="prog-warn" style="width:79%;"></div>
+          </div>
+          <span style="font-size:0.5625rem;color:hsl(var(--warning));">79% used — free space below 25% threshold</span>
+        </div>
+      </div>
+
+      <div class="log-section">
+        <details open>
+          <summary tabindex="0">最新ログ (3) — WARN</summary>
+          <div class="log-body">
+            <div class="log-line"><span class="log-ts">23:10:01</span><span class="log-warn">[WARN]</span><span>disk usage crossed 75% threshold (/data)</span></div>
+            <div class="log-line"><span class="log-ts">23:10:01</span><span class="log-info">[INFO]</span><span>oldest: 2024-01-05_NHK.m2ts 8.2 GB — auto-delete disabled</span></div>
+            <div class="log-line"><span class="log-ts">22:58:44</span><span class="log-info">[INFO]</span><span>recorded 番組名 to /data/recordings/ (1.1 GB)</span></div>
+          </div>
+        </details>
+      </div>
+
+    </div>
+
+    <div class="sect-head">RUNTIME</div>
+    <div class="card">
+
+      <div class="diag-row">
+        <div class="diag-chip-col"><span class="chip chip-ok">OK</span></div>
+        <div class="diag-content">
+          <div class="diag-left">
+            <div class="diag-name">POSTGRES</div>
+            <div class="diag-vals">17.2 &nbsp;/&nbsp; conn 2/10 &nbsp;/&nbsp; 1.2 ms</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="diag-row">
+        <div class="diag-chip-col"><span class="chip chip-ok">OK</span></div>
+        <div class="diag-content">
+          <div class="diag-left">
+            <div class="diag-name">SERVER</div>
+            <div class="diag-vals">bun 1.1.38 &nbsp;/&nbsp; hono 4.6</div>
+            <div class="diag-sub">uptime 14h 22m &nbsp;·&nbsp; mem 128 MB rss</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /panel-status -->
+
+
+  <!-- ══ 表示設定 PANEL — non-mono ══ -->
+  <div id="panel-display" class="panel int-surface" role="tabpanel">
+
+    <div class="sect-head">テーマ</div>
+    <div class="int-card">
+      <div class="int-row">
+        <div>
+          <div class="int-label">テーマ</div>
+          <div class="int-desc">Light / Dark / システム設定に従う</div>
+        </div>
+        <div class="seg-group" role="group" aria-label="テーマ選択">
+          <button class="seg-opt" tabindex="0">LIGHT</button>
+          <button class="seg-opt active" tabindex="0">DARK</button>
+          <button class="seg-opt" tabindex="0">AUTO</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect-head">画質</div>
+    <div class="int-card">
+      <div class="int-row">
+        <div>
+          <div class="int-label">画質プリセット</div>
+          <div class="int-desc">ライブ視聴時のデフォルト品質</div>
+        </div>
+        <div class="seg-group" role="group" aria-label="画質プリセット">
+          <button class="seg-opt active" tabindex="0">AUTO</button>
+          <button class="seg-opt" tabindex="0">HIGH</button>
+          <button class="seg-opt" tabindex="0">MED</button>
+          <button class="seg-opt" tabindex="0">LOW</button>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-family:system-ui,-apple-system,sans-serif;font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 0;">
+      その他の設定は現フェーズ未実装です。
+    </p>
+  </div><!-- /panel-display -->
+
+
+  <!-- ══ ABOUT PANEL ══ -->
+  <div id="panel-about" class="panel" role="tabpanel">
+
+    <div class="sect-head">VERSION</div>
+    <div class="card">
+      <table class="about-table">
+        <tr>
+          <td class="about-key">version</td>
+          <td class="about-val">
+            0.6.0-alpha
+            <span class="chip chip-booting" style="margin-left:6px;">DEV</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="about-key">commit</td>
+          <td class="about-val" style="font-family:inherit;">a3f9c2d</td>
+        </tr>
+        <tr>
+          <td class="about-key">built</td>
+          <td class="about-val">2026-04-17T08:00:00Z</td>
+        </tr>
+        <tr>
+          <td class="about-key">bun</td>
+          <td class="about-val">1.1.38</td>
+        </tr>
+        <tr>
+          <td class="about-key">hono</td>
+          <td class="about-val">4.6.0</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="sect-head">LINKS</div>
+    <div class="card">
+      <table class="about-table">
+        <tr>
+          <td class="about-key">repo</td>
+          <td class="about-val"><a href="#" tabindex="0">GitHub</a></td>
+        </tr>
+        <tr>
+          <td class="about-key">license</td>
+          <td class="about-val"><a href="#" tabindex="0">MIT License</a></td>
+        </tr>
+        <tr>
+          <td class="about-key">desc</td>
+          <td class="about-val" style="color:hsl(var(--muted-foreground));">KonomiTV clone — 外出先ライブ視聴</td>
+        </tr>
+      </table>
+    </div>
+
+  </div><!-- /panel-about -->
+
+</div><!-- /content-area -->
+
+</body>
+</html>

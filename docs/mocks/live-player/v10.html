@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Player — v10 NOW-Strip + Right Stats Sidebar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:               'hsl(var(--background))',
+            foreground:               'hsl(var(--foreground))',
+            card:                     'hsl(var(--card))',
+            'card-foreground':        'hsl(var(--card-foreground))',
+            muted:                    'hsl(var(--muted))',
+            'muted-foreground':       'hsl(var(--muted-foreground))',
+            border:                   'hsl(var(--border))',
+            primary:                  'hsl(var(--primary))',
+            'primary-foreground':     'hsl(var(--primary-foreground))',
+            destructive:              'hsl(var(--destructive))',
+            'destructive-foreground': 'hsl(var(--destructive-foreground))',
+            ring:                     'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    /* ── CSS custom properties (lifted from epg/v4 + states/v3) ── */
+    :root {
+      --background:             220 16% 93%;
+      --foreground:             222 22% 16%;
+      --card:                   0 0% 99%;
+      --card-foreground:        222 22% 16%;
+      --muted:                  215 12% 87%;
+      --muted-foreground:       215 10% 44%;
+      --border:                 214 14% 82%;
+      --primary:                221 83% 53%;
+      --primary-foreground:     210 40% 98%;
+      --ring:                   221 83% 53%;
+      --destructive:            0 72% 52%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 38%;
+      --warning:                38 92% 46%;
+    }
+    .dark {
+      --background:             222 22% 8%;
+      --foreground:             210 18% 90%;
+      --card:                   222 20% 12%;
+      --card-foreground:        210 18% 90%;
+      --muted:                  222 18% 18%;
+      --muted-foreground:       215 12% 52%;
+      --border:                 222 18% 20%;
+      --primary:                221 83% 60%;
+      --primary-foreground:     222 20% 10%;
+      --ring:                   221 83% 60%;
+      --destructive:            0 72% 58%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 46%;
+      --warning:                38 92% 50%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      /* System UI for chrome; mono for status chips */
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Global focus ring (states/v3 vocabulary) ── */
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 3px;
+    }
+
+    /* ── Monospace font stack for status chips ── */
+    .mono {
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+    }
+
+    /* ──────────────────────────────────────────
+       STATUS CHIPS — directly from states/v3
+    ────────────────────────────────────────── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 3px;        /* square-adjacent — no rounded-full */
+      border: 1px solid transparent;
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+      white-space: nowrap;
+    }
+    .chip-live    { background: hsl(0 72% 58% / 0.15); border-color: hsl(0 72% 58% / 0.4); color: hsl(0 72% 68%); }
+    .chip-buf     { background: hsl(var(--warning) / 0.12); border-color: hsl(var(--warning) / 0.35); color: hsl(var(--warning)); }
+    .chip-ok      { background: hsl(var(--success) / 0.12); border-color: hsl(var(--success) / 0.35); color: hsl(var(--success)); }
+    .chip-err     { background: hsl(var(--destructive) / 0.12); border-color: hsl(var(--destructive) / 0.4); color: hsl(var(--destructive)); }
+    .chip-fatal   { background: hsl(var(--destructive) / 0.2); border-color: hsl(var(--destructive) / 0.6); color: hsl(var(--destructive)); font-weight: 900; }
+    .chip-info    { background: hsl(var(--primary) / 0.1); border-color: hsl(var(--primary) / 0.3); color: hsl(var(--primary)); }
+    .chip-offline { background: hsl(var(--muted)); border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+
+    /* ── Dot pulse (live indicator) ── */
+    .dot-live {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: hsl(0 72% 68%);
+      animation: pulse-dot 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.55; transform: scale(0.75); }
+    }
+    @media (prefers-reduced-motion: reduce) { .dot-live { animation: none; } }
+
+    /* ── App bar ── */
+    .app-bar {
+      height: 48px;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      flex-shrink: 0;
+      z-index: 40;
+    }
+
+    /* ── NOW-strip (lifted from epg/v4 now-strip pattern) ── */
+    .now-strip {
+      background: hsl(var(--card));
+      border-bottom: 2px solid hsl(var(--border));
+      flex-shrink: 0;
+      padding: 10px 12px 12px;
+      z-index: 35;
+    }
+    .now-strip-label {
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: hsl(0 72% 65%);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .now-prog-title {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      line-height: 1.25;
+      color: hsl(var(--foreground));
+      margin-bottom: 6px;
+    }
+    .now-prog-meta {
+      font-size: 0.6875rem;
+      color: hsl(var(--muted-foreground));
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    /* Elapsed bar — wide and prominent, the "seek bar" equivalent */
+    .elapsed-track {
+      height: 5px;
+      background: hsl(var(--muted));
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+    .elapsed-fill {
+      height: 100%;
+      background: hsl(var(--primary));
+      border-radius: 2px;
+    }
+    .elapsed-nums {
+      display: flex;
+      justify-content: space-between;
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+      font-size: 0.625rem;
+      color: hsl(var(--muted-foreground));
+      margin-top: 4px;
+    }
+
+    /* ── Main area ── */
+    .main-area {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Video column ── */
+    .video-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: hsl(222 30% 6%);
+      position: relative;
+    }
+    .video-bg {
+      flex: 1;
+      background: linear-gradient(155deg, hsl(215 40% 6%) 0%, hsl(230 30% 4%) 50%, hsl(200 25% 5%) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* ── Controls bar (always visible, below video) ── */
+    .controls-bar {
+      background: hsl(var(--card));
+      border-top: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      flex-shrink: 0;
+    }
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: hsl(var(--foreground));
+      cursor: pointer;
+      transition: background 0.1s;
+      flex-shrink: 0;
+    }
+    .ctrl-btn:hover { background: hsl(var(--muted)); }
+    .ctrl-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    .ctrl-btn.demo-focus {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      background: hsl(var(--muted) / 0.6);
+    }
+    .ctrl-btn svg { pointer-events: none; }
+
+    /* ── Right sidebar — diagnostic stats ── */
+    .stats-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: hsl(var(--card));
+      border-left: 1px solid hsl(var(--border));
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-section {
+      padding: 10px 12px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .sidebar-label {
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sidebar-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: hsl(var(--border));
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 0;
+    }
+    .stat-key {
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+      font-size: 0.625rem;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: 0.03em;
+    }
+    .stat-val {
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+      font-size: 0.625rem;
+      color: hsl(var(--foreground));
+      font-weight: 600;
+    }
+
+    /* ── Log tail ── */
+    .log-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px;
+    }
+    .log-area::-webkit-scrollbar { width: 4px; }
+    .log-area::-webkit-scrollbar-track { background: transparent; }
+    .log-area::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+    .log-line {
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+      font-size: 0.6rem;
+      color: hsl(var(--muted-foreground));
+      padding: 1px 0;
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+      line-height: 1.6;
+    }
+    .log-ts  { color: hsl(var(--muted-foreground) / 0.55); flex-shrink: 0; }
+    .log-ok  { color: hsl(var(--success)); }
+    .log-err { color: hsl(var(--destructive)); }
+    .log-inf { color: hsl(var(--primary)); }
+
+    /* ── Skeleton shimmer (states/v3) ── */
+    .skeleton {
+      background: hsl(var(--muted));
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+    .skeleton::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, hsl(var(--foreground) / 0.04) 50%, transparent 100%);
+      animation: shimmer 2s linear infinite;
+      transform: translateX(-100%);
+    }
+    @keyframes shimmer { to { transform: translateX(100%); } }
+    @media (prefers-reduced-motion: reduce) { .skeleton::after { animation: none; opacity: 0.4; } }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 36px; height: 36px;
+      border: 2.5px solid hsl(var(--muted));
+      border-top-color: hsl(var(--primary));
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spinner { animation: none; border-top-color: hsl(var(--primary)); } }
+
+    /* ── Error card ── */
+    .error-card {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-left: 3px solid hsl(var(--destructive));
+      border-radius: 6px;
+      padding: 16px;
+      max-width: 480px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      border-radius: 5px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: opacity 0.12s, background 0.12s;
+      letter-spacing: 0.02em;
+    }
+    .btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary)); }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-ghost { background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border)); }
+    .btn-ghost:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .btn-destructive { background: hsl(var(--destructive) / 0.12); color: hsl(var(--destructive)); border-color: hsl(var(--destructive) / 0.4); }
+    .btn-destructive:hover { background: hsl(var(--destructive) / 0.2); }
+
+    /* ── Channel type colours ── */
+    .type-gr { --type: hsl(221 83% 60%); color: hsl(221 83% 65%); }
+    .type-bs { --type: hsl(142 70% 48%); color: hsl(142 70% 55%); }
+    .type-cs { --type: hsl(38 92% 52%); color: hsl(38 92% 60%); }
+
+    /* ── Next program row ── */
+    .next-prog-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid hsl(var(--border) / 0.6);
+    }
+    .next-prog-time {
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+      font-size: 0.6rem;
+      color: hsl(var(--muted-foreground));
+      white-space: nowrap;
+      flex-shrink: 0;
+      padding-top: 1px;
+    }
+
+    /* ── MOBILE: stack layout ── */
+    @media (max-width: 767px) {
+      body { overflow: auto; height: auto; }
+      .main-area { flex-direction: column; overflow: visible; }
+      .stats-sidebar {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid hsl(var(--border));
+      }
+      .now-strip { padding: 8px 12px 10px; }
+      .now-prog-title { font-size: 0.9375rem; }
+    }
+
+    /* ── Theme toggle helper ── */
+    .theme-toggle {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      color: hsl(var(--muted-foreground));
+    }
+    .theme-toggle:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .theme-toggle:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* ── State tabs (demo navigation) ── */
+    .state-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 6px 12px;
+      background: hsl(var(--background));
+      border-bottom: 1px solid hsl(var(--border));
+      flex-shrink: 0;
+    }
+    .state-tab {
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 3px;
+      border: 1px solid hsl(var(--border));
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+    }
+    .state-tab:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .state-tab.active { background: hsl(var(--primary) / 0.15); border-color: hsl(var(--primary) / 0.5); color: hsl(var(--primary)); }
+    .state-tab:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- ── DEMO STATE CONTROLS ── -->
+<div class="state-tabs" role="toolbar" aria-label="Demo state selector">
+  <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));align-self:center;margin-right:4px;font-family:monospace;letter-spacing:0.06em;">STATE:</span>
+  <button class="state-tab active" onclick="showState('playing')" id="tab-playing">PLAYING</button>
+  <button class="state-tab" onclick="showState('loading')" id="tab-loading">LOADING</button>
+  <button class="state-tab" onclick="showState('stall')" id="tab-stall">STALL</button>
+  <button class="state-tab" onclick="showState('fatal')" id="tab-fatal">FATAL</button>
+  <div style="flex:1;"></div>
+  <button class="theme-toggle" onclick="document.documentElement.classList.toggle('dark')">DARK/LIGHT</button>
+</div>
+
+<!-- ── APP BAR (channel-list/v6 chrome vocabulary) ── -->
+<header class="app-bar">
+  <a href="/" class="ctrl-btn" aria-label="チャンネルリストへ戻る" tabindex="0">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+  </a>
+
+  <!-- Channel type badge -->
+  <span class="chip chip-info mono" style="font-size:0.6rem;" aria-label="地上波">GR</span>
+
+  <!-- Channel number + name -->
+  <span style="font-weight:700;font-size:0.875rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+    NHK総合
+    <span style="font-weight:400;font-size:0.75rem;color:hsl(var(--muted-foreground));margin-left:4px;">101</span>
+  </span>
+
+  <!-- Transport status chips -->
+  <div id="hdr-chips-playing" style="display:flex;align-items:center;gap:6px;">
+    <span class="chip chip-live" aria-label="ライブ配信中">
+      <span class="dot-live" aria-hidden="true"></span>
+      LIVE
+    </span>
+    <span class="chip chip-ok mono" aria-label="ストリーム正常">OK</span>
+  </div>
+  <div id="hdr-chips-loading" style="display:none;align-items:center;gap:6px;">
+    <span class="chip chip-info">INIT</span>
+  </div>
+  <div id="hdr-chips-stall" style="display:none;align-items:center;gap:6px;">
+    <span class="chip chip-buf">BUF 3.4s</span>
+  </div>
+  <div id="hdr-chips-fatal" style="display:none;align-items:center;gap:6px;">
+    <span class="chip chip-fatal">FATAL</span>
+  </div>
+
+  <!-- Clock -->
+  <span id="clock" class="mono" style="font-size:0.75rem;font-weight:600;color:hsl(var(--muted-foreground));min-width:44px;text-align:right;font-variant-numeric:tabular-nums;"></span>
+</header>
+
+<!-- ══════════════════════════════
+     NOW STRIP — lifted from epg/v4
+════════════════════════════════ -->
+<div class="now-strip" id="now-strip-playing">
+  <div class="now-strip-label">
+    <span class="dot-live" aria-hidden="true"></span>
+    NOW ON AIR
+  </div>
+  <div class="now-prog-title">ニュース7</div>
+  <div class="now-prog-meta">
+    <span>19:00 – 19:30</span>
+    <span style="color:hsl(var(--muted-foreground));">残り 18分</span>
+    <span class="chip chip-info" style="font-size:0.6rem;">ニュース</span>
+  </div>
+  <!-- Elapsed bar: the "seek bar" equivalent for live -->
+  <div class="elapsed-track" role="progressbar" aria-label="番組経過" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100">
+    <div class="elapsed-fill" style="width:40%;"></div>
+  </div>
+  <div class="elapsed-nums">
+    <span>経過 12分</span>
+    <span>残り 18分 / 30分</span>
+  </div>
+</div>
+
+<div class="now-strip" id="now-strip-loading" style="display:none;">
+  <div class="now-strip-label">NOW ON AIR</div>
+  <div class="skeleton" style="height:18px;width:240px;margin-bottom:8px;"></div>
+  <div class="skeleton" style="height:11px;width:160px;margin-bottom:10px;"></div>
+  <div class="elapsed-track"><div class="skeleton" style="width:100%;height:100%;"></div></div>
+</div>
+
+<div class="now-strip" id="now-strip-stall" style="display:none;">
+  <div class="now-strip-label">
+    <span class="dot-live" aria-hidden="true"></span>
+    NOW ON AIR
+  </div>
+  <div class="now-prog-title">ニュース7</div>
+  <div class="now-prog-meta">
+    <span>19:00 – 19:30</span>
+    <span class="chip chip-buf">BUF 3.4s</span>
+  </div>
+  <div class="elapsed-track">
+    <div class="elapsed-fill" style="width:40%;"></div>
+  </div>
+  <div class="elapsed-nums"><span>経過 12分</span><span>残り 18分 / 30分</span></div>
+</div>
+
+<div class="now-strip" id="now-strip-fatal" style="display:none;">
+  <div class="now-strip-label" style="color:hsl(var(--destructive));">ERROR — STREAM TERMINATED</div>
+  <div class="now-prog-title" style="opacity:0.5;">ニュース7</div>
+  <div class="elapsed-track"><div class="elapsed-fill" style="width:40%;background:hsl(var(--destructive));opacity:0.5;"></div></div>
+</div>
+
+<!-- ══════════════════════
+     MAIN: video + sidebar
+══════════════════════ -->
+<main class="main-area">
+
+  <!-- ── VIDEO COLUMN ── -->
+  <div class="video-col">
+
+    <!-- PLAYING state -->
+    <div class="video-bg" id="vid-playing" style="flex:1;" tabindex="0" role="application" aria-label="ライブ映像プレイヤー">
+      <!-- Simulated broadcast scene -->
+      <svg width="72" height="72" viewBox="0 0 72 72" fill="none" aria-hidden="true">
+        <rect width="72" height="72" rx="4" fill="hsl(222 18% 18% / 0.6)"/>
+        <polygon points="28,18 28,54 56,36" fill="hsl(221 83% 60% / 0.4)"/>
+      </svg>
+      <!-- Overlay: keyboard shortcut hint -->
+      <div style="position:absolute;bottom:8px;left:8px;font-family:monospace;font-size:0.6rem;color:hsl(var(--foreground)/0.35);pointer-events:none;">
+        SPACE=play/pause  M=mute  F=fullscreen
+      </div>
+    </div>
+
+    <!-- LOADING state -->
+    <div class="video-bg" id="vid-loading" style="flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
+      <div class="spinner" aria-label="ストリーム準備中"></div>
+      <span class="chip chip-info" style="animation:pulse-dot 1.4s ease-in-out infinite;">INIT — transcoder warming</span>
+    </div>
+
+    <!-- STALL state -->
+    <div class="video-bg" id="vid-stall" style="flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;">
+      <div class="spinner" aria-label="バッファリング中"></div>
+      <span class="chip chip-buf">BUF 3.4s — rebuffering</span>
+    </div>
+
+    <!-- FATAL state -->
+    <div class="video-bg" id="vid-fatal" style="flex:1;display:none;align-items:center;justify-content:center;padding:24px;">
+      <div class="error-card" role="alert">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span class="chip chip-fatal">FATAL</span>
+          <span style="font-weight:700;font-size:0.875rem;">transcoder exited with code 1</span>
+        </div>
+        <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin-bottom:12px;">
+          FFmpeg プロセスが異常終了しました。ログを確認してください。
+        </div>
+        <!-- Log tail — inline, always on fatal -->
+        <div style="background:hsl(var(--background));border:1px solid hsl(var(--border));border-radius:4px;padding:8px;margin-bottom:12px;overflow-y:auto;max-height:120px;">
+          <div class="log-line"><span class="log-ts">19:12:03.441</span><span class="log-inf">[qsv]</span><span>opened device /dev/dri/renderD128</span></div>
+          <div class="log-line"><span class="log-ts">19:12:03.892</span><span class="log-inf">[hls]</span><span>segment 0 written → /data/hls/s3f2a1/0.ts</span></div>
+          <div class="log-line"><span class="log-ts">19:12:04.110</span><span class="log-inf">[mirakc]</span><span>stream 3278-101 opened</span></div>
+          <div class="log-line"><span class="log-ts">19:12:11.228</span><span class="log-err">[hevc_qsv]</span><span>Error initializing output stream — no device</span></div>
+          <div class="log-line"><span class="log-ts">19:12:11.230</span><span class="log-err">[ffmpeg]</span><span>Conversion failed — exit code 1</span></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" tabindex="0">再試行</button>
+          <button class="btn btn-ghost" tabindex="0">チャンネルリストへ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CONTROLS BAR (always visible) ── -->
+    <div class="controls-bar">
+      <!-- Volume -->
+      <button class="ctrl-btn demo-focus" aria-label="ミュート切替" tabindex="0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </button>
+
+      <!-- Separator -->
+      <div style="width:1px;height:20px;background:hsl(var(--border));margin:0 2px;" aria-hidden="true"></div>
+
+      <!-- Disabled seek (live) -->
+      <div style="flex:1;display:flex;align-items:center;gap:8px;opacity:0.35;" aria-hidden="true">
+        <div style="flex:1;height:4px;background:hsl(var(--muted));border-radius:2px;overflow:hidden;">
+          <div style="width:40%;height:100%;background:hsl(var(--primary));border-radius:2px;"></div>
+        </div>
+      </div>
+
+      <!-- Quality stub -->
+      <button class="btn btn-ghost mono" style="font-size:0.6875rem;padding:4px 10px;" tabindex="0" aria-label="画質選択 (1080p60)">
+        1080p60
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      <!-- Fullscreen -->
+      <button class="ctrl-btn" aria-label="フルスクリーン" tabindex="0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </button>
+    </div>
+  </div><!-- /video-col -->
+
+  <!-- ════════════════════════════════
+       RIGHT SIDEBAR — diagnostic dense
+  ═════════════════════════════════ -->
+  <aside class="stats-sidebar" aria-label="診断情報パネル">
+
+    <!-- STREAM STATUS SECTION -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">STREAM</div>
+      <div class="stat-row">
+        <span class="stat-key">status</span>
+        <span id="sb-status-playing"><span class="chip chip-ok">OK</span></span>
+        <span id="sb-status-loading" style="display:none;"><span class="chip chip-info">INIT</span></span>
+        <span id="sb-status-stall" style="display:none;"><span class="chip chip-buf">BUF 3.4s</span></span>
+        <span id="sb-status-fatal" style="display:none;"><span class="chip chip-fatal">FATAL</span></span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">codec</span>
+        <span class="stat-val">HEVC / 1080p60</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">hw_accel</span>
+        <span class="stat-val">FFmpeg → qsv</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">bitrate</span>
+        <span class="stat-val">8.4 Mbps</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">latency</span>
+        <span class="stat-val">3.2s</span>
+      </div>
+    </div>
+
+    <!-- HLS / BUFFER SECTION -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">HLS</div>
+      <div class="stat-row">
+        <span class="stat-key">segment</span>
+        <span class="stat-val">#42</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">buffer</span>
+        <span class="stat-val" id="sb-buf-playing">18.4s</span>
+        <span class="stat-val" id="sb-buf-stall" style="display:none;color:hsl(var(--warning));">3.4s ▼</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">dropped_f</span>
+        <span class="stat-val">0</span>
+      </div>
+    </div>
+
+    <!-- VIEWERS SECTION -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">SESSION</div>
+      <div class="stat-row">
+        <span class="stat-key">viewers</span>
+        <span class="stat-val">2</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">session_id</span>
+        <span class="stat-val" style="font-size:0.55rem;opacity:0.7;">s3f2a1c9…</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">started</span>
+        <span class="stat-val">19:12:03</span>
+      </div>
+    </div>
+
+    <!-- NEXT PROGRAM SECTION -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">NEXT</div>
+      <div class="next-prog-row">
+        <span class="next-prog-time">19:30</span>
+        <div>
+          <div style="font-size:0.75rem;font-weight:600;line-height:1.3;">クローズアップ現代+</div>
+          <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));">30分</div>
+        </div>
+      </div>
+      <div class="next-prog-row">
+        <span class="next-prog-time">20:00</span>
+        <div>
+          <div style="font-size:0.75rem;font-weight:600;line-height:1.3;">NHKスペシャル</div>
+          <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));">60分</div>
+        </div>
+      </div>
+      <div class="next-prog-row" style="border-bottom:none;">
+        <span class="next-prog-time">21:00</span>
+        <div>
+          <div style="font-size:0.75rem;font-weight:600;line-height:1.3;">ドキュメント72時間</div>
+          <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));">60分</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOG TAIL (fault-only reveal — always shown in sidebar for quick diagnosis) -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:8px 12px 4px;border-bottom:1px solid hsl(var(--border));">
+        <div class="sidebar-label" style="margin-bottom:0;">LOG</div>
+      </div>
+      <div class="log-area">
+        <div id="log-normal">
+          <div class="log-line"><span class="log-ts">19:12:03</span><span class="log-inf">[qsv]</span><span>opened /dev/dri/renderD128</span></div>
+          <div class="log-line"><span class="log-ts">19:12:03</span><span class="log-inf">[hls]</span><span>segment 0 written</span></div>
+          <div class="log-line"><span class="log-ts">19:12:04</span><span class="log-inf">[mirakc]</span><span>stream 3278-101 opened</span></div>
+          <div class="log-line"><span class="log-ts">19:12:05</span><span class="log-ok">[hls]</span><span>playlist ready</span></div>
+          <div class="log-line"><span class="log-ts">19:12:07</span><span class="log-ok">[player]</span><span>hls.js attached</span></div>
+          <div class="log-line"><span class="log-ts">19:12:08</span><span class="log-ok">[player]</span><span>MANIFEST_PARSED</span></div>
+        </div>
+        <div id="log-stall" style="display:none;">
+          <div class="log-line"><span class="log-ts">19:12:03</span><span class="log-inf">[qsv]</span><span>opened /dev/dri/renderD128</span></div>
+          <div class="log-line"><span class="log-ts">19:12:05</span><span class="log-ok">[player]</span><span>hls.js attached</span></div>
+          <div class="log-line"><span class="log-ts">19:18:41</span><span style="color:hsl(var(--warning));">[player]</span><span>BUFFER_STALLED_ERROR</span></div>
+          <div class="log-line"><span class="log-ts">19:18:41</span><span style="color:hsl(var(--warning));">[player]</span><span>buffer 3.4s — recovering</span></div>
+        </div>
+        <div id="log-fatal" style="display:none;">
+          <div class="log-line"><span class="log-ts">19:12:03</span><span class="log-inf">[qsv]</span><span>opened /dev/dri/renderD128</span></div>
+          <div class="log-line"><span class="log-ts">19:12:04</span><span class="log-inf">[mirakc]</span><span>stream 3278-101 opened</span></div>
+          <div class="log-line"><span class="log-ts">19:12:11</span><span class="log-err">[hevc_qsv]</span><span>Error initializing output stream</span></div>
+          <div class="log-line"><span class="log-ts">19:12:11</span><span class="log-err">[ffmpeg]</span><span>exit code 1</span></div>
+        </div>
+        <div id="log-loading" style="display:none;">
+          <div class="log-line"><span class="log-ts">19:12:03</span><span class="log-inf">[qsv]</span><span>opening /dev/dri/renderD128…</span></div>
+          <div class="log-line"><span class="log-ts">19:12:03</span><span class="log-inf">[mirakc]</span><span>connecting to stream 3278-101…</span></div>
+        </div>
+      </div>
+    </div>
+
+  </aside><!-- /stats-sidebar -->
+</main><!-- /main-area -->
+
+<script>
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      String(now.getHours()).padStart(2,'0') + ':' +
+      String(now.getMinutes()).padStart(2,'0') + ':' +
+      String(now.getSeconds()).padStart(2,'0');
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // State machine
+  function showState(state) {
+    const states = ['playing','loading','stall','fatal'];
+    states.forEach(s => {
+      // tabs
+      const tab = document.getElementById('tab-' + s);
+      if (tab) tab.classList.toggle('active', s === state);
+      // video panels
+      ['vid-','now-strip-','hdr-chips-'].forEach(prefix => {
+        const el = document.getElementById(prefix + s);
+        if (el) el.style.display = (s === state) ? (el.style.flexDirection !== '' ? 'flex' : 'block') : 'none';
+      });
+    });
+    // video panels need flex
+    ['vid-playing','vid-loading','vid-stall','vid-fatal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = (id === 'vid-' + state) ? 'flex' : 'none';
+    });
+    // sidebar status chips
+    ['sb-status-playing','sb-status-loading','sb-status-stall','sb-status-fatal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = (id === 'sb-status-' + state) ? 'inline' : 'none';
+    });
+    // buffer value
+    const bufP = document.getElementById('sb-buf-playing');
+    const bufS = document.getElementById('sb-buf-stall');
+    if (bufP) bufP.style.display = (state === 'stall') ? 'none' : '';
+    if (bufS) bufS.style.display = (state === 'stall') ? '' : 'none';
+    // log areas
+    ['log-normal','log-stall','log-fatal','log-loading'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const map = { 'log-normal':'playing', 'log-stall':'stall', 'log-fatal':'fatal', 'log-loading':'loading' };
+      el.style.display = (map[id] === state) ? '' : 'none';
+    });
+    // header chips
+    ['hdr-chips-playing','hdr-chips-loading','hdr-chips-stall','hdr-chips-fatal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = (id === 'hdr-chips-' + state) ? 'flex' : 'none';
+    });
+    // now strips
+    ['now-strip-playing','now-strip-loading','now-strip-stall','now-strip-fatal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = (id === 'now-strip-' + state) ? 'block' : 'none';
+    });
+  }
+  showState('playing');
+</script>
+</body>
+</html>
