@@ -169,4 +169,13 @@ All chips: `border-radius: 3px` (square), `font-size: 0.625rem`, `font-weight: 7
 
 ## Chosen variant
 
-_(Pending user selection — v12 list + v12 bottom-sheet form is the designer recommendation; v10 command-palette form is the desktop-preferred alternative)_
+**v10 — sectioned single-column feed + command-palette modal form** (confirmed by user 2026-04-17).
+
+Designer recommended v12 (tabs + dual-density + bottom-sheet). User picked v10. Implementation implications:
+
+- **Single vertical scroll on desktop** — sections in order: REC NOW / SCHED / FAIL / DONE. All four statuses visible at once without tab switching; the DONE thumbnail grid lives at the bottom.
+- **Mobile adaptation not yet specified** — v10 is desktop-first. Likely fall-back: collapse the top three sections into pinned sticky headers with their rows scrolling, and let the DONE grid become a 2-column tile grid below. Lock this before the recordings PR starts.
+- **Command-palette modal form** (EPG search grouped by date, one-click reserve + a manual entry section with inline `OK` / `ERR` chips). This is the fastest reservation flow — matches "パッと入力". Bind to a global shortcut (⌘K or 新規予約 button) on the screen.
+- **Section ordering rationale** — REC NOW and FAIL first because they need attention; SCHED next (user's queue); DONE at bottom (archive / browse). This is intentionally the inverse of a chronological feed.
+- **Thumbnail handling** — only `DONE` cards show thumbnails. SCHED/REC/FAIL remain text-dense (no fake thumbnails). Backend signals: `thumbnailUrl: null | string` on `Recording`, with an async frame-extraction job emitting a `thumbnail-ready` event — prefer SSE over polling.
+- **Disk usage row** at the bottom of the DONE section — placeholder until Phase 6 exposes `GET /api/storage/stats`.
