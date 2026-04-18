@@ -1,0 +1,31 @@
+# ─── NVIDIA NVENC overlay ─────────────────────────────────────────────────────
+# Usage:
+#   docker compose -f docker-compose.yml -f compose.nvenc.yaml up
+#
+# Host requirements:
+#   - nvidia-container-toolkit installed and configured
+#   - NVIDIA driver >= 520
+#   - /etc/docker/daemon.json must include "default-runtime": "nvidia"
+#     OR the runtime key below takes effect (Docker 25+)
+#
+# Build the NVENC image variant before composing:
+#   docker buildx build --build-arg HW_ACCEL=nvenc -t app:nvenc .
+#   (or set COMPOSE_DOCKER_CLI_BUILD=1 and override build.args below)
+services:
+  app:
+    build:
+      context: .
+      args:
+        HW_ACCEL: nvenc
+    runtime: nvidia
+    environment:
+      HW_ACCEL_TYPE: nvenc
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: video,compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, video]

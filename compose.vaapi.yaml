@@ -1,0 +1,20 @@
+# ─── VA-API (Mesa / AMD / open-source Intel) overlay ─────────────────────────
+# Usage:
+#   docker compose -f docker-compose.yml -f compose.vaapi.yaml up
+#
+# Host requirements:
+#   - /dev/dri present (renderD128 etc.)
+#   - Mesa VA-API drivers installed on the host (mesa-va-drivers / libva)
+#
+# Build the VAAPI image variant before composing:
+#   docker buildx build --build-arg HW_ACCEL=vaapi -t app:vaapi .
+services:
+  app:
+    build:
+      context: .
+      args:
+        HW_ACCEL: vaapi
+    environment:
+      HW_ACCEL_TYPE: vaapi
+    devices:
+      - /dev/dri:/dev/dri
