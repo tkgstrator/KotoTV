@@ -6,7 +6,11 @@
     "dev": "bun --hot run src/index.ts",
     "typecheck": "tsc -b --noEmit",
     "db:migrate": "prisma migrate dev",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "db:seed": "bun run prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "bun run prisma/seed.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.0",
