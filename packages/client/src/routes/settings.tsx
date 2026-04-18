@@ -4,6 +4,7 @@ import { StatusChip } from '@/components/shared/status-chip'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { type Subsystem, useHealth } from '@/hooks/useHealth'
+import { type CodecChoice, type QualityChoice, usePlaybackPrefs } from '@/hooks/usePlaybackPrefs'
 import { type ThemeChoice, useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
 
@@ -217,34 +218,153 @@ function DisplayTab() {
           <ThemeSegment />
         </div>
       </div>
+    </div>
+  )
+}
 
+// ─── Playback tab ────────────────────────────────────────────────────────────
+
+const QUALITY_OPTIONS: { value: QualityChoice; label: string }[] = [
+  { value: 'auto', label: 'AUTO' },
+  { value: 'high', label: 'HIGH' },
+  { value: 'medium', label: 'MED' },
+  { value: 'low', label: 'LOW' }
+]
+
+const CODEC_OPTIONS: { value: CodecChoice; label: string; sub: string }[] = [
+  { value: 'auto', label: 'AUTO', sub: 'ブラウザ優先' },
+  { value: 'avc', label: 'AVC', sub: 'H.264 / 互換' },
+  { value: 'hevc', label: 'HEVC', sub: 'H.265 / 省帯域' },
+  { value: 'vp9', label: 'VP9', sub: 'Chrome/Firefox' }
+]
+
+interface SegmentProps<T extends string> {
+  ariaLabel: string
+  value: T
+  options: readonly { value: T; label: string }[]
+  onChange: (v: T) => void
+}
+
+function Segment<T extends string>({ ariaLabel, value, options, onChange }: SegmentProps<T>) {
+  return (
+    <fieldset
+      aria-label={ariaLabel}
+      className='inline-flex shrink-0 overflow-hidden rounded-[3px] border border-border bg-muted [border:none] [padding:0]'
+    >
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type='button'
+          onClick={() => onChange(opt.value)}
+          aria-pressed={value === opt.value}
+          className={cn(
+            'border-r border-border px-3 py-[5px] font-sans text-[0.75rem] font-semibold last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+            value === opt.value
+              ? 'bg-card font-bold text-foreground'
+              : 'bg-transparent text-muted-foreground hover:bg-card/50'
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </fieldset>
+  )
+}
+
+function Row({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
+  return (
+    <div className='flex items-center justify-between gap-4 border-b border-border/60 px-3.5 py-3 last:border-b-0'>
+      <div className='min-w-0'>
+        <p className='text-[0.875rem] font-medium text-foreground'>{title}</p>
+        {sub && <p className='mt-0.5 text-[0.75rem] text-muted-foreground'>{sub}</p>}
+      </div>
+      <div className='shrink-0'>{children}</div>
+    </div>
+  )
+}
+
+function PlaybackTab() {
+  const { prefs, update } = usePlaybackPrefs()
+
+  return (
+    <div className='mx-auto max-w-[720px] px-5 pb-10 font-sans max-[480px]:px-2.5'>
       <SectHead>画質</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card opacity-60'>
-        <div className='flex items-center justify-between gap-4 px-3.5 py-3'>
-          <div>
-            <p className='text-[0.875rem] font-medium text-foreground'>画質プリセット</p>
-            <p className='mt-0.5 text-[0.75rem] text-muted-foreground'>
-              ライブ視聴時のデフォルト品質 (Phase 2 で実装予定)
-            </p>
-          </div>
-          <fieldset
-            aria-label='画質プリセット'
-            disabled
-            className='inline-flex shrink-0 cursor-not-allowed overflow-hidden rounded-[3px] border border-border bg-muted [border:1px_solid] [border-color:var(--border)] [padding:0]'
-          >
-            {['AUTO', 'HIGH', 'MED', 'LOW'].map((v) => (
-              <span
-                key={v}
-                className='border-r border-border px-3 py-[5px] font-sans text-[0.75rem] font-semibold text-muted-foreground last:border-r-0'
-              >
-                {v}
-              </span>
-            ))}
-          </fieldset>
-        </div>
+      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+        <Row title='デフォルト画質' sub='ライブ視聴開始時に適用。AUTO は帯域に応じて自動調整'>
+          <Segment<QualityChoice>
+            ariaLabel='画質プリセット'
+            value={prefs.quality}
+            options={QUALITY_OPTIONS}
+            onChange={(v) => update({ quality: v })}
+          />
+        </Row>
+        <Row title='優先コーデック' sub='再生時に要求するコーデック。未対応環境では AVC にフォールバック'>
+          <Segment<CodecChoice>
+            ariaLabel='コーデック'
+            value={prefs.codec}
+            options={CODEC_OPTIONS}
+            onChange={(v) => update({ codec: v })}
+          />
+        </Row>
       </div>
 
-      <p className='mt-3 font-sans text-[0.75rem] text-muted-foreground'>その他の設定は現フェーズ未実装です。</p>
+      <SectHead>再生動作</SectHead>
+      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+        <Row title='自動再生' sub='チャンネル/録画を開いた直後に再生を開始'>
+          <button
+            type='button'
+            role='switch'
+            aria-checked={prefs.autoplay}
+            onClick={() => update({ autoplay: !prefs.autoplay })}
+            className={cn(
+              'relative h-[22px] w-[38px] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              prefs.autoplay ? 'bg-primary' : 'bg-muted'
+            )}
+          >
+            <span
+              className={cn(
+                'absolute top-[2px] size-[18px] rounded-full bg-card shadow transition-transform',
+                prefs.autoplay ? 'translate-x-[18px]' : 'translate-x-[2px]'
+              )}
+            />
+          </button>
+        </Row>
+        <Row title='低遅延モード' sub='ライブ時にバッファを最小化 (帯域不安定だとカクつく可能性)'>
+          <button
+            type='button'
+            role='switch'
+            aria-checked={prefs.lowLatency}
+            onClick={() => update({ lowLatency: !prefs.lowLatency })}
+            className={cn(
+              'relative h-[22px] w-[38px] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              prefs.lowLatency ? 'bg-primary' : 'bg-muted'
+            )}
+          >
+            <span
+              className={cn(
+                'absolute top-[2px] size-[18px] rounded-full bg-card shadow transition-transform',
+                prefs.lowLatency ? 'translate-x-[18px]' : 'translate-x-[2px]'
+              )}
+            />
+          </button>
+        </Row>
+        <Row title='デフォルト音量' sub={`${Math.round(prefs.defaultVolume * 100)}%`}>
+          <input
+            type='range'
+            min={0}
+            max={100}
+            step={5}
+            value={Math.round(prefs.defaultVolume * 100)}
+            onChange={(e) => update({ defaultVolume: Number(e.target.value) / 100 })}
+            aria-label='デフォルト音量'
+            className='h-[22px] w-[140px] accent-primary'
+          />
+        </Row>
+      </div>
+
+      <p className='mt-3 font-sans text-[0.75rem] text-muted-foreground'>
+        ブラウザのローカルストレージに保存されます (端末ごと・アカウント同期なし)
+      </p>
     </div>
   )
 }
@@ -378,6 +498,12 @@ function SettingsPage() {
               ステータス
             </TabsTrigger>
             <TabsTrigger
+              value='playback'
+              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            >
+              再生
+            </TabsTrigger>
+            <TabsTrigger
               value='display'
               className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
             >
@@ -394,6 +520,9 @@ function SettingsPage() {
 
         <TabsContent value='status' className='mt-0 flex-1'>
           <StatusTab />
+        </TabsContent>
+        <TabsContent value='playback' className='mt-0 flex-1'>
+          <PlaybackTab />
         </TabsContent>
         <TabsContent value='display' className='mt-0 flex-1'>
           <DisplayTab />
