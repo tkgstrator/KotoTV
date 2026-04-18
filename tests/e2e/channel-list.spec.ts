@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test'
 test('channel list renders at least one row', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
-  // Heuristic anchor: a channel row is any element carrying a channel service id.
-  const rows = page.locator('[data-channel-id], [data-testid="channel-row"]')
+  // Channel rows are <a aria-label="... を視聴"> (see ChannelRow.tsx).
+  const rows = page.locator('a[aria-label$="を視聴"]')
   await expect(rows.first()).toBeVisible()
 })
 
