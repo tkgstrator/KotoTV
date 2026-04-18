@@ -32,8 +32,8 @@
 
 ### devops
 - [ ] `config/mirakc/config.yml` に DVB チューナ passthrough と最小チャンネル定義 (NHK-G, NHK-E, 地元民放 1 つ) を記載 — `config/mirakc/config.yml`
-- [ ] `docker-compose.yml` の mirakc サービスを完成させ、`/dev/dvb` passthrough と `epg-data` volume を定義 — `docker-compose.yml`
-- [ ] app サービスに `MIRAKC_URL=http://mirakc:40772` を注入 — `docker-compose.yml`
+- [ ] `compose.yaml` の mirakc サービスを完成させ、`/dev/dvb` passthrough と `epg-data` volume を定義 — `compose.yaml`
+- [ ] app サービスに `MIRAKC_URL=http://mirakc:40772` を注入 — `compose.yaml`
 
 ### backend
 - [x] Mirakc REST API (`GET /api/services`) を `fetch` でラップするクライアントを実装 — `packages/server/src/services/mirakc-client.ts`

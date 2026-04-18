@@ -20,7 +20,7 @@
 - [x] ルート `package.json` を `private: true` + `workspaces: ["packages/*"]` で作成 — `package.json`
 - [x] `tsconfig.base.json` を作成し、`strict: true`、`moduleResolution: "bundler"` 等を設定 — `tsconfig.base.json`
 - [x] `.env.example` を作成し `DATABASE_URL`、`MIRAKC_URL`、`HW_ACCEL_TYPE`、`PORT` を記載 — `.env.example`
-- [x] `docker-compose.yml` skeleton を作成 (app + postgres + mirakc、まだビルドしない) — `docker-compose.yml`
+- [x] `compose.yaml` skeleton を作成 (app + postgres + mirakc、まだビルドしない) — `compose.yaml`
 - [x] `Dockerfile` skeleton を multi-stage (deps / client-build / runtime) で作成、FFmpeg は Phase 2 で入れる — `Dockerfile`
 - [x] `.gitignore` に `packages/*/dist/`、`packages/*/node_modules/`、`data/`、`.env` を追加
 - [x] `.github/workflows/ci.yml` を新設し PR で `bun install` + 全 workspace の `typecheck` + `bunx biome check .` を実行 — `.github/workflows/ci.yml`

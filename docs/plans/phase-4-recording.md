@@ -48,7 +48,7 @@ Recording.thumbnailUrl: string | null   # ← 独立フィールド。status の
 - [ ] 削除確認 UI (destructive action 規約)
 
 ### devops
-- [ ] `docker-compose.yml` の app サービスに `volumes: [recordings:/app/data/recordings]` と named volume を追加 — `docker-compose.yml`
+- [ ] `compose.yaml` の app サービスに `volumes: [recordings:/app/data/recordings]` と named volume を追加 — `compose.yaml`
 - [ ] `.env.example` に `RECORDINGS_DIR=/app/data/recordings` を追記 — `.env.example`
 
 ### backend

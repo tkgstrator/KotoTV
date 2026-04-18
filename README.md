@@ -80,7 +80,7 @@ Biome のルールは [`biome.json`](biome.json)。コミット規約は [`.comm
 │   └── plans/                  # roadmap.md + フェーズごとの計画
 ├── config/
 │   └── mirakc/config.yml
-├── docker-compose.yml          # mirakc + postgres + app (prod)
+├── compose.yaml          # mirakc + postgres + app (prod)
 ├── Dockerfile                  # multi-stage (bun + ffmpeg)
 ├── biome.json
 ├── .commitlintrc.yaml
