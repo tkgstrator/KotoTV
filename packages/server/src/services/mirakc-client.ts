@@ -121,6 +121,37 @@ export const mirakcClient = {
     }
   },
 
+  async listProgramsInRange(params: { channelId: string; startAt: Date; endAt: Date }): Promise<MirakcProgram[]> {
+    const serviceId = Number(params.channelId)
+    const startMs = params.startAt.getTime()
+    const endMs = params.endAt.getTime()
+
+    let all: MirakcProgram[]
+    try {
+      const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/programs?serviceId=${serviceId}`, 30_000)
+      if (!res.ok) throw new MirakcError(res.status, `programs ${res.status}`)
+      const data = await res.json()
+      if (!Array.isArray(data)) throw new MirakcError(200, 'unexpected shape')
+      all = data as MirakcProgram[]
+    } catch (err) {
+      logger.warn(
+        { module: 'mirakc-client', fallback: true, channelId: params.channelId, err },
+        'mirakc programs unreachable, using mock'
+      )
+      all = buildMockPrograms(serviceId)
+    }
+
+    // Keep programs whose time range overlaps [startMs, endMs)
+    const filtered = all.filter((p) => {
+      const programEnd = p.startAt + p.duration
+      return p.startAt < endMs && programEnd > startMs
+    })
+
+    // Return sorted by startAt ascending
+    filtered.sort((a, b) => a.startAt - b.startAt)
+    return filtered
+  },
+
   getLogoUrl(serviceId: number): string {
     return `${env.MIRAKC_URL}/api/services/${serviceId}/logo`
   }

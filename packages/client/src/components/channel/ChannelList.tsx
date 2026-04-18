@@ -1,4 +1,4 @@
-import type { Channel, ChannelType } from '@telemax/server/src/schemas/Channel.dto'
+import type { Channel, ChannelType } from '@kototv/server/src/schemas/Channel.dto'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import { ChannelRow } from './ChannelRow'

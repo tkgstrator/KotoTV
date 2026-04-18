@@ -4,7 +4,7 @@
 |------|-----|
 | **目標** | `/epg` ページに仮想スクロール対応の番組表グリッドが表示され、番組セルからライブ視聴に遷移できる |
 | **工数** | 2-3 日 |
-| **ステータス** | 未着手 |
+| **ステータス** | 実行中 (2026-04-18) |
 | **前提フェーズ** | Phase 1 |
 
 ## 全体フロー
@@ -16,16 +16,16 @@
 
 ## 採択デザイン
 
-- 候補: `docs/mocks/epg/v1.html` 他
-- 採択: _(未定)_
+- 採択: **v4** (`docs/mocks/epg/v4.html`) — pinned NOW-strip + scrollable future grid
+- 詳細: `docs/mocks/epg/README.md` §Chosen variant
+- モバイル `<md` は v3 アジェンダ風フォールバック
 
 ## チェックリスト
 
-### designer
-- [ ] `docs/mocks/epg/` に 2-3 バリアント (縦時刻軸 / 横時刻軸 / ハイブリッド、密度違い)
-- [ ] ジャンル色分けのルール表を `README.md` に
-- [ ] 現在時刻インジケータの視覚表現案
-- [ ] モバイル (単一チャンネル縦スクロール) とデスクトップ (グリッド) で別レイアウトを提示
+### designer ✅ 完了 2026-04-17
+- [x] `docs/mocks/epg/` に v1-v8 バリアント生成
+- [x] v4 採択 (pinned NOW-strip + future grid)
+- [x] モバイル / デスクトップのレイアウト両方提示
 
 ### backend
 - [ ] `ProgramSchema` / `ProgramListResponseSchema` を定義 — `packages/server/src/schemas/Program.dto.ts`
