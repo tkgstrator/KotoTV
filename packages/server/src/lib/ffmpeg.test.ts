@@ -66,22 +66,6 @@ describe('hwAccel: nvenc', () => {
   })
 })
 
-describe('hwAccel: qsv', () => {
-  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'qsv' })
-
-  test('uses h264_qsv codec', () => {
-    expect(flagValue(args, '-c:v')).toBe('h264_qsv')
-  })
-
-  test('includes -hwaccel qsv', () => {
-    expect(flagValue(args, '-hwaccel')).toBe('qsv')
-  })
-
-  test('includes -preset veryfast', () => {
-    expect(flagValue(args, '-preset')).toBe('veryfast')
-  })
-})
-
 describe('hwAccel: vaapi', () => {
   const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'vaapi' })
 
@@ -97,7 +81,7 @@ describe('hwAccel: vaapi', () => {
     expect(flagValue(args, '-vf')).toBe('format=nv12,hwupload')
   })
 
-  test('does not include -hwaccel cuda or qsv keyword', () => {
+  test('does not include -hwaccel cuda keyword', () => {
     // vaapi uses -vaapi_device instead of -hwaccel
     expect(contains(args, 'cuda')).toBe(false)
   })
@@ -108,7 +92,7 @@ describe('hwAccel: vaapi', () => {
 // ---------------------------------------------------------------------------
 
 describe('HLS flags invariant', () => {
-  for (const hwAccel of ['none', 'nvenc', 'qsv', 'vaapi'] as const) {
+  for (const hwAccel of ['none', 'nvenc', 'vaapi'] as const) {
     test(`delete_segments+append_list+independent_segments is present for hwAccel=${hwAccel}`, () => {
       const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel })
       expect(flagValue(args, '-hls_flags')).toBe('delete_segments+append_list+independent_segments')

@@ -1,7 +1,7 @@
 // FFmpeg command builder — pure function, no side effects.
 // All encoder tuning lives here; never inline flags in transcoder.ts.
 
-export type HwAccel = 'none' | 'nvenc' | 'qsv' | 'vaapi'
+export type HwAccel = 'none' | 'nvenc' | 'vaapi'
 
 export type FfmpegArgsOptions = {
   /** Hardware acceleration backend. Dispatched by HW_ACCEL_TYPE env at call site. */
@@ -73,10 +73,10 @@ function buildHwPreInput(hwAccel: HwAccel): string[] {
   switch (hwAccel) {
     case 'nvenc':
       return ['-hwaccel', 'cuda']
-    case 'qsv':
-      return ['-hwaccel', 'qsv']
     case 'vaapi':
-      // vaapi_device must be set before the input
+      // vaapi_device must be set before the input. Intel iGPU users also
+      // use this path (Intel QSV is deliberately not supported — VAAPI
+      // hits the same hardware with a simpler toolchain).
       return ['-vaapi_device', '/dev/dri/renderD128']
     default:
       return []
@@ -87,8 +87,6 @@ function buildVideoFlags(hwAccel: HwAccel, videoBitrate: number): string[] {
   switch (hwAccel) {
     case 'nvenc':
       return ['-c:v', 'h264_nvenc', '-preset', 'p4', '-b:v', `${videoBitrate}k`]
-    case 'qsv':
-      return ['-c:v', 'h264_qsv', '-preset', 'veryfast', '-b:v', `${videoBitrate}k`]
     case 'vaapi':
       return ['-vf', 'format=nv12,hwupload', '-c:v', 'h264_vaapi', '-b:v', `${videoBitrate}k`]
     default:
@@ -195,8 +193,6 @@ function buildConvertVideoFlags(codec: OutputCodec, hwAccel: HwAccel, videoBitra
     switch (hwAccel) {
       case 'nvenc':
         return ['-c:v', 'hevc_nvenc', '-preset', 'p5', ...bv]
-      case 'qsv':
-        return ['-c:v', 'hevc_qsv', '-preset', 'medium', ...bv]
       case 'vaapi':
         return ['-vf', 'format=nv12,hwupload', '-c:v', 'hevc_vaapi', ...bv]
       default:
@@ -208,8 +204,6 @@ function buildConvertVideoFlags(codec: OutputCodec, hwAccel: HwAccel, videoBitra
   switch (hwAccel) {
     case 'nvenc':
       return ['-c:v', 'h264_nvenc', '-preset', 'p5', ...bv]
-    case 'qsv':
-      return ['-c:v', 'h264_qsv', '-preset', 'medium', ...bv]
     case 'vaapi':
       return ['-vf', 'format=nv12,hwupload', '-c:v', 'h264_vaapi', ...bv]
     default:

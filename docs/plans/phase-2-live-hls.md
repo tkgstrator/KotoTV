@@ -50,7 +50,7 @@ Mirakc 稼働待ち。影響しないパートを先行で実装し、Mirakc 稼
 - [x] Dockerfile の runtime stage に `apk add --no-cache ffmpeg` を追加 — `Dockerfile`
 - [x] HW accel 用のバリアント (NVIDIA: `nvidia/cuda:*-base` ベース、Intel: `intel-media-driver`、VAAPI: `libva-drm` + `mesa-va-gallium`) を build arg で切替可能に — `Dockerfile`
 - [x] `compose.yaml` の app サービスに `tmpfs: /app/data/hls:size=512M` を追加 — `compose.yaml`
-- [x] HW accel 別の compose overlay を用意 (`compose.nvenc.yaml`、`compose.vaapi.yaml`、`compose.qsv.yaml`) — root dir
+- [x] HW accel 別の compose overlay を用意 (`compose.nvenc.yaml`、`compose.vaapi.yaml`) — root dir。QSV は 2026-04-18 にサポート外として削除 (VAAPI が同じ Intel iGPU を叩ける)
 - [x] `.env.example` に `HW_ACCEL_TYPE`、`HLS_DIR`、`HLS_IDLE_KILL_MS` を追記 — `.env.example`
 
 ### backend ✅ ルート層 + stub 実装完了 (Mirakc 接続は streaming の差し込み待ち)
@@ -63,7 +63,7 @@ Mirakc 稼働待ち。影響しないパートを先行で実装し、Mirakc 稼
 
 ### streaming — buildFfmpegArgs 完了、transcoder / stream-manager は Mirakc 接続後
 - [x] `buildFfmpegArgs({ hwAccel, outputDir, segmentSeconds, listSize, videoBitrate, audioBitrate })` 純関数を実装 — `packages/server/src/lib/ffmpeg.ts`
-- [x] `nvenc` / `qsv` / `vaapi` / `libx264` の分岐を入れ、VAAPI は `-vaapi_device` と `-vf format=nv12,hwupload` を含める — `packages/server/src/lib/ffmpeg.ts`
+- [x] `nvenc` / `vaapi` / `libx264` の分岐を入れ、VAAPI は `-vaapi_device` と `-vf format=nv12,hwupload` を含める — `packages/server/src/lib/ffmpeg.ts` (QSV は 2026-04-18 削除)
 - [x] 全セグメントが tmpfs 上であることを確認、`-hls_flags delete_segments+append_list+independent_segments` を必ず付ける (単体テストで invariant 固定) — `packages/server/src/lib/ffmpeg.ts` / `packages/server/src/lib/ffmpeg.test.ts` (32 tests pass)
 - [ ] `startTranscoder(sessionId, outputDir, source, opts)` を実装: `mkdir` → `Bun.spawn` → stdin pump + stderr→pino (debug) + `waitForPlaylist` — `packages/server/src/services/transcoder.ts` **(Mirakc 稼働待ち)**
 - [ ] `waitForPlaylist(path, timeoutMs)` で `playlist.m3u8` の生成をポーリング検知 — `packages/server/src/services/transcoder.ts` **(Mirakc 稼働待ち)**

@@ -1,12 +1,14 @@
 # ─── Build argument: hardware acceleration backend ────────────────────────────
-# Values: none | nvenc | qsv | vaapi
+# Values: none | nvenc | vaapi
 # Default: none (software encode, Alpine + ffmpeg package)
 #
 # Build examples:
 #   docker buildx build .                             # none (default)
 #   docker buildx build --build-arg HW_ACCEL=nvenc . # NVIDIA NVENC
-#   docker buildx build --build-arg HW_ACCEL=qsv  . # Intel QSV
-#   docker buildx build --build-arg HW_ACCEL=vaapi . # VA-API / Mesa
+#   docker buildx build --build-arg HW_ACCEL=vaapi . # VA-API (Intel iGPU / AMD)
+#
+# Intel QSV is intentionally omitted — VAAPI targets the same hardware
+# with a simpler stack (no oneVPL / libmfx build).
 ARG HW_ACCEL=none
 
 # ─── Stage 1: Install all workspace dependencies ──────────────────────────────
@@ -56,30 +58,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# ─── Stage 3c: runtime-qsv — Debian slim + Intel QSV / VA-API libs ───────────
-# QSV on Linux is layered on top of VA-API via libmfx / oneVPL.
-# /dev/dri must be passed through from the host (see compose.qsv.yaml).
-FROM debian:bookworm-slim AS runtime-qsv
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl \
-        unzip \
-        ffmpeg \
-        intel-media-va-driver-non-free \
-        libva-drm2 \
-        libva2 \
-    && curl -fsSL https://bun.sh/install | bash \
-    && mv /root/.bun/bin/bun /usr/local/bin/bun \
-    && rm -rf /var/lib/apt/lists/*
-
-# ─── Stage 3d: runtime-vaapi — Debian slim + Mesa VA-API (AMD / generic) ─────
-# For AMD GPUs and open-source Intel driver. /dev/dri passthrough required.
+# ─── Stage 3c: runtime-vaapi — Debian slim + VA-API (Intel iGPU / AMD) ───────
+# /dev/dri passthrough required. Covers AMD GPUs and Intel iGPU via the
+# Mesa driver + the Intel non-free media driver (needed for HEVC).
 FROM debian:bookworm-slim AS runtime-vaapi
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         unzip \
         ffmpeg \
+        intel-media-va-driver-non-free \
         libva-drm2 \
         libva2 \
         mesa-va-drivers \

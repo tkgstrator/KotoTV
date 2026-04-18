@@ -14,7 +14,7 @@ KonomiTV の Python 実装や黒魔術的手法を避け、TypeScript 統一ス�
 | データ | **TanStack Query** | キャッシュ・再フェッチ管理 |
 | UI | **Shadcn/ui + Tailwind v4** | Radix ベース、トークン設計 |
 | プレイヤー | **hls.js** | ブラウザ互換性が高い |
-| トランスコード | **FFmpeg** | `nvenc` / `qsv` / `vaapi` / `libx264`、出力は **avc / hevc / vp9** の3コーデック対応 |
+| トランスコード | **FFmpeg** | `nvenc` / `vaapi` / `libx264`、出力は **avc / hevc / vp9** の3コーデック対応 |
 | Monorepo | **Bun workspace** | Bun 統一 |
 | 認証 | 初期は無し | 後で追加 |
 
@@ -46,7 +46,7 @@ Mirakc /api/services/{id}/stream → fetch (ReadableStream)
   → ブラウザ hls.js で再生
 ```
 
-- HW アクセラレーション: `HW_ACCEL_TYPE` env で `nvenc` / `qsv` / `vaapi` / `none` を切替
+- HW アクセラレーション: `HW_ACCEL_TYPE` env で `nvenc` / `vaapi` / `none` を切替 (Intel QSV は対象外、VAAPI で Intel iGPU をカバー)
 - 出力コーデック: **avc (H.264) / hevc (H.265) / vp9** の 3 種に対応。iOS Safari (hevc)、モダンブラウザ (vp9)、互換フォールバック (avc) をカバー
 - セッション共有: 同一 `(channelId, quality, codec)` の視聴者間で FFmpeg プロセスを共有、viewerCount 0 で idle 停止
 - HLS セグメントは **tmpfs** (512M) に配置して disk 摩耗を防ぐ

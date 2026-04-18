@@ -60,8 +60,8 @@ services:
     #           count: 1
     #           capabilities: [gpu, video]
 
-    # ── Intel QSV / VA-API ────────────────────────────────────────────────────
-    # Uncomment and set HW_ACCEL_TYPE=qsv or vaapi to enable Intel/AMD GPU.
+    # ── VA-API (Intel iGPU / AMD) ─────────────────────────────────────────────
+    # Uncomment and set HW_ACCEL_TYPE=vaapi to enable Intel/AMD GPU encode.
     # Requires the /dev/dri device to be present on the host.
     #
     # devices:

@@ -18,7 +18,7 @@ KonomiTV クローン。Bun + Hono (Prisma + Postgres) / Vite + React + TanStack
 | DB | **Postgres 17 + Prisma** | `bunx prisma migrate dev`。生 DDL 禁止 |
 | Dev DB 閲覧 | **pgadmin** | devcontainer 同梱 (<http://localhost:8080>) |
 | Mirakc | REST | `/api/services`, `/api/programs`, `/api/services/{id}/stream?decode=1` |
-| Transcode | **FFmpeg** | HW: `nvenc` / `qsv` / `vaapi` / `none`。`HW_ACCEL_TYPE` env |
+| Transcode | **FFmpeg** | HW: `nvenc` / `vaapi` / `none`。`HW_ACCEL_TYPE` env (Intel QSV は対象外、VAAPI で Intel iGPU 対応) |
 | HLS | tmpfs | `/app/data/hls/<sessionId>/`、`-hls_flags delete_segments` |
 | Client build | **Vite** | `@tanstack/router-plugin`、`@tailwindcss/vite` |
 | Client UI | **React 19 + Tailwind v4 + Shadcn/ui** | 純黒/純白禁止、Shadcn トークンを使う |
