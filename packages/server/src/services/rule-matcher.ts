@@ -1,6 +1,7 @@
 import { logger } from '../lib/logger'
 import { prisma } from '../lib/prisma'
 import { getJstDayOfWeek, getJstMinutes } from '../lib/timezone'
+import { normalizeTitleForDedup } from '../lib/title-normalize'
 import { emitRecordingEvent } from '../routes/recordings'
 
 type ProgramRow = {
@@ -188,15 +189,21 @@ export async function runRuleMatcher(options?: {
     const matched = candidates.filter((p) => matches(p, rule))
 
     for (const program of matched) {
-      // avoidDuplicates: skip if same rule already has a non-failed schedule for same title
+      // avoidDuplicates: fetch candidates for this rule within a ±60-day window,
+      // then compare normalized titles to catch rerun variants (e.g. "[リピート]" suffix).
       if (rule.avoidDuplicates) {
-        const duplicate = await prisma.recordingSchedule.findFirst({
+        const windowStart = new Date(Date.now() - 60 * 86_400_000)
+        const windowEnd = new Date(Date.now() + 60 * 86_400_000)
+        const dedupCandidates = await prisma.recordingSchedule.findMany({
           where: {
             ruleId: rule.id,
-            title: program.title,
-            status: { in: ['pending', 'recording', 'completed'] }
-          }
+            status: { in: ['pending', 'recording', 'completed'] },
+            startAt: { gte: windowStart, lte: windowEnd }
+          },
+          select: { id: true, title: true, startAt: true }
         })
+        const normalizedTitle = normalizeTitleForDedup(program.title)
+        const duplicate = dedupCandidates.find((s) => normalizeTitleForDedup(s.title) === normalizedTitle)
         if (duplicate) {
           skipped++
           continue
