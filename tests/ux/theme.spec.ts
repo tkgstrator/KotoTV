@@ -42,16 +42,19 @@ test('data-mode="player" collapses --shell-offset', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('domcontentloaded')
 
-  const before = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--shell-offset').trim()
-  )
+  // Set attribute AND read the computed var in the same evaluate so the shell's
+  // route-driven effect (which clears data-mode on non-player routes) cannot
+  // race with us between calls.
+  const { before, after } = await page.evaluate(() => {
+    const root = document.documentElement
+    const read = () => getComputedStyle(root).getPropertyValue('--shell-offset').trim()
+    const b = read()
+    root.setAttribute('data-mode', 'player')
+    const a = read()
+    root.removeAttribute('data-mode')
+    return { before: b, after: a }
+  })
 
-  await page.evaluate(() => document.documentElement.setAttribute('data-mode', 'player'))
-  const after = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--shell-offset').trim()
-  )
-
-  // player mode must be smaller than non-player mode
   const toPx = (v: string) => Number.parseFloat(v.replace('px', ''))
   expect(toPx(after)).toBeLessThan(toPx(before))
   expect(toPx(after)).toBe(40)
