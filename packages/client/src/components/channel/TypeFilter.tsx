@@ -43,7 +43,7 @@ export function TypeFilter({ value, onChange }: TypeFilterProps) {
       ref={listRef}
       role='tablist'
       aria-label='チャンネル種別'
-      className='sticky top-0 z-20 flex h-12 border-b border-border bg-background'
+      className='sticky top-0 z-20 flex h-filter-bar border-b border-border bg-background'
     >
       {TABS.map((tab, idx) => (
         <button
