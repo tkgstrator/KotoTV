@@ -56,18 +56,19 @@ function DeleteRuleButton({ rule }: { rule: RecordingRule }) {
           <Trash2 className='size-3' />
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className='border-destructive/40'>
         <AlertDialogHeader>
-          <AlertDialogTitle className='font-mono'>ルールを削除しますか？</AlertDialogTitle>
+          <AlertDialogTitle className='font-mono text-destructive'>ルールを削除しますか？</AlertDialogTitle>
           <AlertDialogDescription>「{rule.name}」を削除します。この操作は元に戻せません。</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className='font-mono text-[0.75rem]'>CANCEL</AlertDialogCancel>
+          <AlertDialogCancel className='font-mono text-[0.75rem]'>キャンセル</AlertDialogCancel>
           <AlertDialogAction
-            className='bg-destructive font-mono text-[0.75rem] text-destructive-foreground hover:bg-destructive/90'
+            variant='destructive'
+            className='font-mono text-[0.75rem]'
             onClick={() => mutate(rule.id, { onSuccess: () => toast.success('ルールを削除しました') })}
           >
-            DELETE
+            削除
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

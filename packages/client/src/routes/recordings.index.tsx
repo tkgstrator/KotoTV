@@ -83,18 +83,19 @@ function DeleteScheduleButton({ scheduleId }: { scheduleId: string }) {
           CANCEL
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className='border-destructive/40'>
         <AlertDialogHeader>
-          <AlertDialogTitle className='font-mono'>予約を削除しますか？</AlertDialogTitle>
+          <AlertDialogTitle className='font-mono text-destructive'>予約を削除しますか？</AlertDialogTitle>
           <AlertDialogDescription>この操作は元に戻せません。</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className='font-mono text-[0.75rem]'>CANCEL</AlertDialogCancel>
+          <AlertDialogCancel className='font-mono text-[0.75rem]'>キャンセル</AlertDialogCancel>
           <AlertDialogAction
-            className='bg-destructive font-mono text-[0.75rem] text-destructive-foreground hover:bg-destructive/90'
+            variant='destructive'
+            className='font-mono text-[0.75rem]'
             onClick={() => mutate(scheduleId)}
           >
-            DELETE
+            削除
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -283,16 +284,17 @@ function DoneCardInner({
       </DropdownMenu>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className='border-destructive/40'>
           <AlertDialogHeader>
-            <AlertDialogTitle className='font-mono'>録画を削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle className='font-mono text-destructive'>録画を削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>「{rec.title}」を削除します。この操作は元に戻せません。</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className='font-mono text-[0.75rem]'>キャンセル</AlertDialogCancel>
             <AlertDialogAction
+              variant='destructive'
               disabled={isDeleting}
-              className='bg-destructive font-mono text-[0.75rem] text-destructive-foreground hover:bg-destructive/90'
+              className='font-mono text-[0.75rem]'
               onClick={() => deleteRecording(rec.scheduleId)}
             >
               削除

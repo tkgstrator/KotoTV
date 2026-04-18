@@ -516,18 +516,15 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     DELETE
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className='border-destructive/40'>
                   <AlertDialogHeader>
-                    <AlertDialogTitle className='font-mono'>ルールを削除しますか？</AlertDialogTitle>
+                    <AlertDialogTitle className='font-mono text-destructive'>ルールを削除しますか？</AlertDialogTitle>
                     <AlertDialogDescription>この操作は元に戻せません。</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel className='font-mono text-[0.75rem]'>CANCEL</AlertDialogCancel>
-                    <AlertDialogAction
-                      className='bg-destructive font-mono text-[0.75rem] text-destructive-foreground hover:bg-destructive/90'
-                      onClick={onDelete}
-                    >
-                      DELETE
+                    <AlertDialogCancel className='font-mono text-[0.75rem]'>キャンセル</AlertDialogCancel>
+                    <AlertDialogAction variant='destructive' className='font-mono text-[0.75rem]' onClick={onDelete}>
+                      削除
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
