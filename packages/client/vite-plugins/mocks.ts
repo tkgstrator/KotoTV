@@ -93,7 +93,7 @@ ${sections || '<p>No mocks yet.</p>'}
 export function mocksPlugin(sourceDir: string): Plugin {
   const root = resolve(sourceDir)
   return {
-    name: 'telemax:mocks',
+    name: 'kototv:mocks',
     apply: 'serve',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {

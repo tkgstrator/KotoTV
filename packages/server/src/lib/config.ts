@@ -6,7 +6,8 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().url(),
   MIRAKC_URL: z.string().url().default('http://mirakc:40772'),
   HW_ACCEL_TYPE: z.enum(['nvenc', 'qsv', 'vaapi', 'none']).default('none'),
-  HLS_DIR: z.string().default('/app/data/hls')
+  /* Workspace-relative. Prod mounts this path as tmpfs via compose. */
+  HLS_DIR: z.string().default('./data/hls')
 })
 
 const result = EnvSchema.safeParse(Bun.env)
