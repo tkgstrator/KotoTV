@@ -64,6 +64,10 @@
 - **Toast 乱発**: エラーが複数連鎖した時に Toast が積み上がる → `sonner` の `duration` とキー重複排除を設定。
 - **Docker image slim 化の過剰最適化**: `node_modules` を落としすぎて prisma の native binding が欠けることがある → `prisma generate` 出力は必ず含める。
 
+## 対象外 (明示的に見送り)
+
+- **i18n / 多言語化**: 見送り。本ソフトは日本の地デジ / BS / CS 視聴が目的で、Mirakc も JP DVB 前提、EPG も ARIB ジャンル定義に依存する。利用者は日本語話者前提で、2 言語目が入る見込みが極めて低い。IntLayer / react-i18next 等の導入コスト (変換層のメンテ + 翻訳ファイル管理) が効かないため、UI 文字列は日本語直書きで固定する。将来英語対応が要求されたら、`recording-labels.ts` のような「ラベル解決関数」のパターンを横展開する形で対応する。
+
 ## Changes during execution (〜2026-04-18)
 
 当初の checklist に無かったが実施した UX 改善:
