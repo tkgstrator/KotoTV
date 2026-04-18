@@ -41,7 +41,7 @@ const SUBSYSTEMS: { key: Subsystem; label: string }[] = [
 
 function SectHead({ children }: { children: React.ReactNode }) {
   return (
-    <div className='flex items-center gap-2 pb-[7px] pt-[18px] font-mono text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-muted-foreground'>
+    <div className='flex items-center gap-2 pb-[7px] pt-[18px] font-sans text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-muted-foreground'>
       {children}
       <div className='h-px flex-1 bg-border' />
     </div>
@@ -77,11 +77,11 @@ function DiagRow({ status, name, detail, sub, extra, logTail }: DiagRowProps) {
         <div className='flex min-w-0 flex-1 flex-col gap-1 p-3'>
           <div className='flex items-baseline justify-between gap-2'>
             <div className='min-w-0'>
-              <p className='font-mono text-[0.6875rem] font-bold uppercase tracking-[0.04em] text-muted-foreground'>
+              <p className='font-sans text-[0.6875rem] font-bold uppercase tracking-[0.04em] text-muted-foreground'>
                 {name}
               </p>
-              <p className='font-mono text-[0.6875rem] text-foreground'>{detail}</p>
-              {sub && <p className='font-mono text-[0.5625rem] text-muted-foreground'>{sub}</p>}
+              <p className='font-sans text-[0.8125rem] text-foreground'>{detail}</p>
+              {sub && <p className='font-sans text-[0.6875rem] text-muted-foreground'>{sub}</p>}
               {extra}
             </div>
           </div>
@@ -99,7 +99,7 @@ function StatusTab() {
 
   if (isError || !data) {
     return (
-      <div className='py-8 text-center font-mono text-[0.75rem] text-muted-foreground'>
+      <div className='py-8 text-center font-sans text-[0.8125rem] text-muted-foreground'>
         ヘルスデータを取得できません
       </div>
     )
@@ -149,7 +149,7 @@ function StatusTab() {
               />
             </div>
             {data.disk.status !== 'ok' && (
-              <p className='mt-1 font-mono text-[0.5625rem] text-amber-500'>{diskPct}% used</p>
+              <p className='mt-1 font-sans text-[0.6875rem] tabular-nums text-amber-500'>{diskPct}% used</p>
             )}
           </div>
         }
@@ -190,13 +190,16 @@ function ThemeSegment() {
           onClick={() => setTheme(opt.value)}
           aria-pressed={theme === opt.value}
           className={cn(
-            'border-r border-border px-3 py-[5px] font-sans text-[0.75rem] font-semibold last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-            theme === opt.value
-              ? 'bg-card font-bold text-foreground'
-              : 'bg-transparent text-muted-foreground hover:bg-card/50'
+            'relative grid place-items-center border-r border-border px-3 py-[5px] font-sans text-[0.75rem] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+            theme === opt.value ? 'bg-card text-foreground' : 'bg-transparent text-muted-foreground hover:bg-card/50'
           )}
         >
-          {opt.label}
+          <span aria-hidden className='invisible col-start-1 row-start-1 font-bold'>
+            {opt.label}
+          </span>
+          <span className={cn('col-start-1 row-start-1', theme === opt.value ? 'font-bold' : 'font-semibold')}>
+            {opt.label}
+          </span>
         </button>
       ))}
     </fieldset>
@@ -270,13 +273,17 @@ function Segment<T extends string>({ ariaLabel, value, options, onChange }: Segm
           onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
           className={cn(
-            'border-r border-border px-3 py-[5px] font-sans text-[0.75rem] font-semibold last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-            value === opt.value
-              ? 'bg-card font-bold text-foreground'
-              : 'bg-transparent text-muted-foreground hover:bg-card/50'
+            'relative grid place-items-center border-r border-border px-3 py-[5px] font-sans text-[0.75rem] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+            value === opt.value ? 'bg-card text-foreground' : 'bg-transparent text-muted-foreground hover:bg-card/50'
           )}
         >
-          {opt.label}
+          {/* Reserve bold width so the pill doesn't shift when the weight changes. */}
+          <span aria-hidden className='invisible col-start-1 row-start-1 font-bold'>
+            {opt.label}
+          </span>
+          <span className={cn('col-start-1 row-start-1', value === opt.value ? 'font-bold' : 'font-semibold')}>
+            {opt.label}
+          </span>
         </button>
       ))}
     </fieldset>
@@ -315,13 +322,13 @@ function PlaybackTab() {
             <div key={o.value} className='flex items-baseline gap-3 py-1'>
               <dt
                 className={cn(
-                  'w-[64px] shrink-0 font-mono text-[0.6875rem] font-bold',
+                  'w-[64px] shrink-0 font-sans text-[0.75rem] font-semibold',
                   prefs.quality === o.value ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
                 {o.label}
               </dt>
-              <dd className='w-[56px] shrink-0 font-mono tabular-nums text-[0.6875rem] text-foreground'>
+              <dd className='w-[56px] shrink-0 font-sans tabular-nums text-[0.75rem] text-foreground'>
                 {o.resolution}
               </dd>
               <dd className='min-w-0 text-[0.75rem] text-muted-foreground'>{o.detail}</dd>
@@ -345,7 +352,7 @@ function PlaybackTab() {
             <div key={o.value} className='flex items-baseline gap-3 py-1.5'>
               <dt
                 className={cn(
-                  'w-[90px] shrink-0 font-mono text-[0.6875rem] font-bold',
+                  'w-[90px] shrink-0 font-sans text-[0.75rem] font-semibold',
                   prefs.codec === o.value ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
@@ -440,10 +447,10 @@ function AboutTab() {
       <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
         {ABOUT_ROWS.map(({ key, val }, i) => (
           <div key={key} className={cn('flex gap-0', i < ABOUT_ROWS.length - 1 && 'border-b border-border/60')}>
-            <td className='w-[100px] shrink-0 px-3 py-1.5 font-mono text-[0.6875rem] font-semibold tracking-[0.03em] text-muted-foreground'>
+            <td className='w-[100px] shrink-0 px-3 py-1.5 font-sans text-[0.75rem] font-semibold text-muted-foreground'>
               {key}
             </td>
-            <td className='px-3 py-1.5 font-mono text-[0.6875rem] text-foreground'>
+            <td className='px-3 py-1.5 font-sans text-[0.75rem] text-foreground'>
               {val}
               {key === 'version' && (
                 <StatusChip variant='info' size='sm' className='ml-1.5'>
@@ -459,10 +466,10 @@ function AboutTab() {
       <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
         {LINK_ROWS.map(({ key, val, href }, i) => (
           <div key={key} className={cn('flex gap-0', i < LINK_ROWS.length - 1 && 'border-b border-border/60')}>
-            <td className='w-[100px] shrink-0 px-3 py-1.5 font-mono text-[0.6875rem] font-semibold tracking-[0.03em] text-muted-foreground'>
+            <td className='w-[100px] shrink-0 px-3 py-1.5 font-sans text-[0.75rem] font-semibold text-muted-foreground'>
               {key}
             </td>
-            <td className='px-3 py-1.5 font-mono text-[0.6875rem]'>
+            <td className='px-3 py-1.5 font-sans text-[0.75rem]'>
               {href ? (
                 <a
                   href={href}
