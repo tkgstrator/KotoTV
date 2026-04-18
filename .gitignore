@@ -254,3 +254,7 @@ test-results/
 
 # Bun generated type declarations (auto-created by bun install)
 bun.d.ts
+
+# .agents/ is a local mirror of .claude/skills/ (Claude Code default-skill cache).
+# The authoritative copy is .claude/skills/; keep this one out of git.
+.agents/
