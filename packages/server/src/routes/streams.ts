@@ -16,11 +16,31 @@ const StartStreamParamSchema = z.object({
   channelId: z.string()
 })
 
+const StartRecordingStreamParamSchema = z.object({
+  recordingId: z.string().uuid()
+})
+
 const streamsRoute = new Hono()
   .post('/live/:channelId', zValidator('param', StartStreamParamSchema), async (c) => {
     const { channelId: _channelId } = c.req.valid('param')
 
     // TODO(mirakc): replace with streamManager.acquireLive(_channelId)
+    const sessionId = crypto.randomUUID()
+    const playlistUrl = `/api/streams/${sessionId}/playlist.m3u8`
+
+    const body = {
+      sessionId,
+      playlistUrl
+    } satisfies StartStreamResponse
+
+    StartStreamResponseSchema.parse(body)
+
+    return c.json(body, 201)
+  })
+  .post('/recording/:recordingId', zValidator('param', StartRecordingStreamParamSchema), async (c) => {
+    const { recordingId: _recordingId } = c.req.valid('param')
+
+    // TODO(mirakc): replace with streamManager.acquireRecording(_recordingId, filePath)
     const sessionId = crypto.randomUUID()
     const playlistUrl = `/api/streams/${sessionId}/playlist.m3u8`
 
