@@ -1,0 +1,81 @@
+/*
+ * Tech theme — diagnostic dense, monospace on status surfaces, status-forward.
+ *
+ * Canonical spec: docs/design/themes.md
+ * Anchor mocks (Tech vocabulary): states/v3, epg/v4, live-player/v10,
+ * recording-player/v12, recordings/v10, settings/v12, app-shell/v12.
+ *
+ * All palette + shape + typography values live inside :root[data-theme="tech"]
+ * so a second theme (e.g. "friendly") can coexist by adding its own file
+ * scoped under :root[data-theme="friendly"] — both themes can be loaded and
+ * the active one chosen at runtime via <html data-theme="...">.
+ */
+
+@theme {
+  /* Radius scale — Tailwind uses these to generate rounded-* utilities.
+   * Values are theme-specific defaults; :root blocks below can tweak via
+   * the base --radius. */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Tech theme — typography stacks */
+  --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, Consolas, ui-monospace, monospace;
+  --font-sans: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+
+  /* Tech theme — status surface tokens */
+  --radius-status: 3px;
+  --radius-action: calc(var(--radius) - 2px);
+  --text-status: 0.6875rem;
+  --tracking-status: 0.05em;
+}
+
+@layer base {
+  :root[data-theme='tech'] {
+    --background: oklch(0.98 0.002 247);
+    --foreground: oklch(0.15 0.01 247);
+    --card: oklch(0.97 0.002 247);
+    --card-foreground: oklch(0.15 0.01 247);
+    --popover: oklch(0.97 0.002 247);
+    --popover-foreground: oklch(0.15 0.01 247);
+    --primary: oklch(0.45 0.13 247);
+    --primary-foreground: oklch(0.98 0.002 247);
+    --secondary: oklch(0.93 0.005 247);
+    --secondary-foreground: oklch(0.2 0.01 247);
+    --muted: oklch(0.93 0.005 247);
+    --muted-foreground: oklch(0.5 0.01 247);
+    --accent: oklch(0.93 0.005 247);
+    --accent-foreground: oklch(0.2 0.01 247);
+    --destructive: oklch(0.55 0.22 25);
+    --destructive-foreground: oklch(0.98 0.002 247);
+    --success: oklch(0.65 0.17 145);
+    --border: oklch(0.88 0.005 247);
+    --input: oklch(0.88 0.005 247);
+    --ring: oklch(0.45 0.13 247);
+    --radius: 0.5rem;
+  }
+
+  :root[data-theme='tech'].dark {
+    --background: oklch(0.12 0.008 247);
+    --foreground: oklch(0.95 0.002 247);
+    --card: oklch(0.16 0.008 247);
+    --card-foreground: oklch(0.95 0.002 247);
+    --popover: oklch(0.16 0.008 247);
+    --popover-foreground: oklch(0.95 0.002 247);
+    --primary: oklch(0.65 0.13 247);
+    --primary-foreground: oklch(0.12 0.008 247);
+    --secondary: oklch(0.22 0.01 247);
+    --secondary-foreground: oklch(0.95 0.002 247);
+    --muted: oklch(0.22 0.01 247);
+    --muted-foreground: oklch(0.6 0.01 247);
+    --accent: oklch(0.22 0.01 247);
+    --accent-foreground: oklch(0.95 0.002 247);
+    --destructive: oklch(0.6 0.22 25);
+    --destructive-foreground: oklch(0.95 0.002 247);
+    --success: oklch(0.72 0.17 145);
+    --border: oklch(0.25 0.01 247);
+    --input: oklch(0.25 0.01 247);
+    --ring: oklch(0.65 0.13 247);
+  }
+}

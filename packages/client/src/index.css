@@ -1,5 +1,8 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
+/* Tailwind utility aliases — theme-invariant. Each `--color-*` reads whatever
+ * the active theme has set on the underlying custom property, so utilities
+ * like bg-background / text-foreground / rounded-status track the theme. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -21,72 +24,10 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Tech theme tokens — declared as real custom properties on :root so they are
- * queryable, overridable by a future :root[data-theme="..."] block, and still
- * exposed as Tailwind utilities via @theme below. */
-@theme {
-  --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, Consolas, ui-monospace, monospace;
-  --font-sans: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-  --radius-status: 3px;
-  --radius-action: calc(var(--radius) - 2px);
-  --text-status: 0.6875rem;
-  --tracking-status: 0.05em;
-}
-
-@layer base {
-  :root {
-    --background: oklch(0.98 0.002 247);
-    --foreground: oklch(0.15 0.01 247);
-    --card: oklch(0.97 0.002 247);
-    --card-foreground: oklch(0.15 0.01 247);
-    --popover: oklch(0.97 0.002 247);
-    --popover-foreground: oklch(0.15 0.01 247);
-    --primary: oklch(0.45 0.13 247);
-    --primary-foreground: oklch(0.98 0.002 247);
-    --secondary: oklch(0.93 0.005 247);
-    --secondary-foreground: oklch(0.2 0.01 247);
-    --muted: oklch(0.93 0.005 247);
-    --muted-foreground: oklch(0.5 0.01 247);
-    --accent: oklch(0.93 0.005 247);
-    --accent-foreground: oklch(0.2 0.01 247);
-    --destructive: oklch(0.55 0.22 25);
-    --destructive-foreground: oklch(0.98 0.002 247);
-    --success: oklch(0.65 0.17 145);
-    --border: oklch(0.88 0.005 247);
-    --input: oklch(0.88 0.005 247);
-    --ring: oklch(0.45 0.13 247);
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: oklch(0.12 0.008 247);
-    --foreground: oklch(0.95 0.002 247);
-    --card: oklch(0.16 0.008 247);
-    --card-foreground: oklch(0.95 0.002 247);
-    --popover: oklch(0.16 0.008 247);
-    --popover-foreground: oklch(0.95 0.002 247);
-    --primary: oklch(0.65 0.13 247);
-    --primary-foreground: oklch(0.12 0.008 247);
-    --secondary: oklch(0.22 0.01 247);
-    --secondary-foreground: oklch(0.95 0.002 247);
-    --muted: oklch(0.22 0.01 247);
-    --muted-foreground: oklch(0.6 0.01 247);
-    --accent: oklch(0.22 0.01 247);
-    --accent-foreground: oklch(0.95 0.002 247);
-    --destructive: oklch(0.6 0.22 25);
-    --destructive-foreground: oklch(0.95 0.002 247);
-    --success: oklch(0.72 0.17 145);
-    --border: oklch(0.25 0.01 247);
-    --input: oklch(0.25 0.01 247);
-    --ring: oklch(0.65 0.13 247);
-  }
-}
+/* Active theme(s). Add a new @import per theme; runtime swap via <html data-theme="...">. */
+@import './themes/tech.css';
 
 @layer base {
   * {
@@ -98,15 +39,3 @@
     color: var(--foreground);
   }
 }
-
-/*
- * Theme scoping — :root[data-theme="tech"] is the default.
- * Defaults above ARE the Tech theme, so no overrides needed here.
- * A second theme would add a sibling block overriding only the vars it changes:
- *
- *   :root[data-theme="friendly"] {
- *     --font-mono: ui-monospace, monospace;
- *     --radius-status: 6px;
- *   }
- */
-:root[data-theme="tech"] {}
