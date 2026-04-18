@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recording Player — v12 Inline-Above-Seek Strip + Collapsed Fault Log + Auto-Resume Toast</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:               'hsl(var(--background))',
+            foreground:               'hsl(var(--foreground))',
+            card:                     'hsl(var(--card))',
+            'card-foreground':        'hsl(var(--card-foreground))',
+            muted:                    'hsl(var(--muted))',
+            'muted-foreground':       'hsl(var(--muted-foreground))',
+            border:                   'hsl(var(--border))',
+            primary:                  'hsl(var(--primary))',
+            'primary-foreground':     'hsl(var(--primary-foreground))',
+            destructive:              'hsl(var(--destructive))',
+            'destructive-foreground': 'hsl(var(--destructive-foreground))',
+            ring:                     'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:             220 16% 93%;
+      --foreground:             222 22% 16%;
+      --card:                   0 0% 99%;
+      --card-foreground:        222 22% 16%;
+      --muted:                  215 12% 87%;
+      --muted-foreground:       215 10% 44%;
+      --border:                 214 14% 82%;
+      --primary:                221 83% 53%;
+      --primary-foreground:     210 40% 98%;
+      --ring:                   221 83% 53%;
+      --destructive:            0 72% 52%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 38%;
+      --warning:                38 92% 46%;
+    }
+    .dark {
+      --background:             222 22% 8%;
+      --foreground:             210 18% 90%;
+      --card:                   222 20% 12%;
+      --card-foreground:        210 18% 90%;
+      --muted:                  222 18% 18%;
+      --muted-foreground:       215 12% 52%;
+      --border:                 222 18% 20%;
+      --primary:                221 83% 60%;
+      --primary-foreground:     222 20% 10%;
+      --ring:                   221 83% 60%;
+      --destructive:            0 72% 58%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 46%;
+      --warning:                38 92% 50%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", system-ui, -apple-system, "Hiragino Sans", sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 3px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 3px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .chip-vod   { background: hsl(var(--primary)/0.12); border-color: hsl(var(--primary)/0.35); color: hsl(var(--primary)); }
+    .chip-ok    { background: hsl(var(--success)/0.12); border-color: hsl(var(--success)/0.35); color: hsl(var(--success)); }
+    .chip-err   { background: hsl(var(--destructive)/0.12); border-color: hsl(var(--destructive)/0.35); color: hsl(var(--destructive)); }
+    .chip-fatal { background: hsl(var(--destructive)/0.2); border-color: hsl(var(--destructive)/0.5); color: hsl(var(--destructive)); font-weight:900; }
+    .chip-warn  { background: hsl(var(--warning)/0.12); border-color: hsl(var(--warning)/0.35); color: hsl(var(--warning)); }
+    .chip-buf   { background: hsl(var(--warning)/0.1);  border-color: hsl(var(--warning)/0.3);  color: hsl(var(--warning)); }
+    .chip-muted { background: hsl(var(--muted)); border-color: hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 1.5px solid hsl(var(--muted));
+      border-top-color: hsl(var(--primary));
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .skeleton {
+      background: hsl(var(--muted));
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+    .skeleton::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, hsl(var(--foreground)/0.04) 50%, transparent);
+      animation: shimmer 2s linear infinite;
+      transform: translateX(-100%);
+    }
+    @keyframes shimmer { to { transform: translateX(100%); } }
+
+    .log-line { display: flex; gap: 8px; align-items: baseline; padding: 1px 0; font-size: 0.6875rem; }
+    .log-ts    { color: hsl(var(--muted-foreground)/0.7); flex-shrink: 0; }
+    .log-err   { color: hsl(var(--destructive)); }
+    .log-ok    { color: hsl(var(--success)); }
+    .log-info  { color: hsl(var(--primary)); }
+    .log-muted { color: hsl(var(--muted-foreground)); }
+
+    .demo-section {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      background: hsl(var(--muted)/0.4);
+      border-top: 2px solid hsl(var(--border));
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 5px 16px;
+      margin-top: 48px;
+    }
+
+    .screen-wrap {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      height: 90vh;
+      min-height: 500px;
+      border: 1px solid hsl(var(--border));
+    }
+
+    /* ── App bar: back link only (minimal chrome) ── */
+    .app-bar {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      flex-shrink: 0;
+      z-index: 30;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      background: transparent;
+      border: none;
+      padding: 3px 8px 3px 4px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+    }
+    .back-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+
+    /* ── Main layout: video large, side panel narrow ── */
+    .main-area {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+
+    .video-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .video-well {
+      flex: 1;
+      min-height: 0;
+      background: hsl(222 30% 6%);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Control zone: identity strip ABOVE seekbar (inline) ── */
+    .ctrl-zone {
+      background: hsl(var(--card));
+      border-top: 1px solid hsl(var(--border));
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* The identity strip is INLINE here — above the seekbar, not in the header */
+    .inline-identity {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px 6px;
+      border-bottom: 1px solid hsl(var(--border)/0.5);
+      overflow: hidden;
+    }
+
+    .inline-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    /* Chip row under title */
+    .inline-chips {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 16px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .inline-chips::-webkit-scrollbar { display: none; }
+
+    /* Seekbar section */
+    .seek-section {
+      padding: 10px 16px 6px;
+    }
+    .seek-row { display: flex; align-items: center; gap: 10px; }
+    .seek-time {
+      font-size: 0.6875rem;
+      font-variant-numeric: tabular-nums;
+      color: hsl(var(--muted-foreground));
+      white-space: nowrap;
+      min-width: 38px;
+    }
+    .seek-track {
+      position: relative;
+      flex: 1;
+      height: 6px;
+      background: hsl(var(--muted));
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    .seek-buffered { position: absolute; inset: 0; width: 72%; background: hsl(var(--muted-foreground)/0.3); border-radius: 2px; }
+    .seek-played   { position: absolute; inset: 0; width: 34%; background: hsl(var(--primary)); border-radius: 2px; }
+    .seek-tick {
+      position: absolute;
+      top: -3px;
+      width: 2px;
+      height: 12px;
+      background: hsl(var(--foreground)/0.45);
+    }
+    .seek-tick.active { background: hsl(var(--primary)); }
+    .seek-thumb {
+      position: absolute;
+      top: 50%; left: 34%;
+      transform: translate(-50%, -50%);
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: hsl(var(--foreground));
+    }
+    .seek-track:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; border-radius: 3px; }
+
+    /* Chapter labels inline below seekbar (small row) */
+    .chapter-tick-row {
+      position: relative;
+      height: 16px;
+      margin: 0 16px;
+      pointer-events: none;
+    }
+    .ch-tick-label {
+      position: absolute;
+      transform: translateX(-50%);
+      font-size: 0.5625rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      white-space: nowrap;
+      font-family: inherit;
+    }
+    .ch-tick-label.active { color: hsl(var(--primary)); }
+
+    /* Buttons row */
+    .btn-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 16px 10px;
+    }
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: hsl(var(--foreground));
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.1s;
+      flex-shrink: 0;
+    }
+    .ctrl-btn:hover { background: hsl(var(--muted)); }
+    .ctrl-btn.md { width: 38px; height: 38px; }
+    .ctrl-btn.lg { width: 46px; height: 46px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-radius: 6px; }
+    .ctrl-btn.lg:hover { opacity: 0.88; }
+
+    .rate-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: inherit;
+      color: hsl(var(--foreground));
+      background: transparent;
+      border: 1px solid hsl(var(--border));
+      border-radius: 4px;
+      padding: 0 10px;
+      height: 32px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .rate-btn:hover { background: hsl(var(--muted)); }
+
+    /* ── Side panel: NARROW — only chapter table, no description ── */
+    .side-panel {
+      width: 260px;
+      flex-shrink: 0;
+      border-left: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-hdr {
+      padding: 8px 12px 5px;
+      border-bottom: 1px solid hsl(var(--border));
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-hdr-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .chapter-table { flex: 1; overflow-y: auto; }
+    .chapter-table::-webkit-scrollbar { width: 4px; }
+    .chapter-table::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+
+    .ch-row {
+      display: grid;
+      grid-template-columns: 54px 1fr 12px;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid hsl(var(--border)/0.6);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .ch-row:hover { background: hsl(var(--muted)/0.5); }
+    .ch-row.active { background: hsl(var(--primary)/0.1); border-left: 3px solid hsl(var(--primary)); padding-left: 9px; }
+    .ch-row:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; border-radius: 2px; }
+    .ch-ts-cell { font-size: 0.625rem; font-variant-numeric: tabular-nums; color: hsl(var(--muted-foreground)); }
+    .ch-name-cell { font-size: 0.75rem; font-weight: 600; font-family: system-ui, sans-serif; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .ch-row.active .ch-name-cell { color: hsl(var(--primary)); }
+
+    /* ── Fault log drawer (collapsed by default, auto-expand on error) ── */
+    .fault-log-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-top: 1px solid hsl(var(--border));
+      cursor: pointer;
+      background: transparent;
+      border-right: none;
+      border-left: none;
+      border-bottom: none;
+      font-family: inherit;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      width: 100%;
+      text-align: left;
+      flex-shrink: 0;
+      transition: background 0.1s;
+    }
+    .fault-log-toggle:hover { background: hsl(var(--muted)/0.5); }
+    .fault-log-toggle:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+
+    .fault-log-body {
+      border-top: 1px solid hsl(var(--border)/0.5);
+      background: hsl(222 26% 7%);
+      padding: 8px 12px;
+      max-height: 140px;
+      overflow-y: auto;
+      font-size: 0.6875rem;
+    }
+    .fault-log-body::-webkit-scrollbar { width: 4px; }
+    .fault-log-body::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+
+    /* CSS-only toggle via <details> */
+    details.fault-log summary { list-style: none; }
+    details.fault-log summary::-webkit-details-marker { display: none; }
+    details.fault-log[open] .fault-log-toggle .toggle-arrow { transform: rotate(90deg); }
+    .toggle-arrow { transition: transform 0.15s; display: inline-block; }
+
+    /* ── Auto-resume toast ── */
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      box-shadow: 0 2px 12px hsl(var(--foreground)/0.12);
+      border-left: 3px solid hsl(var(--primary));
+    }
+
+    .theme-btn {
+      position: fixed; top: 8px; right: 8px; z-index: 9999;
+      background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+      border-radius: 3px; padding: 3px 8px;
+      font-size: 0.6875rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; color: hsl(var(--muted-foreground));
+    }
+
+    @media (max-width: 768px) {
+      .side-panel { display: none; }
+      .screen-wrap { height: auto; }
+      .main-area { flex-direction: column; }
+      .video-well { height: 56vw; flex: none; }
+    }
+  </style>
+</head>
+<body>
+
+<button class="theme-btn" onclick="document.documentElement.classList.toggle('dark')">THEME</button>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PLAYING STATE — with auto-resume toast (arrival simulation)    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div style="font-size:0.6875rem;color:hsl(var(--muted-foreground));background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));padding:5px 16px;font-weight:700;letter-spacing:0.08em;">
+  v12 · INLINE-ABOVE-SEEK IDENTITY + COLLAPSED FAULT LOG + AUTO-RESUME TOAST · ARRIVAL STATE
+</div>
+
+<div class="screen-wrap">
+
+  <!-- Minimal app bar (back only) -->
+  <div class="app-bar">
+    <button class="back-btn" tabindex="0" aria-label="録画一覧へ戻る">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+      録画一覧
+    </button>
+    <div style="width:1px;height:18px;background:hsl(var(--border));"></div>
+    <!-- Breadcrumb: channel / date -->
+    <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">NHK総合</span>
+    <span style="font-size:0.75rem;color:hsl(var(--border));">/</span>
+    <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">2026-04-16</span>
+    <div style="flex:1;"></div>
+    <!-- Diagnostic chip cluster in app bar -->
+    <span class="chip chip-vod">VOD</span>
+    <span class="chip chip-ok">OK</span>
+    <span class="chip chip-buf" style="font-size:0.625rem;">BUF 72%</span>
+  </div>
+
+  <div class="main-area">
+
+    <!-- Video column -->
+    <div class="video-col">
+      <div class="video-well">
+        <div style="position:absolute;inset:0;background:linear-gradient(155deg,hsl(215 40% 7%) 0%,hsl(230 30% 4%) 60%,hsl(200 25% 6%) 100%);"></div>
+        <div style="position:absolute;bottom:14px;left:18px;font-size:0.6rem;font-weight:700;color:hsl(var(--foreground)/0.4);font-family:inherit;">34:12 / 90:00</div>
+        <svg style="position:relative;opacity:0.15;" width="60" height="60" viewBox="0 0 24 24" fill="hsl(var(--foreground))"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+
+        <!-- Auto-resume toast — overlays on arrival, no modal/dialog -->
+        <div style="position:absolute;bottom:60px;left:50%;transform:translateX(-50%);z-index:10;width:340px;">
+          <div class="toast" role="alert" aria-live="polite">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3" fill="hsl(var(--primary))"/></svg>
+            <span style="flex:1;font-family:system-ui,sans-serif;">前回の続きから再生します</span>
+            <span class="chip chip-vod" style="font-size:0.625rem;font-variant-numeric:tabular-nums;">34:12</span>
+            <button style="background:transparent;border:none;color:hsl(var(--muted-foreground));cursor:pointer;font-family:inherit;font-size:0.6875rem;font-weight:700;padding:2px 6px;border-radius:3px;" tabindex="0" aria-label="最初から再生">最初から</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Control zone with inline identity strip above seekbar -->
+      <div class="ctrl-zone">
+
+        <!-- Inline identity strip (loud anchor — positioned between video and seekbar) -->
+        <div class="inline-identity">
+          <h1 class="inline-title">プロジェクトX「黒四ダムの男たち」</h1>
+        </div>
+        <div class="inline-chips">
+          <span class="chip chip-muted" style="font-size:0.625rem;">HEVC 1080p60</span>
+          <span class="chip chip-muted" style="font-size:0.625rem;">3.4 GB</span>
+          <span class="chip chip-muted" style="font-size:0.625rem;">ffmpeg vaapi</span>
+          <div style="flex:1;"></div>
+          <!-- Inline watched progress chip -->
+          <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));display:flex;align-items:center;gap:5px;white-space:nowrap;">
+            <span style="display:inline-block;width:48px;height:2px;background:hsl(var(--muted));border-radius:1px;position:relative;overflow:hidden;vertical-align:middle;">
+              <span style="position:absolute;inset:0;width:38%;background:hsl(var(--primary));border-radius:1px;"></span>
+            </span>
+            38%
+          </span>
+        </div>
+
+        <!-- Seekbar -->
+        <div class="seek-section">
+          <div class="seek-row">
+            <span class="seek-time">34:12</span>
+            <div class="seek-track" role="slider"
+                 aria-label="再生位置" aria-valuenow="34" aria-valuemin="0" aria-valuemax="90"
+                 tabindex="0">
+              <div class="seek-buffered"></div>
+              <div class="seek-played"></div>
+              <div class="seek-tick active" style="left:0%;"></div>
+              <div class="seek-tick" style="left:20.4%;"></div>
+              <div class="seek-tick" style="left:46.8%;"></div>
+              <div class="seek-thumb"></div>
+            </div>
+            <span class="seek-time" style="text-align:right;">90:00</span>
+          </div>
+        </div>
+
+        <!-- Chapter label row (inline below seekbar) -->
+        <div class="chapter-tick-row" style="margin-left:70px;margin-right:70px;">
+          <span class="ch-tick-label active" style="left:0%;">工事開始</span>
+          <span class="ch-tick-label" style="left:20.4%;">難工事</span>
+          <span class="ch-tick-label" style="left:46.8%;">完成</span>
+        </div>
+
+        <!-- Buttons -->
+        <div class="btn-row">
+          <button class="ctrl-btn md" aria-label="10秒戻る" tabindex="0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 4v6h6"/><path d="M3.51 9a9 9 0 1 0 .49-2.04"/><text x="10" y="16" font-size="5" fill="currentColor" stroke="none" font-weight="700">10</text></svg>
+          </button>
+          <button class="ctrl-btn lg" aria-label="再生" tabindex="0"
+                  style="outline:2px solid hsl(var(--ring));outline-offset:2px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </button>
+          <button class="ctrl-btn md" aria-label="10秒進む" tabindex="0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M20.49 9a9 9 0 1 1-.49-2.04"/><text x="9" y="16" font-size="5" fill="currentColor" stroke="none" font-weight="700">10</text></svg>
+          </button>
+          <button class="ctrl-btn md" aria-label="ミュート" tabindex="0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          </button>
+          <div style="flex:1;"></div>
+          <button class="rate-btn" aria-haspopup="menu" tabindex="0">
+            1.0× <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="ctrl-btn md" aria-label="フルスクリーン" tabindex="0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          </button>
+        </div>
+
+        <!-- Fault log — collapsed (CSS <details> toggle) -->
+        <details class="fault-log" style="border-top:1px solid hsl(var(--border)/0.5);">
+          <summary>
+            <button class="fault-log-toggle" tabindex="0" aria-expanded="false">
+              <span class="toggle-arrow">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+              </span>
+              <span class="chip chip-ok" style="font-size:0.6rem;padding:1px 5px;">OK</span>
+              <span style="color:hsl(var(--muted-foreground));">transcoder log</span>
+              <span style="font-size:0.6rem;color:hsl(var(--muted-foreground)/0.7);margin-left:auto;">最新: 09:42:14</span>
+            </button>
+          </summary>
+          <div class="fault-log-body">
+            <div class="log-line"><span class="log-ts">09:42:11</span><span class="log-ok">INFO</span><span class="log-muted">session a3f9 created</span></div>
+            <div class="log-line"><span class="log-ts">09:42:11</span><span class="log-ok">INFO</span><span class="log-muted">ffmpeg vaapi init ok</span></div>
+            <div class="log-line"><span class="log-ts">09:42:12</span><span class="log-info">INFO</span><span class="log-muted">seg 0001.ts ready</span></div>
+            <div class="log-line"><span class="log-ts">09:42:13</span><span class="log-info">INFO</span><span class="log-muted">seg 0002.ts ready</span></div>
+            <div class="log-line"><span class="log-ts">09:42:14</span><span class="log-info">INFO</span><span class="log-muted">seg 0003.ts ready</span></div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- Narrow side panel: chapter table only -->
+    <aside class="side-panel" aria-label="チャプター">
+      <div class="panel-hdr">
+        <span class="panel-hdr-label">チャプター</span>
+        <span class="chip chip-muted" style="font-size:0.6rem;padding:1px 5px;">3 件 · 候補</span>
+      </div>
+      <div class="chapter-table" role="list">
+        <div class="ch-row active" role="listitem" tabindex="0" aria-current="true">
+          <span class="ch-ts-cell">0:00</span>
+          <span class="ch-name-cell">工事開始〜掘削</span>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="hsl(var(--primary))"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="ch-row" role="listitem" tabindex="0">
+          <span class="ch-ts-cell">18:24</span>
+          <span class="ch-name-cell">難工事・雪崩との戦い</span>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="ch-row" role="listitem" tabindex="0">
+          <span class="ch-ts-cell">42:10</span>
+          <span class="ch-name-cell">完成・通水式</span>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+      </div>
+      <!-- Programme description in side panel footer -->
+      <div style="padding:10px 12px;border-top:1px solid hsl(var(--border));flex-shrink:0;">
+        <p style="font-size:0.75rem;font-family:system-ui,sans-serif;color:hsl(var(--muted-foreground));line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;">黒四ダム建設という命がけの工事に挑んだ男たちの物語。昭和31年、北アルプスの山奥に全長約5.4キロのトンネルを掘る大工事が始まった。</p>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- LOADING STATE                                                   -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="demo-section">LOADING — HLS セグメント生成中</div>
+<div class="screen-wrap" style="height:72vh;margin-top:8px;">
+  <div class="app-bar">
+    <button class="back-btn" tabindex="0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>録画一覧</button>
+    <div style="width:1px;height:18px;background:hsl(var(--border));"></div>
+    <div class="skeleton" style="height:14px;width:100px;"></div>
+    <div style="flex:1;"></div>
+    <span class="chip" style="background:hsl(var(--primary)/0.12);border-color:hsl(var(--primary)/0.35);color:hsl(var(--primary));display:flex;gap:5px;align-items:center;"><div class="spinner"></div>LOADING</span>
+  </div>
+  <div class="main-area">
+    <div class="video-col">
+      <div class="video-well">
+        <div style="position:absolute;inset:0;background:hsl(222 30% 6%);"></div>
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;max-width:360px;text-align:center;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="spinner" style="width:18px;height:18px;border-width:2px;"></div>
+            <span style="font-size:0.875rem;font-weight:700;color:hsl(var(--foreground));">トランスコード中</span>
+          </div>
+          <div style="background:hsl(222 20% 9%);border:1px solid hsl(var(--border));border-radius:3px;padding:8px 12px;width:100%;text-align:left;font-size:0.6875rem;">
+            <div class="log-line"><span class="log-ts">09:42:11</span><span class="log-ok">INFO</span><span class="log-muted">session a3f9 created</span></div>
+            <div class="log-line"><span class="log-ts">09:42:12</span><span class="log-ok">INFO</span><span class="log-muted">ffmpeg vaapi init</span></div>
+            <div class="log-line"><span class="log-ts">09:42:13</span><span class="log-info">INFO</span><span class="log-muted">seg 0001.ts ready</span></div>
+            <div class="log-line"><span class="log-ts">09:42:14</span><span class="log-info">INFO</span><span class="log-muted">seg 0002.ts ready …</span></div>
+          </div>
+          <div style="width:100%;height:3px;background:hsl(var(--muted));border-radius:1px;overflow:hidden;">
+            <div style="height:100%;width:40%;background:hsl(var(--primary));border-radius:1px;"></div>
+          </div>
+          <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;">40% 完了</span>
+        </div>
+      </div>
+    </div>
+    <aside class="side-panel">
+      <div class="panel-hdr"><span class="panel-hdr-label">チャプター</span></div>
+      <div style="padding:16px 12px;display:flex;flex-direction:column;gap:8px;">
+        <div class="skeleton" style="height:12px;width:100%;"></div>
+        <div class="skeleton" style="height:12px;width:80%;"></div>
+        <div class="skeleton" style="height:12px;width:90%;"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- ERROR STATE — fault log auto-expanded                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="demo-section">ERROR — FATAL (fault log auto-expanded in ctrl-zone)</div>
+<div class="screen-wrap" style="height:72vh;margin-top:8px;">
+  <div class="app-bar">
+    <button class="back-btn" tabindex="0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>録画一覧</button>
+    <div style="width:1px;height:18px;background:hsl(var(--border));"></div>
+    <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">NHK総合 / 2026-04-16</span>
+    <div style="flex:1;"></div>
+    <span class="chip chip-fatal">FATAL</span>
+    <span class="chip chip-err" style="font-size:0.625rem;">FILE_NOT_FOUND</span>
+  </div>
+  <div class="main-area">
+    <div class="video-col">
+      <div class="video-well" style="background:hsl(222 30% 5%);">
+        <!-- Error overlay on video — no friendly illustration, just code-style -->
+        <div style="position:relative;text-align:center;">
+          <div style="font-size:3rem;font-weight:900;color:hsl(var(--destructive)/0.2);font-family:inherit;letter-spacing:-0.05em;">404</div>
+          <div style="font-size:0.875rem;font-weight:700;color:hsl(var(--destructive));margin-top:-8px;">FILE_NOT_FOUND</div>
+          <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin-top:4px;font-family:system-ui,sans-serif;">録画ファイルが存在しないか削除されました</div>
+        </div>
+      </div>
+      <!-- Ctrl zone with fault log auto-expanded -->
+      <div class="ctrl-zone">
+        <div class="inline-identity">
+          <h1 class="inline-title">プロジェクトX「黒四ダムの男たち」</h1>
+        </div>
+        <div class="inline-chips">
+          <span class="chip chip-muted" style="font-size:0.625rem;">HEVC 1080p60</span>
+          <span class="chip chip-muted" style="font-size:0.625rem;">3.4 GB</span>
+        </div>
+
+        <!-- Seekbar — disabled -->
+        <div style="padding:10px 16px 6px;opacity:0.4;">
+          <div class="seek-row">
+            <span class="seek-time">—:——</span>
+            <div style="flex:1;height:6px;background:hsl(var(--muted));border-radius:2px;cursor:not-allowed;"></div>
+            <span class="seek-time" style="text-align:right;">—:——</span>
+          </div>
+        </div>
+
+        <!-- Buttons — disabled -->
+        <div class="btn-row" style="opacity:0.4;pointer-events:none;">
+          <button class="ctrl-btn md" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 4v6h6"/><path d="M3.51 9a9 9 0 1 0 .49-2.04"/></svg></button>
+          <button class="ctrl-btn md" disabled style="width:46px;height:46px;border-radius:6px;background:hsl(var(--muted));"><svg width="22" height="22" viewBox="0 0 24 24" fill="hsl(var(--muted-foreground))"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+          <button class="ctrl-btn md" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M20.49 9a9 9 0 1 1-.49-2.04"/></svg></button>
+          <div style="flex:1;"></div>
+          <button class="rate-btn" disabled>1.0×</button>
+        </div>
+
+        <!-- Fault log — auto-expanded on error state -->
+        <details class="fault-log" open style="border-top:1px solid hsl(var(--destructive)/0.3);">
+          <summary>
+            <div class="fault-log-toggle" style="background:hsl(var(--destructive)/0.06);">
+              <span class="toggle-arrow" style="transform:rotate(90deg);">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+              </span>
+              <span class="chip chip-fatal" style="font-size:0.6rem;padding:1px 5px;">FATAL</span>
+              <span style="color:hsl(var(--destructive));">transcoder log</span>
+              <span style="font-size:0.6rem;color:hsl(var(--muted-foreground)/0.7);margin-left:auto;">09:42:18</span>
+            </div>
+          </summary>
+          <div class="fault-log-body">
+            <div class="log-line"><span class="log-ts">09:42:15</span><span class="log-ok">INFO</span><span class="log-muted">session a3f9 created</span></div>
+            <div class="log-line"><span class="log-ts">09:42:15</span><span class="log-ok">INFO</span><span class="log-muted">resolving /data/recordings/2026-04-16-project-x.ts</span></div>
+            <div class="log-line"><span class="log-ts">09:42:16</span><span class="log-err">ERROR</span><span class="log-err">ENOENT: no such file or directory</span></div>
+            <div class="log-line"><span class="log-ts">09:42:16</span><span class="log-err">ERROR</span><span class="log-err">open '/data/recordings/2026-04-16-project-x.ts'</span></div>
+            <div class="log-line"><span class="log-ts">09:42:16</span><span class="log-muted">DEBUG</span><span class="log-muted">ffmpeg exit code 1, stderr: No such file</span></div>
+            <div class="log-line"><span class="log-ts">09:42:18</span><span class="log-err">FATAL</span><span class="log-err">stream session terminated</span></div>
+          </div>
+          <div style="background:hsl(var(--card));border-top:1px solid hsl(var(--border));padding:8px 12px;display:flex;gap:8px;">
+            <button style="background:hsl(var(--destructive)/0.12);color:hsl(var(--destructive));border:1px solid hsl(var(--destructive)/0.4);border-radius:4px;padding:5px 14px;font-size:0.75rem;font-weight:700;font-family:inherit;cursor:pointer;" tabindex="0">再試行</button>
+            <button style="background:transparent;color:hsl(var(--muted-foreground));border:1px solid hsl(var(--border));border-radius:4px;padding:5px 14px;font-size:0.75rem;font-weight:700;font-family:inherit;cursor:pointer;" tabindex="0">録画一覧へ</button>
+          </div>
+        </details>
+      </div>
+    </div>
+    <aside class="side-panel">
+      <div class="panel-hdr"><span class="panel-hdr-label">チャプター</span><span class="chip chip-muted" style="font-size:0.6rem;padding:1px 5px;">0 件</span></div>
+      <div style="padding:16px 12px;font-size:0.75rem;font-family:system-ui,sans-serif;color:hsl(var(--muted-foreground));">取得できませんでした</div>
+    </aside>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- MOBILE — 390px                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="demo-section">MOBILE — 390px (playing)</div>
+<div style="max-width:390px;margin:32px auto;border:1px solid hsl(var(--border));border-radius:6px;overflow:hidden;">
+
+  <!-- App bar -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:44px;display:flex;align-items:center;gap:8px;padding:0 12px;">
+    <button class="back-btn" style="padding:3px 4px;" tabindex="0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg></button>
+    <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">NHK総合 / 2026-04-16</span>
+    <div style="flex:1;"></div>
+    <span class="chip chip-vod" style="font-size:0.6rem;padding:1px 5px;">VOD</span>
+    <span class="chip chip-ok" style="font-size:0.6rem;padding:1px 5px;">OK</span>
+  </div>
+
+  <!-- Video -->
+  <div style="width:100%;padding-top:56.25%;position:relative;background:hsl(222 30% 6%);">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+      <svg style="opacity:0.15;" width="44" height="44" viewBox="0 0 24 24" fill="hsl(var(--foreground))"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+    </div>
+    <!-- Auto-resume toast on mobile (smaller) -->
+    <div style="position:absolute;bottom:8px;left:8px;right:8px;">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:hsl(var(--card));border:1px solid hsl(var(--border));border-left:3px solid hsl(var(--primary));border-radius:4px;box-shadow:0 2px 8px hsl(var(--foreground)/0.15);">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="hsl(var(--primary))"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span style="font-size:0.6875rem;font-weight:600;font-family:system-ui,sans-serif;flex:1;">続きから再生</span>
+        <span class="chip chip-vod" style="font-size:0.6rem;">34:12</span>
+        <button style="background:transparent;border:none;color:hsl(var(--muted-foreground));cursor:pointer;font-size:0.625rem;font-weight:700;font-family:inherit;" tabindex="0">最初から</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Control zone (inline identity above seekbar) -->
+  <div style="background:hsl(var(--card));border-top:1px solid hsl(var(--border));">
+    <!-- Inline title -->
+    <div style="padding:7px 12px 5px;border-bottom:1px solid hsl(var(--border)/0.5);overflow:hidden;">
+      <h1 style="font-size:0.875rem;font-weight:700;font-family:system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">プロジェクトX「黒四ダムの男たち」</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;padding:4px 12px;overflow-x:auto;scrollbar-width:none;">
+      <span class="chip chip-muted" style="font-size:0.6rem;">HEVC 1080p60</span>
+      <span class="chip chip-muted" style="font-size:0.6rem;">3.4 GB</span>
+      <div style="flex:1;"></div>
+      <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));white-space:nowrap;display:flex;align-items:center;gap:4px;">
+        <span style="display:inline-block;width:36px;height:2px;background:hsl(var(--muted));border-radius:1px;vertical-align:middle;position:relative;overflow:hidden;">
+          <span style="position:absolute;inset:0;width:38%;background:hsl(var(--primary));border-radius:1px;"></span>
+        </span>38%
+      </span>
+    </div>
+    <!-- Seekbar -->
+    <div style="padding:8px 12px 4px;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;min-width:30px;">34:12</span>
+      <div class="seek-track" role="slider" aria-label="再生位置" aria-valuenow="34" aria-valuemin="0" aria-valuemax="90" tabindex="0" style="flex:1;height:5px;">
+        <div class="seek-buffered"></div>
+        <div class="seek-played"></div>
+        <div class="seek-tick active" style="left:0%;"></div>
+        <div class="seek-tick" style="left:20.4%;"></div>
+        <div class="seek-tick" style="left:46.8%;"></div>
+        <div class="seek-thumb" style="width:12px;height:12px;"></div>
+      </div>
+      <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;text-align:right;min-width:30px;">90:00</span>
+    </div>
+    <!-- Chapter label row -->
+    <div style="position:relative;height:14px;margin:0 55px;pointer-events:none;">
+      <span style="position:absolute;left:0%;transform:translateX(-50%);font-size:0.5rem;font-weight:700;color:hsl(var(--primary));white-space:nowrap;font-family:inherit;">工事</span>
+      <span style="position:absolute;left:20.4%;transform:translateX(-50%);font-size:0.5rem;color:hsl(var(--muted-foreground));white-space:nowrap;font-family:inherit;">難工事</span>
+      <span style="position:absolute;left:46.8%;transform:translateX(-50%);font-size:0.5rem;color:hsl(var(--muted-foreground));white-space:nowrap;font-family:inherit;">完成</span>
+    </div>
+    <!-- Buttons -->
+    <div style="display:flex;align-items:center;gap:4px;padding:4px 12px 10px;justify-content:center;">
+      <button class="ctrl-btn md" tabindex="0" aria-label="10秒戻る"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 4v6h6"/><path d="M3.51 9a9 9 0 1 0 .49-2.04"/><text x="10" y="16" font-size="5" fill="currentColor" stroke="none" font-weight="700">10</text></svg></button>
+      <button class="ctrl-btn lg" tabindex="0" aria-label="再生" style="width:48px;height:48px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+      <button class="ctrl-btn md" tabindex="0" aria-label="10秒進む"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M20.49 9a9 9 0 1 1-.49-2.04"/><text x="9" y="16" font-size="5" fill="currentColor" stroke="none" font-weight="700">10</text></svg></button>
+      <div style="flex:1;"></div>
+      <button class="rate-btn" style="height:28px;padding:0 8px;font-size:0.6875rem;" tabindex="0">1.0×</button>
+    </div>
+    <!-- Fault log toggle (collapsed, OK state) -->
+    <details class="fault-log" style="border-top:1px solid hsl(var(--border)/0.5);">
+      <summary>
+        <div class="fault-log-toggle" style="padding:5px 12px;">
+          <span class="toggle-arrow"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span>
+          <span class="chip chip-ok" style="font-size:0.6rem;padding:1px 4px;">OK</span>
+          <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));">transcoder log</span>
+        </div>
+      </summary>
+      <div class="fault-log-body" style="font-size:0.625rem;">
+        <div class="log-line" style="font-size:0.625rem;"><span class="log-ts">09:42:11</span><span class="log-ok">OK</span><span class="log-muted">session a3f9</span></div>
+        <div class="log-line" style="font-size:0.625rem;"><span class="log-ts">09:42:14</span><span class="log-info">INFO</span><span class="log-muted">seg 0003.ts ready</span></div>
+      </div>
+    </details>
+  </div>
+</div>
+
+</body>
+</html>
