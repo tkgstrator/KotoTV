@@ -282,7 +282,7 @@ export function RecordingScheduleForm({ open, onOpenChange }: RecordingScheduleF
 
               <div className='mt-4 flex gap-2'>
                 <Button type='submit' size='sm' className='font-mono text-[0.75rem] font-bold' disabled={isPending}>
-                  {isPending ? 'SCHEDULING...' : 'SCHEDULE'}
+                  {isPending ? '予約中…' : '予約'}
                 </Button>
                 <Button
                   type='button'
