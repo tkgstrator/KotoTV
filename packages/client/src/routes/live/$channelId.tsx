@@ -23,6 +23,15 @@ const TYPE_LABEL: Record<string, string> = {
   SKY: 'SKY'
 }
 
+// Unified typography scale for the live page info surfaces.
+// Only four sizes in play: 10px (micro: labels / log / section headers),
+// 12px (value: diagnostic values, meta rows), 14px (channel name / error title),
+// 17px (program title, the only "large" anchor).
+const SECTION_LABEL_CLS = 'font-mono text-[0.625rem] font-bold uppercase tracking-[0.12em] text-muted-foreground'
+const STAT_LABEL_CLS = 'font-mono text-[0.625rem] tracking-[0.03em] text-muted-foreground'
+const STAT_VAL_CLS = 'font-mono text-[0.75rem] font-semibold tabular-nums text-foreground'
+const LOG_LINE_CLS = 'font-mono text-[0.625rem] leading-[1.6] text-muted-foreground'
+
 function NowStrip({ channelId }: { channelId: string }) {
   const { data } = useChannels()
   const channel = data?.channels.find((c) => c.id === channelId)
@@ -34,10 +43,12 @@ function NowStrip({ channelId }: { channelId: string }) {
   const remaining = cur ? Math.ceil((new Date(cur.endAt).getTime() - Date.now()) / 60000) : 0
   const total = cur ? Math.round((new Date(cur.endAt).getTime() - new Date(cur.startAt).getTime()) / 60000) : 0
 
+  const NOW_LABEL_CLS = `${SECTION_LABEL_CLS.replace('text-muted-foreground', 'text-destructive')} mb-1`
+
   if (!channel) {
     return (
       <div className='flex-shrink-0 border-b-2 border-border bg-card px-3 py-2.5'>
-        <div className='font-mono text-[0.6rem] font-bold tracking-[0.12em] text-destructive mb-1'>NOW ON AIR</div>
+        <div className={NOW_LABEL_CLS}>NOW ON AIR</div>
         <Skeleton className='mb-2 h-[18px] w-60' />
         <Skeleton className='mb-2.5 h-[11px] w-40' />
         <Skeleton className='h-[5px] w-full rounded-sm' />
@@ -47,7 +58,7 @@ function NowStrip({ channelId }: { channelId: string }) {
 
   return (
     <div className='flex-shrink-0 border-b-2 border-border bg-card px-3 pb-3 pt-2.5'>
-      <div className='flex items-center gap-1.5 font-mono text-[0.6rem] font-bold tracking-[0.12em] text-destructive mb-1'>
+      <div className={cn('flex items-center gap-1.5', NOW_LABEL_CLS)}>
         <span aria-hidden='true' className='size-1.5 rounded-full bg-destructive animate-pulse' />
         NOW ON AIR
       </div>
@@ -55,11 +66,11 @@ function NowStrip({ channelId }: { channelId: string }) {
       {cur ? (
         <>
           <div className='text-[1.0625rem] font-bold leading-[1.25] mb-1.5'>{cur.title}</div>
-          <div className='flex flex-wrap items-center gap-2.5 font-mono text-[0.6875rem] tabular-nums text-muted-foreground mb-2'>
+          <div className='flex flex-wrap items-center gap-2.5 font-mono text-[0.75rem] tabular-nums text-muted-foreground mb-2'>
             <span>{formatTimeRange(cur.startAt, cur.endAt)}</span>
             <span>残り {remaining}分</span>
             {next && (
-              <span className='text-[0.6125rem]'>
+              <span>
                 次: {next.title} {format(new Date(next.startAt), 'HH:mm')}
               </span>
             )}
@@ -83,7 +94,7 @@ function NowStrip({ channelId }: { channelId: string }) {
         />
       </div>
       {cur && (
-        <div className='mt-1 flex justify-between font-mono text-[0.625rem] text-muted-foreground tabular-nums'>
+        <div className={cn('mt-1 flex justify-between tabular-nums', STAT_LABEL_CLS)}>
           <span>経過 {elapsed}分</span>
           <span>
             残り {remaining}分 / {total}分
@@ -120,16 +131,16 @@ function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | un
           </StatusChip>
         </StatRow>
         <StatRow label='codec'>
-          <span className='stat-val'>HEVC / 1080p60</span>
+          <span className={STAT_VAL_CLS}>HEVC / 1080p60</span>
         </StatRow>
         <StatRow label='hw_accel'>
-          <span className='stat-val'>FFmpeg → stub</span>
+          <span className={STAT_VAL_CLS}>FFmpeg → stub</span>
         </StatRow>
         <StatRow label='bitrate'>
-          <span className='stat-val'>— Mbps</span>
+          <span className={STAT_VAL_CLS}>— Mbps</span>
         </StatRow>
         <StatRow label='latency'>
-          <span className='stat-val'>—</span>
+          <span className={STAT_VAL_CLS}>—</span>
         </StatRow>
       </div>
 
@@ -137,13 +148,13 @@ function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | un
       <div className='border-b border-border px-3 py-2.5'>
         <SidebarSectionLabel>HLS</SidebarSectionLabel>
         <StatRow label='segment'>
-          <span className='stat-val'>—</span>
+          <span className={STAT_VAL_CLS}>—</span>
         </StatRow>
         <StatRow label='buffer'>
-          <span className='stat-val'>—</span>
+          <span className={STAT_VAL_CLS}>—</span>
         </StatRow>
         <StatRow label='dropped_f'>
-          <span className='stat-val'>0</span>
+          <span className={STAT_VAL_CLS}>0</span>
         </StatRow>
       </div>
 
@@ -151,13 +162,13 @@ function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | un
       <div className='border-b border-border px-3 py-2.5'>
         <SidebarSectionLabel>SESSION</SidebarSectionLabel>
         <StatRow label='viewers'>
-          <span className='stat-val'>1</span>
+          <span className={STAT_VAL_CLS}>1</span>
         </StatRow>
         <StatRow label='session_id'>
-          <span className='font-mono text-[0.55rem] font-semibold text-foreground opacity-70'>{shortId}</span>
+          <span className={cn(STAT_VAL_CLS, 'opacity-70')}>{shortId}</span>
         </StatRow>
         <StatRow label='started'>
-          <span className='stat-val'>{now}</span>
+          <span className={STAT_VAL_CLS}>{now}</span>
         </StatRow>
       </div>
 
@@ -198,7 +209,7 @@ function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | un
 
 function SidebarSectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className='mb-2 flex items-center gap-1.5 font-mono text-[0.6rem] font-bold uppercase tracking-[0.12em] text-muted-foreground'>
+    <div className={cn('mb-2 flex items-center gap-1.5', SECTION_LABEL_CLS)}>
       {children}
       <span aria-hidden='true' className='flex-1 h-px bg-border' />
     </div>
@@ -208,7 +219,7 @@ function SidebarSectionLabel({ children }: { children: React.ReactNode }) {
 function StatRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className='flex items-center justify-between py-[3px]'>
-      <span className='font-mono text-[0.625rem] tracking-[0.03em] text-muted-foreground'>{label}</span>
+      <span className={STAT_LABEL_CLS}>{label}</span>
       {children}
     </div>
   )
@@ -217,7 +228,7 @@ function StatRow({ label, children }: { label: string; children: React.ReactNode
 function LogLine({ ts, level, children }: { ts: string; level: 'ok' | 'err' | 'info'; children: React.ReactNode }) {
   const levelClass = level === 'ok' ? 'text-green-500' : level === 'err' ? 'text-destructive' : 'text-primary'
   return (
-    <div className='flex items-baseline gap-1.5 py-[1px] font-mono text-[0.6rem] leading-[1.6] text-muted-foreground'>
+    <div className={cn('flex items-baseline gap-1.5 py-[1px]', LOG_LINE_CLS)}>
       <span className='shrink-0 opacity-55'>{ts}</span>
       <span className={levelClass}>{children}</span>
     </div>
