@@ -186,12 +186,7 @@ function EpgHeader({ windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps)
 
   return (
     <PageHeader ariaLabel='番組表ヘッダー' className='items-center gap-2 px-3'>
-      <div className='flex items-center gap-1.5'>
-        <h1 className='font-mono text-[0.9375rem] font-bold leading-none'>番組表</h1>
-        <StatusChip variant='live' dot size='sm'>
-          LIVE
-        </StatusChip>
-      </div>
+      <h1 className='font-mono text-[0.9375rem] font-bold leading-none'>番組表</h1>
 
       <div className='flex-1' />
 
