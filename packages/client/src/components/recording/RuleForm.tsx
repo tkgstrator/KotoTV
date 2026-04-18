@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useRecordingPrefs } from '@/hooks/useRecordingPrefs'
 import {
   useCreateRecordingRule,
   useDeleteRecordingRule,
@@ -55,20 +56,22 @@ interface RuleFormProps {
   existing?: RecordingRule
 }
 
-const DEFAULT_VALUES: CreateRecordingRule = {
-  name: '',
-  enabled: true,
-  keyword: '',
-  keywordMode: 'literal',
-  keywordTarget: 'title',
-  excludeKeyword: '',
-  channelIds: [],
-  genres: [],
-  dayOfWeek: [0, 1, 2, 3, 4, 5, 6],
-  timeStartMinutes: null,
-  timeEndMinutes: null,
-  priority: 50,
-  avoidDuplicates: true
+function makeDefaults(prefs: { defaultPriority: number; avoidDuplicatesDefault: boolean }): CreateRecordingRule {
+  return {
+    name: '',
+    enabled: true,
+    keyword: '',
+    keywordMode: 'literal',
+    keywordTarget: 'title',
+    excludeKeyword: '',
+    channelIds: [],
+    genres: [],
+    dayOfWeek: [0, 1, 2, 3, 4, 5, 6],
+    timeStartMinutes: null,
+    timeEndMinutes: null,
+    priority: prefs.defaultPriority,
+    avoidDuplicates: prefs.avoidDuplicatesDefault
+  }
 }
 
 function toCreateRule(existing: RecordingRule): CreateRecordingRule {
@@ -94,9 +97,10 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   const createMutation = useCreateRecordingRule()
   const updateMutation = useUpdateRecordingRule()
   const deleteMutation = useDeleteRecordingRule()
+  const { prefs } = useRecordingPrefs()
 
   const { register, watch, setValue, handleSubmit, reset } = useForm<CreateRecordingRule>({
-    defaultValues: existing ? toCreateRule(existing) : DEFAULT_VALUES
+    defaultValues: existing ? toCreateRule(existing) : makeDefaults(prefs)
   })
 
   useEffect(() => {
