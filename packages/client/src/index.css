@@ -27,6 +27,18 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Tech theme tokens — declared as real custom properties on :root so they are
+ * queryable, overridable by a future :root[data-theme="..."] block, and still
+ * exposed as Tailwind utilities via @theme below. */
+@theme {
+  --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, Consolas, ui-monospace, monospace;
+  --font-sans: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  --radius-status: 3px;
+  --radius-action: calc(var(--radius) - 2px);
+  --text-status: 0.6875rem;
+  --tracking-status: 0.05em;
+}
+
 @layer base {
   :root {
     --background: oklch(0.98 0.002 247);
@@ -86,3 +98,15 @@
     color: var(--foreground);
   }
 }
+
+/*
+ * Theme scoping — :root[data-theme="tech"] is the default.
+ * Defaults above ARE the Tech theme, so no overrides needed here.
+ * A second theme would add a sibling block overriding only the vars it changes:
+ *
+ *   :root[data-theme="friendly"] {
+ *     --font-mono: ui-monospace, monospace;
+ *     --radius-status: 6px;
+ *   }
+ */
+:root[data-theme="tech"] {}
