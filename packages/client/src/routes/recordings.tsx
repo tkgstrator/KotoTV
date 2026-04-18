@@ -66,7 +66,7 @@ function RecordingsPage() {
       {isError && (
         <div className='px-4 py-12'>
           <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 font-mono text-[0.75rem] text-destructive'>
-            ERR サーバーに接続できません
+            ERR 録画データの取得に失敗しました (DB 読み取り失敗、サーバー再起動で解決する可能性)
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 import type { Recording, RecordingSchedule } from '@kototv/server/src/schemas/Recording.dto'
+import { Link } from '@tanstack/react-router'
 import { format, formatDistanceStrict, intervalToDuration } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { Trash2 } from 'lucide-react'
@@ -192,7 +193,11 @@ function DoneCard({ rec }: { rec: Recording }) {
   const sizeLabel = rec.sizeBytes ? formatBytes(rec.sizeBytes) : null
 
   return (
-    <div className='flex flex-col bg-card transition-colors hover:bg-muted/40 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring'>
+    <Link
+      to='/recordings/$id'
+      params={{ id: rec.id }}
+      className='flex flex-col bg-card transition-colors hover:bg-muted/40 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring'
+    >
       <div className='relative w-full pt-[56.25%]'>
         {rec.thumbnailUrl ? (
           <img src={rec.thumbnailUrl} alt={rec.title} className='absolute inset-0 h-full w-full object-cover' />
@@ -218,7 +223,7 @@ function DoneCard({ rec }: { rec: Recording }) {
           {sizeLabel && <span className='ml-auto font-mono text-[0.6875rem] text-muted-foreground'>{sizeLabel}</span>}
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
 
