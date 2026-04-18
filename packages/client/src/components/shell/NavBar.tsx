@@ -6,12 +6,12 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { to: '/', label: 'チャンネル', short: 'CH', route: '/' },
-  { to: '/epg', label: '番組表', short: 'EPG', route: '/epg' },
-  { to: '/recordings', label: '録画', short: 'REC', route: '/recordings' }
+  { to: '/', label: 'チャンネル', route: '/' },
+  { to: '/epg', label: '番組表', route: '/epg' },
+  { to: '/recordings', label: '録画', route: '/recordings' }
 ] as const
 
-const SETTINGS_ITEM = { to: '/settings', label: '設定', short: 'CFG', route: '/settings' } as const
+const SETTINGS_ITEM = { to: '/settings', label: '設定', route: '/settings' } as const
 
 export function NavBar() {
   const { location } = useRouterState()
@@ -88,7 +88,7 @@ export function NavBar() {
             key={item.to}
             to={item.to}
             className={cn(
-              'relative flex flex-1 flex-col items-center justify-center gap-0.5 bg-transparent font-mono text-[0.625rem] font-bold uppercase tracking-[0.07em] text-muted-foreground no-underline transition-colors',
+              'relative flex flex-1 items-center justify-center bg-transparent text-[0.8125rem] font-semibold text-muted-foreground no-underline transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm focus-visible:-outline-offset-[3px]',
               isActive(item.to) && 'text-primary'
             )}
@@ -97,12 +97,7 @@ export function NavBar() {
             {isActive(item.to) && (
               <span aria-hidden='true' className='absolute top-0 left-1/4 right-1/4 h-0.5 bg-primary' />
             )}
-            <span className='font-mono text-[0.75rem] font-bold'>{item.short}</span>
-            <span
-              className={cn('font-mono text-[0.625rem] text-muted-foreground', isActive(item.to) && 'text-primary/70')}
-            >
-              {item.route}
-            </span>
+            {item.label}
           </Link>
         ))}
       </nav>
