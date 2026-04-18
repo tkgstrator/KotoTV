@@ -441,31 +441,37 @@ function AgendaView({
                           params={{ channelId: ch.id }}
                           aria-label={`${p.title} ${formatTimeRange(p.startAt, p.endAt)}`}
                           className={cn(
-                            'flex items-start gap-2 border-b border-border px-3 py-2',
-                            'hover:bg-muted/30 transition-colors',
+                            'relative flex items-stretch border-b border-border no-underline text-foreground',
+                            'transition-colors hover:bg-muted/50',
                             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                             isNow && 'bg-muted/20'
                           )}
                         >
-                          <div
-                            className='mt-[3px] w-[3px] self-stretch flex-shrink-0 rounded-full'
+                          {/* Genre accent stripe — mirrors ChannelRow's absolute stripe */}
+                          <span
+                            className='absolute left-0 top-2 bottom-2 w-[3px] rounded-r-[2px]'
                             style={{ background: accentColor }}
                             aria-hidden
                           />
 
-                          <div className='flex flex-1 flex-col gap-[2px]'>
+                          {/* Time panel (fixed width, bordered right) — echoes ChannelRow's channel-number column */}
+                          <div className='flex w-[84px] shrink-0 flex-col justify-center border-r border-border pl-3.5 pr-2 py-1.5'>
+                            <span className='font-mono text-[0.65rem] font-bold leading-none tabular-nums'>
+                              {formatTimeRange(p.startAt, p.endAt).split('–')[0]}
+                            </span>
+                            <span className='mt-0.5 font-mono text-[0.6rem] leading-none tabular-nums text-muted-foreground'>
+                              – {formatTimeRange(p.startAt, p.endAt).split('–')[1]?.trim()}
+                            </span>
+                          </div>
+
+                          {/* Title + chips */}
+                          <div className='flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-1.5'>
                             <div className='flex items-center gap-1.5'>
                               {isNow && (
                                 <StatusChip variant='live' dot size='sm'>
                                   ON AIR
                                 </StatusChip>
                               )}
-                              <span className='font-mono text-[0.625rem] tabular-nums text-muted-foreground'>
-                                {formatTimeRange(p.startAt, p.endAt)}
-                              </span>
-                            </div>
-                            <span className='text-[0.8125rem] font-bold leading-[1.3]'>{p.title}</span>
-                            <div className='mt-[2px] flex flex-wrap gap-1'>
                               {p.genres[0] && (
                                 <StatusChip variant='muted' size='sm'>
                                   {p.genres[0]}
@@ -477,6 +483,7 @@ function AgendaView({
                                 </StatusChip>
                               )}
                             </div>
+                            <span className='truncate text-[0.75rem] font-bold leading-[1.2]'>{p.title}</span>
                           </div>
                         </Link>
                       </li>
