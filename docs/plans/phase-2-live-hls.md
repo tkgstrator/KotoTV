@@ -60,7 +60,8 @@
 - [ ] `useStream(channelId)` フックを作成: `useMutation` で `POST /api/streams/live/:channelId` → state 管理 → unmount 時に `DELETE /api/streams/:sessionId` — `packages/client/src/hooks/useStream.ts`
 - [ ] StrictMode の二重実行に備えて sessionId を `useRef` で管理し冪等化
 - [ ] `HlsPlayer` コンポーネント (hls.js ラッパー、iOS native 判定、`lowLatencyMode`、MEDIA/NETWORK エラー自動復旧) — `packages/client/src/components/player/HlsPlayer.tsx`
-- [ ] `PlayerControls` コンポーネント (再生/停止、ミュート、フルスクリーン、quality picker の UI 枠だけ) — `packages/client/src/components/player/PlayerControls.tsx`
+- [ ] `<PlayerControls isLive>` 共有コンポーネントを作成 (再生/停止、ミュート、フルスクリーン、quality picker、±10s skip、rate picker)。`isLive={true}` ではシークバーを `role="progressbar"` (非インタラクティブ) とし、skip / rate は表示するが `aria-disabled="true"` で無効化 (Phase 5 の録画再生で `isLive={false}` 版として再利用) — `packages/client/src/components/player/PlayerControls.tsx`
+- [ ] `<StatusChip>` プリミティブをこのフェーズで先に用意 (Phase 2 プレイヤーの接続状態・バッファ状態表示に即利用)。API は `docs/mocks/app-shell/README.md` §StatusChip に準拠 (variants: `ok | warn | err | fatal | live | rec | sched | done | info | muted | buf`、props `variant`, `children`, `dot?`, `asLink?`, `className?`) — `packages/client/src/components/ui/status-chip.tsx`
 - [ ] ライブページを作成、`Route.useParams()` で `channelId` を取得 — `packages/client/src/routes/live/$channelId.tsx`
 - [ ] `ChannelCard` にライブページ (`/live/$channelId`) への `<Link>` を追加 — `packages/client/src/components/channel/ChannelCard.tsx`
 - [ ] `:focus-visible` リングが全操作要素に出ることを確認
@@ -72,6 +73,11 @@
   - `feat(streaming): transcoder + stream-manager`
   - `feat(server): streams routes`
   - `feat(client): hls player + live page`
+
+## 共有コントラクト (Phase 2 で先出し、後続フェーズが consume)
+
+- **`<StatusChip>` プリミティブ**: `packages/client/src/components/ui/status-chip.tsx`。Phase 3 (EPG セル)、Phase 4 (録画一覧のステータスバッジ)、Phase 6 (app-shell ヘルスサマリ / settings status tab) が再利用する。ローカル再実装は禁止。仕様は [`docs/mocks/app-shell/README.md`](../mocks/app-shell/README.md) §StatusChip。
+- **`<PlayerControls isLive>` コンポーネント**: `packages/client/src/components/player/PlayerControls.tsx`。Phase 5 の録画プレイヤーが同じコンポーネントを `isLive={false}` で再利用する (差分はシークバー `role="slider"` 化とチャプター tick オーバーレイの追加のみ)。設計の根拠は [`docs/mocks/live-player/README.md`](../mocks/live-player/README.md) (v10) および [`docs/mocks/recording-player/README.md`](../mocks/recording-player/README.md) (v10+)。
 
 ## 検証基準
 

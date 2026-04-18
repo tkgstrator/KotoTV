@@ -39,11 +39,18 @@
 ### frontend
 - [ ] `useStream` フックを拡張: `{ type: 'live'; channelId } | { type: 'recording'; recordingId }` のユニオン型 — `packages/client/src/hooks/useStream.ts`
 - [ ] 録画視聴ページを作成、`HlsPlayer` を `lowLatency={false}` で再利用 — `packages/client/src/routes/recordings/$id.tsx`
+- [ ] Phase 2 で実装した `<PlayerControls>` を `isLive={false}` で再利用。差分はシークバーが `role="slider"` となってインタラクティブになる点と、チャプター tick オーバーレイを seekbar 上に追加する点のみ (コンポーネント複製は禁止) — `packages/client/src/components/player/PlayerControls.tsx` (拡張), `packages/client/src/components/player/SeekbarChapters.tsx` (新設)
+- [ ] `<StatusChip>` を再利用して録画メタ表示 (完了時刻、長さ、解像度など) のラベルに使用
 - [ ] 録画一覧の各アイテムに `<Link to="/recordings/$id" params={{ id }}>` を追加 — `packages/client/src/components/recording/RecordingList.tsx`
 
 ### qa
 - [ ] 型検査 + Biome
 - [ ] コミット: `feat(streaming): recording playback`, `feat(client): recording player page`
+
+## 共有コントラクト (参照)
+
+- **`<PlayerControls isLive>`**: Phase 2 で `isLive={true}` として build 済み。Phase 5 では同じコンポーネントを `isLive={false}` で使い、差分はシークバー role 切替 (`progressbar` → `slider`) とチャプター tick オーバーレイ追加のみ。ファイル: `packages/client/src/components/player/PlayerControls.tsx`。
+- **`<StatusChip>`**: Phase 2 で導入済みの共有プリミティブ。録画プレイヤー画面内のメタデータバッジに再利用する。
 
 ## 検証基準
 
