@@ -1,9 +1,11 @@
 import { ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { Subsystem } from '@/hooks/useHealth'
 import { useHealthLogs } from '@/hooks/useHealth'
 import { cn } from '@/lib/utils'
+
+const STICK_THRESHOLD_PX = 16
 
 interface HealthLogTailProps {
   subsystem: Subsystem
@@ -30,6 +32,22 @@ export function HealthLogTail({ subsystem, status }: HealthLogTailProps) {
   const { data, isFetching } = useHealthLogs(open ? subsystem : undefined)
   const lines = data?.lines ?? []
 
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [stickToBottom, setStickToBottom] = useState(true)
+
+  useEffect(() => {
+    if (!open || !stickToBottom) return
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [lines, open, stickToBottom])
+
+  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
+    const el = e.currentTarget
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    setStickToBottom(distanceFromBottom <= STICK_THRESHOLD_PX)
+  }
+
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <div className='border-t border-border bg-muted/20'>
@@ -49,7 +67,11 @@ export function HealthLogTail({ subsystem, status }: HealthLogTailProps) {
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <div className='px-3 pb-2'>
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className='max-h-[180px] overflow-y-auto px-3 pb-2 [scrollbar-width:thin]'
+          >
             {lines.length === 0 && !isFetching && (
               <p className='py-1 font-mono text-[0.5625rem] text-muted-foreground'>ログなし</p>
             )}
@@ -65,6 +87,20 @@ export function HealthLogTail({ subsystem, status }: HealthLogTailProps) {
               </div>
             ))}
           </div>
+          {!stickToBottom && lines.length > 0 && (
+            <button
+              type='button'
+              onClick={() => {
+                const el = scrollRef.current
+                if (!el) return
+                el.scrollTop = el.scrollHeight
+                setStickToBottom(true)
+              }}
+              className='flex w-full items-center justify-center gap-1 border-t border-border bg-muted/40 px-3 py-1 font-mono text-[0.5625rem] font-bold uppercase tracking-[0.06em] text-muted-foreground hover:text-foreground'
+            >
+              最新へ戻る ↓
+            </button>
+          )}
         </CollapsibleContent>
       </div>
     </Collapsible>
