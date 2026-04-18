@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPG — v3 Agenda / Now+Next list (mobile-first, no grid)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+    }
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* Genre colours */
+    .g-news    { --g: 221 83% 55%; }
+    .g-sports  { --g: 142 70% 42%; }
+    .g-drama   { --g: 280 60% 52%; }
+    .g-variety { --g: 38 92% 48%; }
+    .g-anime   { --g: 320 70% 52%; }
+    .g-movie   { --g: 15 80% 48%; }
+    .g-docu    { --g: 190 70% 42%; }
+    .g-edu     { --g: 100 55% 42%; }
+    .g-other   { --g: 215 12% 48%; }
+
+    .genre-bar {
+      width: 3px;
+      border-radius: 2px;
+      background: hsl(var(--g));
+      flex-shrink: 0;
+      align-self: stretch;
+    }
+
+    /* Progress bar inside NOW cell */
+    .progress-track {
+      height: 3px;
+      background: hsl(var(--border));
+      border-radius: 2px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: hsl(var(--g));
+      border-radius: 2px;
+    }
+
+    /* Channel row */
+    .ch-row {
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .ch-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      background: hsl(var(--muted) / 0.4);
+      position: sticky;
+      top: 88px;
+      z-index: 10;
+      cursor: pointer;
+    }
+    .ch-header:hover { background: hsl(var(--muted) / 0.7); }
+    .ch-header:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+    }
+
+    .prog-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      padding: 8px 16px 8px 16px;
+      cursor: pointer;
+      transition: background 0.1s;
+      text-decoration: none;
+      color: inherit;
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+    .prog-item:hover { background: hsl(var(--muted) / 0.35); }
+    .prog-item:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+    }
+    .prog-item.is-live { background: hsl(var(--g) / 0.1); }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.1s;
+    }
+    .action-btn:hover { opacity: 0.85; }
+    .action-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+    .btn-watch {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+    .btn-reserve {
+      background: hsl(var(--destructive) / 0.15);
+      color: hsl(var(--destructive));
+      border: 1px solid hsl(var(--destructive) / 0.4);
+    }
+
+    .app-bar {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      height: 48px;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .toolbar {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      position: sticky;
+      top: 48px;
+      z-index: 29;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex; align-items: center;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+      padding: 1px 6px; border-radius: 3px;
+    }
+    .badge-live { background: hsl(0 72% 58% / 0.2); color: hsl(0 72% 70%); }
+    .badge-on-air { background: hsl(var(--g) / 0.2); color: hsl(var(--g)); font-size: 0.55rem; }
+
+    .tab-btn {
+      font-size: 0.7rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 4px;
+      border: none; cursor: pointer;
+      transition: background 0.1s;
+    }
+    .tab-btn.active {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+    .tab-btn:not(.active) {
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+    }
+    .tab-btn:not(.active):hover { background: hsl(var(--muted) / 0.5); }
+    .tab-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+
+    /* Time column */
+    .time-col {
+      width: 54px;
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      font-variant-numeric: tabular-nums;
+      color: hsl(var(--muted-foreground));
+      padding-top: 2px;
+      line-height: 1.3;
+    }
+
+    /* Desktop: 2-column layout */
+    @media (min-width: 768px) {
+      .agenda-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 1px;
+        background: hsl(var(--border));
+      }
+      .ch-row { background: hsl(var(--background)); }
+    }
+    @media (min-width: 1200px) {
+      .agenda-list {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Banner -->
+<p style="font-size:0.7rem;color:hsl(var(--muted-foreground));padding:5px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));">
+  EPG v3 · Agenda / Now+Next list — mobile-first, no grid, all-channel scan · dark mode
+</p>
+
+<!-- App bar -->
+<div class="app-bar">
+  <a href="/" aria-label="ライブへ戻る" style="display:inline-flex;align-items:center;gap:5px;font-size:0.875rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 8px;border-radius:6px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    ライブ
+  </a>
+  <span style="color:hsl(var(--muted-foreground));">|</span>
+  <span style="font-weight:700;font-size:0.9375rem;">番組表</span>
+  <span class="badge badge-live">● LIVE</span>
+  <div style="flex:1;"></div>
+  <button class="action-btn btn-reserve" aria-label="前日" style="font-size:0.75rem;padding:4px 10px;">← 前日</button>
+  <span style="font-size:0.8rem;font-weight:600;padding:0 2px;font-variant-numeric:tabular-nums;">4月17日（木）</span>
+  <button class="action-btn btn-reserve" aria-label="翌日" style="font-size:0.75rem;padding:4px 10px;">翌日 →</button>
+  <button class="action-btn btn-watch" aria-label="今すぐにジャンプ" style="font-size:0.75rem;">今すぐ</button>
+</div>
+
+<!-- Toolbar: channel type tabs + time-range filter -->
+<div class="toolbar">
+  <div role="tablist" aria-label="チャンネル種別" style="display:flex;gap:2px;">
+    <button role="tab" aria-selected="true" class="tab-btn active">すべて</button>
+    <button role="tab" aria-selected="false" class="tab-btn">GR</button>
+    <button role="tab" aria-selected="false" class="tab-btn">BS</button>
+    <button role="tab" aria-selected="false" class="tab-btn">CS</button>
+  </div>
+  <div style="width:1px;height:16px;background:hsl(var(--border));flex-shrink:0;"></div>
+  <!-- Time range quick-jump -->
+  <div role="group" aria-label="時間帯" style="display:flex;gap:2px;flex-wrap:wrap;">
+    <button class="tab-btn" style="font-size:0.65rem;padding:2px 7px;">00–06</button>
+    <button class="tab-btn" style="font-size:0.65rem;padding:2px 7px;">06–12</button>
+    <button class="tab-btn" style="font-size:0.65rem;padding:2px 7px;">12–18</button>
+    <button class="tab-btn active" style="font-size:0.65rem;padding:2px 7px;">18–24</button>
+  </div>
+  <div style="flex:1;"></div>
+  <span style="font-size:0.65rem;color:hsl(var(--muted-foreground));">現在: 21:13</span>
+</div>
+
+<!-- Agenda list -->
+<div class="agenda-list" role="list" aria-label="チャンネル別番組一覧">
+
+  <!-- ── NHK総合 ── -->
+  <div class="ch-row" role="listitem">
+    <div class="ch-header" role="button" tabindex="0" aria-label="NHK総合 チャンネル詳細" aria-expanded="true">
+      <span style="font-size:0.7rem;font-weight:700;color:hsl(221 83% 60%);width:18px;text-align:center;">1</span>
+      <span style="font-size:0.8rem;font-weight:700;">NHK総合</span>
+      <span style="font-size:0.65rem;color:hsl(var(--muted-foreground));background:hsl(221 83% 60%/0.15);padding:1px 5px;border-radius:3px;">GR</span>
+      <div style="flex:1;"></div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:hsl(var(--muted-foreground));"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+
+    <!-- ON AIR: NHKニュース7 -->
+    <button class="prog-item is-live g-news" aria-label="NHKニュース7 視聴中 21:00-21:30 報道 視聴する">
+      <div class="time-col">21:00<br>–21:30</div>
+      <div class="genre-bar g-news" style="margin:2px 8px 2px 0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span class="badge badge-on-air g-news" style="background:hsl(var(--g)/0.2);color:hsl(var(--g));">ON AIR</span>
+          <span style="font-size:0.8125rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">NHKニュース7</span>
+        </div>
+        <div class="progress-track g-news"><div class="progress-fill g-news" style="width:43%;"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;align-items:center;">
+          <span style="font-size:0.65rem;color:hsl(var(--muted-foreground));">残り17分</span>
+          <button class="action-btn btn-watch" onclick="event.stopPropagation()" aria-label="NHKニュース7を視聴">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            視聴
+          </button>
+        </div>
+      </div>
+    </button>
+
+    <!-- NEXT: 情報番組 -->
+    <button class="prog-item g-variety" aria-label="ガッテン! 次の番組 21:30-22:15 バラエティ 予約する">
+      <div class="time-col" style="color:hsl(var(--muted-foreground));">21:30<br>–22:15</div>
+      <div class="genre-bar g-variety" style="opacity:0.6;margin:2px 8px 2px 0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span style="font-size:0.6rem;font-weight:600;color:hsl(var(--muted-foreground));background:hsl(var(--muted));padding:1px 5px;border-radius:3px;">NEXT</span>
+          <span style="font-size:0.8125rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">ガッテン！特集</span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+          <button class="action-btn btn-reserve" onclick="event.stopPropagation()" aria-label="ガッテン!を録画予約">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>
+            予約
+          </button>
+        </div>
+      </div>
+    </button>
+
+    <!-- Later -->
+    <button class="prog-item g-drama" aria-label="土曜ドラマ 22:15-23:00 ドラマ 予約する">
+      <div class="time-col" style="color:hsl(var(--muted-foreground));">22:15<br>–23:00</div>
+      <div class="genre-bar g-drama" style="opacity:0.5;margin:2px 8px 2px 0;"></div>
+      <div style="flex:1;min-width:0;">
+        <span style="font-size:0.8125rem;font-weight:600;">土曜ドラマ「春の嵐」</span>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+          <button class="action-btn btn-reserve" onclick="event.stopPropagation()" aria-label="土曜ドラマを録画予約">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>
+            予約
+          </button>
+        </div>
+      </div>
+    </button>
+  </div>
+
+  <!-- ── NHK Eテレ ── -->
+  <div class="ch-row" role="listitem">
+    <div class="ch-header" role="button" tabindex="0" aria-label="NHK Eテレ">
+      <span style="font-size:0.7rem;font-weight:700;color:hsl(142 70% 48%);width:18px;text-align:center;">2</span>
+      <span style="font-size:0.8rem;font-weight:700;">NHK Eテレ</span>
+      <span style="font-size:0.65rem;color:hsl(var(--muted-foreground));background:hsl(142 70% 48%/0.15);padding:1px 5px;border-radius:3px;">GR</span>
+      <div style="flex:1;"></div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--muted-foreground));"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <button class="prog-item is-live g-edu" aria-label="Eテレ 0655 ON AIR">
+      <div class="time-col">21:00<br>–21:25</div>
+      <div class="genre-bar g-edu" style="margin:2px 8px 2px 0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span class="badge badge-on-air g-edu" style="background:hsl(var(--g)/0.2);color:hsl(var(--g));">ON AIR</span>
+          <span style="font-size:0.8125rem;font-weight:700;">にほんごであそぼ</span>
+        </div>
+        <div class="progress-track g-edu"><div class="progress-fill g-edu" style="width:60%;"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span style="font-size:0.65rem;color:hsl(var(--muted-foreground));">残り10分</span>
+          <button class="action-btn btn-watch" onclick="event.stopPropagation()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            視聴
+          </button>
+        </div>
+      </div>
+    </button>
+    <button class="prog-item g-anime" aria-label="アニメ ゆる△キャン 21:25-21:55">
+      <div class="time-col">21:25<br>–21:55</div>
+      <div class="genre-bar g-anime" style="opacity:0.6;margin:2px 8px 2px 0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span style="font-size:0.6rem;font-weight:600;color:hsl(var(--muted-foreground));background:hsl(var(--muted));padding:1px 5px;border-radius:3px;">NEXT</span>
+          <span style="font-size:0.8125rem;font-weight:600;">アニメ「ゆるキャン△」</span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+          <button class="action-btn btn-reserve" onclick="event.stopPropagation()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>
+            予約
+          </button>
+        </div>
+      </div>
+    </button>
+    <button class="prog-item g-other" aria-label="放送休止 21:55-00:00">
+      <div class="time-col" style="color:hsl(var(--muted-foreground));">21:55<br>–00:00</div>
+      <div class="genre-bar g-other" style="opacity:0.3;margin:2px 8px 2px 0;"></div>
+      <div style="flex:1;min-width:0;">
+        <span style="font-size:0.8rem;color:hsl(var(--muted-foreground));">放送休止</span>
+      </div>
+    </button>
+  </div>
+
+  <!-- ── フジテレビ ── -->
+  <div class="ch-row" role="listitem">
+    <div class="ch-header" role="button" tabindex="0" aria-label="フジテレビ">
+      <span style="font-size:0.7rem;font-weight:700;color:hsl(38 92% 52%);width:18px;text-align:center;">8</span>
+      <span style="font-size:0.8rem;font-weight:700;">フジテレビ</span>
+      <span style="font-size:0.65rem;color:hsl(var(--muted-foreground));background:hsl(38 92% 52%/0.15);padding:1px 5px;border-radius:3px;">GR</span>
+      <div style="flex:1;"></div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--muted-foreground));"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <button class="prog-item is-live g-variety" aria-label="VS魂 ON AIR">
+      <div class="time-col">21:00<br>–21:54</div>
+      <div class="genre-bar g-variety" style="margin:2px 8px 2px 0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span class="badge badge-on-air g-variety" style="background:hsl(var(--g)/0.2);color:hsl(var(--g));">ON AIR</span>
+          <span style="font-size:0.8125rem;font-weight:700;">VS魂</span>
+        </div>
+        <div class="progress-track g-variety"><div class="progress-fill g-variety" style="width:21%;"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span style="font-size:0.65rem;color:hsl(var(--muted-foreground));">残り43分</span>
+          <button class="action-btn btn-watch" onclick="event.stopPropagation()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            視聴
+          </button>
+        </div>
+      </div>
+    </button>
+    <button class="prog-item g-drama" aria-label="ドラマ 21:54-22:48 予約">
+      <div class="time-col">21:54<br>–22:48</div>
+      <div class="genre-bar g-drama" style="opacity:0.6;margin:2px 8px 2px 0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span style="font-size:0.6rem;font-weight:600;color:hsl(var(--muted-foreground));background:hsl(var(--muted));padding:1px 5px;border-radius:3px;">NEXT</span>
+          <span style="font-size:0.8125rem;font-weight:600;">月9ドラマ「嘘解きレトリック」</span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+          <button class="action-btn btn-reserve" onclick="event.stopPropagation()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>
+            予約
+          </button>
+        </div>
+      </div>
+    </button>
+  </div>
+
+  <!-- ── TBS ── -->
+  <div class="ch-row" role="listitem">
+    <div class="ch-header" role="button" tabindex="0" aria-label="TBS">
+      <span style="font-size:0.7rem;font-weight:700;color:hsl(0 72% 58%);width:18px;text-align:center;">6</span>
+      <span style="font-size:0.8rem;font-weight:700;">TBS</span>
+      <span style="font-size:0.65rem;color:hsl(var(--muted-foreground));background:hsl(0 72% 58%/0.15);padding:1px 5px;border-radius:3px;">GR</span>
+      <div style="flex:1;"></div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--muted-foreground));"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <button class="prog-item is-live g-news" aria-label="報道特集 ON AIR">
+      <div class="time-col">21:00<br>–22:00</div>
+      <div class="genre-bar g-news" style="margin:2px 8px 2px 0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span class="badge badge-on-air g-news" style="background:hsl(var(--g)/0.2);color:hsl(var(--g));">ON AIR</span>
+          <span style="font-size:0.8125rem;font-weight:700;">報道特集</span>
+        </div>
+        <div class="progress-track g-news"><div class="progress-fill g-news" style="width:21%;"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span style="font-size:0.65rem;color:hsl(var(--muted-foreground));">残り47分</span>
+          <button class="action-btn btn-watch" onclick="event.stopPropagation()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            視聴
+          </button>
+        </div>
+      </div>
+    </button>
+    <button class="prog-item g-drama" aria-label="日曜劇場 22:00-23:00 予約">
+      <div class="time-col">22:00<br>–23:00</div>
+      <div class="genre-bar g-drama" style="opacity:0.6;margin:2px 8px 2px 0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span style="font-size:0.6rem;font-weight:600;color:hsl(var(--muted-foreground));background:hsl(var(--muted));padding:1px 5px;border-radius:3px;">NEXT</span>
+          <span style="font-size:0.8125rem;font-weight:600;">日曜劇場「フォールガイ」</span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+          <button class="action-btn btn-reserve" onclick="event.stopPropagation()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>
+            予約
+          </button>
+        </div>
+      </div>
+    </button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- STATES: Loading / Empty / Error        -->
+<!-- ═══════════════════════════════════════ -->
+<section style="padding:32px 16px;border-top:2px dashed hsl(var(--border));margin-top:16px;">
+  <p style="font-size:0.7rem;font-weight:700;color:hsl(var(--muted-foreground));margin-bottom:16px;text-transform:uppercase;letter-spacing:0.05em;">States panel (loading / empty / error)</p>
+
+  <!-- Loading skeleton -->
+  <div style="margin-bottom:24px;">
+    <p style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:8px;">Loading state</p>
+    <div style="border-bottom:1px solid hsl(var(--border));">
+      <div style="height:40px;background:hsl(var(--muted)/0.4);margin-bottom:1px;border-radius:2px;animation:pulse 1.5s ease-in-out infinite;"></div>
+      <div style="padding:8px 16px;display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;">
+        <div style="width:54px;height:32px;background:hsl(var(--muted)/0.5);border-radius:3px;animation:pulse 1.5s ease-in-out infinite;"></div>
+        <div style="flex:1;">
+          <div style="height:12px;background:hsl(var(--muted)/0.5);border-radius:3px;margin-bottom:6px;width:60%;animation:pulse 1.5s ease-in-out infinite;"></div>
+          <div style="height:8px;background:hsl(var(--muted)/0.5);border-radius:3px;width:40%;animation:pulse 1.5s ease-in-out infinite;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div style="margin-bottom:24px;padding:32px;text-align:center;border:1px dashed hsl(var(--border));border-radius:8px;">
+    <p style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin-bottom:4px;">Empty state (この時間帯に番組データなし)</p>
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--muted-foreground));margin:0 auto 8px;display:block;"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 2l-4 5-4-5"/></svg>
+    <p style="font-size:0.875rem;font-weight:600;margin:0 0 4px;">番組データがありません</p>
+    <p style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin:0;">この時間帯のデータは取得できませんでした</p>
+  </div>
+
+  <!-- Error state -->
+  <div style="padding:16px;background:hsl(var(--destructive)/0.1);border:1px solid hsl(var(--destructive)/0.3);border-radius:8px;display:flex;align-items:flex-start;gap:10px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:hsl(var(--destructive));flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div style="flex:1;">
+      <p style="font-size:0.8rem;font-weight:700;color:hsl(var(--destructive));margin:0 0 2px;">番組データの取得に失敗</p>
+      <p style="font-size:0.7rem;color:hsl(var(--muted-foreground));margin:0 0 8px;">mirakc との接続がタイムアウトしました</p>
+      <button class="action-btn btn-reserve" style="font-size:0.7rem;">再試行</button>
+    </div>
+  </div>
+</section>
+
+<style>
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+</style>
+
+</body>
+</html>

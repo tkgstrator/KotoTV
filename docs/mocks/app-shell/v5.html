@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App Shell — v5 Hybrid Persistent Mini-Player + Side Rail</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      min-height: 100dvh;
+    }
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* ── Layout grid ── */
+    /* Desktop: [56px rail] [content] [280px now-playing panel when active] */
+    .app-layout {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      grid-template-rows: auto 1fr;
+      min-height: 100dvh;
+    }
+
+    /* ── Icon rail (desktop) ── */
+    .icon-rail {
+      grid-row: 1 / -1;
+      grid-column: 1;
+      position: sticky; top: 0;
+      height: 100dvh;
+      background: hsl(222 22% 7%);
+      border-right: 1px solid hsl(var(--border));
+      display: flex; flex-direction: column;
+      align-items: center;
+      padding: 10px 0;
+      z-index: 40;
+    }
+    .rail-logo {
+      width: 32px; height: 32px;
+      background: hsl(var(--primary));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 13px;
+      color: hsl(var(--primary-foreground));
+      margin-bottom: 18px; flex-shrink: 0;
+    }
+    .rail-item {
+      position: relative;
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px;
+      color: hsl(215 15% 55%);
+      text-decoration: none;
+      margin: 2px 0;
+      border: none; background: none; cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+    }
+    .rail-item:hover { background: hsl(var(--muted) / 0.2); color: hsl(210 20% 85%); }
+    .rail-item.active {
+      background: hsl(var(--primary) / 0.18);
+      color: hsl(var(--primary));
+    }
+    .rail-item.active::after {
+      content: '';
+      position: absolute;
+      right: -1px; top: 8px; bottom: 8px;
+      width: 3px;
+      background: hsl(var(--primary));
+      border-radius: 2px 0 0 2px;
+    }
+    .rail-item:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+    .rail-tooltip {
+      position: absolute;
+      left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+      background: hsl(222 18% 12%);
+      color: hsl(210 20% 92%);
+      border: 1px solid hsl(var(--border));
+      border-radius: 6px; padding: 4px 10px;
+      font-size: 12px; font-weight: 500;
+      white-space: nowrap; pointer-events: none;
+      opacity: 0; transition: opacity 0.1s; z-index: 100;
+    }
+    .rail-item:hover .rail-tooltip,
+    .rail-item:focus-visible .rail-tooltip { opacity: 1; }
+    .rail-spacer { flex: 1; }
+
+    /* ── Main content ── */
+    .main-col {
+      grid-column: 2;
+      display: flex; flex-direction: column;
+      min-width: 0;
+    }
+
+    .top-bar {
+      height: 52px;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex; align-items: center;
+      padding: 0 16px; gap: 12px;
+      position: sticky; top: 0; z-index: 30;
+    }
+    .page-title { font-size: 15px; font-weight: 700; }
+    .filter-chips { display: flex; gap: 5px; margin-left: auto; }
+    .chip {
+      padding: 3px 10px; border-radius: 99px;
+      font-size: 12px; font-weight: 500;
+      border: 1px solid hsl(var(--border));
+      color: hsl(var(--muted-foreground));
+      background: transparent;
+      cursor: pointer; text-decoration: none;
+      transition: background 0.1s, color 0.1s;
+    }
+    .chip:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .chip.active { background: hsl(var(--primary)/0.1); color: hsl(var(--primary)); border-color: hsl(var(--primary)/0.4); }
+    .chip:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 1px; }
+
+    .content-area { flex: 1; padding: 14px 16px; }
+
+    /* ── Now playing mini-player panel (right column, slides in) ── */
+    #now-playing-toggle { display: none; }
+
+    .now-playing-panel {
+      position: fixed;
+      top: 0; right: 0;
+      width: 280px; height: 100dvh;
+      background: hsl(222 20% 8%);
+      border-left: 1px solid hsl(var(--border));
+      display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      z-index: 50;
+    }
+    #now-playing-toggle:checked ~ .now-playing-panel { transform: translateX(0); }
+    #now-playing-toggle:checked ~ .app-layout { grid-template-columns: 56px 1fr; }
+    /* Adjust content width when panel open (desktop) */
+    @media (min-width: 860px) {
+      #now-playing-toggle:checked ~ .app-layout .main-col { margin-right: 280px; }
+    }
+
+    .np-header {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid hsl(var(--border) / 0.6);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .np-title { font-size: 12px; font-weight: 700; color: hsl(var(--muted-foreground)); text-transform: uppercase; letter-spacing: 0.06em; }
+    .np-close {
+      margin-left: auto; width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      border: none; background: none; cursor: pointer;
+      color: hsl(var(--muted-foreground)); border-radius: 4px;
+    }
+    .np-close:hover { background: hsl(var(--muted)/0.3); color: hsl(var(--foreground)); }
+    .np-close:focus-visible { outline: 2px solid hsl(var(--ring)); }
+
+    .np-video {
+      width: 100%; aspect-ratio: 16/9;
+      background: hsl(222 25% 6%);
+      display: flex; align-items: center; justify-content: center;
+      color: hsl(var(--muted-foreground)); font-size: 12px;
+    }
+    .np-info { padding: 12px 14px; }
+    .np-channel { font-size: 11px; color: hsl(var(--muted-foreground)); margin-bottom: 4px; }
+    .np-prog { font-size: 14px; font-weight: 600; }
+    .np-progress { margin-top: 10px; }
+    .np-prog-track {
+      height: 3px; background: hsl(var(--muted));
+      border-radius: 99px; overflow: hidden;
+    }
+    .np-prog-fill { height: 100%; background: hsl(var(--primary)); border-radius: 99px; }
+    .np-prog-time { display: flex; justify-content: space-between; font-size: 10px; color: hsl(var(--muted-foreground)); margin-top: 4px; }
+    .np-controls {
+      padding: 12px 14px;
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      border-top: 1px solid hsl(var(--border) / 0.5);
+    }
+    .np-btn {
+      width: 36px; height: 36px;
+      border: none; background: hsl(var(--muted) / 0.3);
+      border-radius: 50%; cursor: pointer;
+      color: hsl(var(--foreground));
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.1s;
+    }
+    .np-btn:hover { background: hsl(var(--muted)); }
+    .np-btn:focus-visible { outline: 2px solid hsl(var(--ring)); }
+    .np-btn.expand {
+      width: 44px; height: 44px;
+      background: hsl(var(--primary) / 0.15);
+      color: hsl(var(--primary));
+    }
+    .np-btn.expand:hover { background: hsl(var(--primary) / 0.3); }
+
+    .np-open-btn {
+      width: 100%; padding: 10px 14px;
+      background: hsl(var(--primary) / 0.08);
+      border: none; border-top: 1px solid hsl(var(--border) / 0.4);
+      color: hsl(var(--primary));
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; text-align: left;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .np-open-btn:hover { background: hsl(var(--primary) / 0.15); }
+    .np-open-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+
+    /* ── Channel stub ── */
+    .ch-stub { border-radius: 8px; overflow: hidden; border: 1px solid hsl(var(--border)); }
+    .ch-stub-header {
+      background: hsl(var(--card)); padding: 8px 12px;
+      font-size: 11px; font-weight: 700; color: hsl(var(--muted-foreground));
+      text-transform: uppercase; letter-spacing: 0.06em;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .ch-row {
+      display: grid; grid-template-columns: 48px 1fr 1fr;
+      align-items: stretch; height: 48px;
+      border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--card)); text-decoration: none; color: inherit; position: relative;
+    }
+    .ch-row:last-child { border-bottom: none; }
+    .ch-row:hover { background: hsl(var(--muted) / 0.4); }
+    .ch-row:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; z-index: 1; }
+    .ch-num { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: hsl(var(--muted-foreground)); }
+    .ch-cell {
+      padding: 0 10px; display: flex; flex-direction: column; justify-content: center; gap: 2px;
+      border-left: 1px solid hsl(var(--border)); position: relative;
+    }
+    .ch-name { font-size: 11px; font-weight: 600; }
+    .prog-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prog-time { font-size: 10px; color: hsl(var(--muted-foreground)); }
+    .prog-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: hsl(var(--muted)); }
+    .prog-fill { height: 100%; background: hsl(var(--primary)); }
+
+    /* ── Mobile ── */
+    @media (max-width: 767px) {
+      .app-layout { grid-template-columns: 1fr; }
+      .icon-rail { display: none; }
+      .main-col { grid-column: 1; padding-bottom: 64px; }
+      .now-playing-panel { width: 100%; border-left: none; border-top: 1px solid hsl(var(--border)); top: auto; bottom: 64px; height: auto; max-height: 60dvh; }
+      .bottom-tabs { display: flex; }
+      .filter-chips { display: none; }
+    }
+    @media (min-width: 768px) {
+      .bottom-tabs { display: none; }
+    }
+
+    .bottom-tabs {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 64px;
+      background: hsl(222 22% 7%);
+      border-top: 1px solid hsl(var(--border));
+      align-items: stretch; z-index: 40;
+    }
+    .tab-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 3px;
+      font-size: 10px; font-weight: 500;
+      color: hsl(215 15% 50%);
+      text-decoration: none; border: none; background: none; cursor: pointer;
+      transition: color 0.1s;
+    }
+    .tab-item:hover { color: hsl(210 20% 85%); }
+    .tab-item.active { color: hsl(var(--primary)); }
+    .tab-item:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -3px; border-radius: 4px; }
+
+    .demo-label {
+      background: hsl(38 92% 52% / 0.12);
+      color: hsl(38 92% 60%); font-size: 11px;
+      padding: 2px 8px; border-radius: 4px;
+      border: 1px solid hsl(38 92% 52% / 0.25);
+    }
+
+    /* Live indicator dot */
+    .live-dot {
+      width: 7px; height: 7px;
+      background: hsl(0 72% 58%); border-radius: 50%;
+      display: inline-block; margin-left: 4px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  </style>
+</head>
+<body>
+
+<input type="checkbox" id="now-playing-toggle" />
+
+<!-- Now playing panel (persistent mini-player when watching) -->
+<div class="now-playing-panel" aria-label="再生中パネル">
+  <div class="np-header">
+    <span class="live-dot"></span>
+    <span class="np-title">再生中</span>
+    <label for="now-playing-toggle" class="np-close" tabindex="0" role="button" aria-label="パネルを閉じる">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </label>
+  </div>
+  <div class="np-video">
+    <span style="font-size:11px;">▶ NHK総合 ライブ映像</span>
+  </div>
+  <div class="np-info">
+    <div class="np-channel">NHK総合 (ch.1)</div>
+    <div class="np-prog">ニュース7</div>
+    <div class="np-progress">
+      <div class="np-prog-track"><div class="np-prog-fill" style="width:45%;"></div></div>
+      <div class="np-prog-time"><span>19:27</span><span>20:00</span></div>
+    </div>
+  </div>
+  <div class="np-controls">
+    <button class="np-btn" aria-label="前のチャンネル">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <button class="np-btn expand" aria-label="全画面で開く">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+        <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+      </svg>
+    </button>
+    <button class="np-btn" aria-label="次のチャンネル">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+  </div>
+  <button class="np-open-btn" tabindex="0">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="15 3 21 3 21 9"/><line x1="21" y1="3" x2="14" y2="10"/>
+    </svg>
+    全画面プレイヤーで開く
+  </button>
+</div>
+
+<div class="app-layout">
+  <!-- Icon rail -->
+  <nav class="icon-rail" aria-label="メインナビゲーション">
+    <div class="rail-logo" aria-hidden="true">K</div>
+    <a href="#" class="rail-item active" aria-label="チャンネル一覧" aria-current="page">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <span class="rail-tooltip">チャンネル一覧</span>
+    </a>
+    <a href="#" class="rail-item" aria-label="番組表 (EPG)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <span class="rail-tooltip">番組表 (EPG)</span>
+    </a>
+    <a href="#" class="rail-item" aria-label="録画一覧">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <span class="rail-tooltip">録画一覧</span>
+    </a>
+    <!-- Now playing toggle button in rail -->
+    <div style="position:relative;">
+      <label for="now-playing-toggle" class="rail-item" tabindex="0" role="button" aria-label="再生中パネル" style="cursor:pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>
+        </svg>
+        <span class="rail-tooltip">再生中</span>
+        <!-- Live badge -->
+        <span style="position:absolute;top:4px;right:4px;width:8px;height:8px;background:hsl(0 72% 58%);border-radius:50%;border:1.5px solid hsl(222 22% 7%);"></span>
+      </label>
+    </div>
+    <div class="rail-spacer"></div>
+    <a href="#" class="rail-item" aria-label="設定">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9 2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9 2.83-2.83"/>
+      </svg>
+      <span class="rail-tooltip">設定</span>
+    </a>
+  </nav>
+
+  <!-- Main column -->
+  <div class="main-col">
+    <header class="top-bar">
+      <span class="page-title">チャンネル一覧</span>
+      <div class="filter-chips">
+        <a href="#" class="chip active">地上波</a>
+        <a href="#" class="chip">BS</a>
+        <a href="#" class="chip">CS</a>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <span class="demo-label">DEMO</span>
+        <label for="now-playing-toggle" style="cursor:pointer;font-size:12px;font-weight:600;color:hsl(0 72% 60%);background:hsl(0 72% 60%/0.08);border:1px solid hsl(0 72% 60%/0.3);border-radius:6px;padding:4px 10px;display:flex;align-items:center;gap:5px;">
+          <span class="live-dot" style="width:6px;height:6px;"></span> 再生パネル表示
+        </label>
+      </div>
+    </header>
+
+    <main class="content-area">
+      <div style="margin-bottom:14px;display:flex;align-items:baseline;gap:12px;">
+        <h1 style="font-size:18px;font-weight:700;">チャンネル一覧</h1>
+        <span style="font-size:12px;color:hsl(var(--muted-foreground));">地上波 · BS · CS</span>
+      </div>
+      <div class="ch-stub">
+        <div class="ch-stub-header">地上波 GR</div>
+        <a href="#" class="ch-row">
+          <div class="ch-num">1</div>
+          <div class="ch-cell"><span class="ch-name">NHK総合</span></div>
+          <div class="ch-cell">
+            <span class="prog-name">ニュース7</span>
+            <span class="prog-time">19:00–20:00</span>
+            <div class="prog-bar"><div class="prog-fill" style="width:45%"></div></div>
+          </div>
+        </a>
+        <a href="#" class="ch-row">
+          <div class="ch-num">3</div>
+          <div class="ch-cell"><span class="ch-name">NHK Eテレ</span></div>
+          <div class="ch-cell">
+            <span class="prog-name">ダーウィンが来た！</span>
+            <span class="prog-time">19:30–20:00</span>
+            <div class="prog-bar"><div class="prog-fill" style="width:72%"></div></div>
+          </div>
+        </a>
+        <a href="#" class="ch-row">
+          <div class="ch-num">4</div>
+          <div class="ch-cell"><span class="ch-name">日本テレビ</span></div>
+          <div class="ch-cell">
+            <span class="prog-name">月曜から夜更かし</span>
+            <span class="prog-time">22:00–23:00</span>
+            <div class="prog-bar"><div class="prog-fill" style="width:20%"></div></div>
+          </div>
+        </a>
+        <a href="#" class="ch-row">
+          <div class="ch-num">6</div>
+          <div class="ch-cell"><span class="ch-name">TBSテレビ</span></div>
+          <div class="ch-cell">
+            <span class="prog-name">CDTVライブ！ライブ！</span>
+            <span class="prog-time">23:00–01:28</span>
+            <div class="prog-bar"><div class="prog-fill" style="width:8%"></div></div>
+          </div>
+        </a>
+        <a href="#" class="ch-row">
+          <div class="ch-num">8</div>
+          <div class="ch-cell"><span class="ch-name">フジテレビ</span></div>
+          <div class="ch-cell">
+            <span class="prog-name">VS魂</span>
+            <span class="prog-time">21:00–22:00</span>
+            <div class="prog-bar"><div class="prog-fill" style="width:60%"></div></div>
+          </div>
+        </a>
+      </div>
+      <p style="margin-top:12px;font-size:12px;color:hsl(var(--muted-foreground));">
+        ポイント: チャンネルをクリック→再生開始でも画面遷移せず右パネルに表示継続。
+        別チャンネルを見ながら一覧を閲覧できる。全画面ボタンで/live/:idへ。
+      </p>
+    </main>
+  </div>
+</div>
+
+<!-- Mobile bottom tabs -->
+<nav class="bottom-tabs" aria-label="メインナビゲーション">
+  <a href="#" class="tab-item active" aria-current="page">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+    </svg>
+    TV
+  </a>
+  <a href="#" class="tab-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    EPG
+  </a>
+  <a href="#" class="tab-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+    録画
+  </a>
+  <label for="now-playing-toggle" class="tab-item" tabindex="0" role="button" style="position:relative;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>
+    </svg>
+    再生中
+    <span style="position:absolute;top:8px;right:calc(50% - 18px);width:7px;height:7px;background:hsl(0 72% 58%);border-radius:50%;border:1.5px solid hsl(222 22% 7%);"></span>
+  </label>
+</nav>
+
+</body>
+</html>

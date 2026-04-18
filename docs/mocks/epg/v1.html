@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPG — v1 Horizontal Time Axis (TV Guide style)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 3px;
+    }
+
+    /* ── Genre colour system ── */
+    .genre-news     { --g: 221 83% 45%; }
+    .genre-sports   { --g: 142 70% 38%; }
+    .genre-drama    { --g: 280 60% 48%; }
+    .genre-variety  { --g: 38 92% 44%; }
+    .genre-anime    { --g: 320 70% 48%; }
+    .genre-docu     { --g: 190 70% 38%; }
+    .genre-movie    { --g: 15 80% 44%; }
+    .genre-music    { --g: 260 60% 50%; }
+    .genre-edu      { --g: 100 55% 38%; }
+    .genre-other    { --g: 215 12% 45%; }
+
+    /* ── EPG Grid layout ── */
+    /* The grid scrolls horizontally (time) and vertically (channels)     */
+    /* Channel label column is sticky on the left                          */
+    /* Time ruler row is sticky at the top                                 */
+
+    .epg-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .app-bar {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      flex-shrink: 0;
+      z-index: 30;
+    }
+
+    .epg-toolbar {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px;
+      flex-shrink: 0;
+      z-index: 29;
+    }
+
+    /* Scrollable grid area */
+    .epg-scroll-area {
+      flex: 1;
+      overflow: auto;
+      position: relative;
+    }
+    .epg-scroll-area::-webkit-scrollbar { width: 5px; height: 5px; }
+    .epg-scroll-area::-webkit-scrollbar-track { background: hsl(var(--muted) / 0.3); }
+    .epg-scroll-area::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+
+    /* Inner grid: channel-label col (sticky left) + time cells */
+    .epg-grid {
+      display: grid;
+      /* col 0 = channel label (sticky), rest = time blocks at 3px/min = 180px/hour */
+      grid-template-columns: 72px repeat(24, 180px);
+      grid-auto-rows: 52px;
+      min-width: max-content;
+    }
+
+    /* Time ruler row (row 1) */
+    .time-ruler-cell {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: hsl(var(--card));
+      border-bottom: 2px solid hsl(var(--border));
+      border-right: 1px solid hsl(var(--border) / 0.5);
+      display: flex;
+      align-items: flex-end;
+      padding-bottom: 4px;
+      padding-left: 6px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      font-variant-numeric: tabular-nums;
+    }
+    .time-ruler-cell.corner {
+      left: 0;
+      z-index: 25;
+      border-right: 2px solid hsl(var(--border));
+    }
+
+    /* Channel label cells (col 0, sticky left) */
+    .ch-label {
+      position: sticky;
+      left: 0;
+      z-index: 15;
+      background: hsl(var(--card));
+      border-right: 2px solid hsl(var(--border));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 2px;
+      padding: 4px 2px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .ch-label:hover { background: hsl(var(--muted) / 0.6); }
+    .ch-label:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+    }
+
+    /* Program cell */
+    .prog-cell {
+      position: relative;
+      border-right: 1px solid hsl(var(--border) / 0.4);
+      border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--background));
+      cursor: pointer;
+      overflow: hidden;
+      transition: filter 0.1s;
+      padding: 4px 6px;
+      /* width determined by duration: set via inline style */
+      /* grid-column: span N  where N = duration_minutes / 5 */
+    }
+    .prog-cell:hover { filter: brightness(1.08); z-index: 5; }
+    .prog-cell:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+      z-index: 5;
+    }
+
+    .prog-cell-inner {
+      height: 100%;
+      background: hsl(var(--g) / 0.18);
+      border-left: 3px solid hsl(var(--g));
+      border-radius: 2px;
+      padding: 3px 5px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 1px;
+      overflow: hidden;
+    }
+
+    .prog-title {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      line-height: 1.3;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .prog-time {
+      font-size: 0.5625rem;
+      color: hsl(var(--muted-foreground));
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* Now-line indicator */
+    .now-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: hsl(var(--destructive));
+      z-index: 18;
+      pointer-events: none;
+    }
+    .now-line::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -3px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: hsl(var(--destructive));
+    }
+
+    /* Reserve badge */
+    .reserve-badge {
+      position: absolute;
+      top: 3px;
+      right: 4px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: hsl(var(--destructive));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .reserve-badge svg { color: hsl(0 0% 96%); }
+
+    /* Genre legend */
+    .genre-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: hsl(var(--g));
+      flex-shrink: 0;
+      display: inline-block;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 1px 6px;
+      border-radius: 3px;
+      line-height: 1.6;
+    }
+    .badge-live { background: hsl(0 72% 58% / 0.2); color: hsl(0 72% 70%); }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 0: Label                                           -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:6px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));">
+  EPG v1 · Horizontal Time Axis · Desktop (TV-Guide grid) — <strong style="color:hsl(var(--foreground))">dark mode</strong>
+</p>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: DESKTOP EPG                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="epg-shell" style="max-width:1440px;margin:0 auto;height:85vh;border:1px solid hsl(var(--border));border-top:none;">
+
+  <!-- App bar -->
+  <div class="app-bar">
+    <a href="/" aria-label="チャンネルリストへ"
+       style="display:inline-flex;align-items:center;gap:6px;font-size:0.875rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 10px;border-radius:6px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+      ライブ
+    </a>
+    <span style="color:hsl(var(--muted-foreground));">|</span>
+    <span style="font-weight:700;font-size:0.9375rem;">番組表</span>
+    <span class="badge badge-live" style="margin-left:4px;">● LIVE</span>
+    <div style="flex:1;"></div>
+    <!-- Date nav -->
+    <button aria-label="前の日" style="padding:4px 10px;border-radius:6px;background:transparent;border:1px solid hsl(var(--border));color:hsl(var(--muted-foreground));font-size:0.8rem;cursor:pointer;">
+      ← 前日
+    </button>
+    <span style="font-size:0.875rem;font-weight:600;font-variant-numeric:tabular-nums;padding:0 4px;">2026年4月17日（木）</span>
+    <button aria-label="次の日" style="padding:4px 10px;border-radius:6px;background:transparent;border:1px solid hsl(var(--border));color:hsl(var(--muted-foreground));font-size:0.8rem;cursor:pointer;">
+      翌日 →
+    </button>
+    <button aria-label="今すぐにジャンプ" style="padding:4px 12px;border-radius:6px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));font-size:0.8rem;font-weight:600;border:none;cursor:pointer;">
+      今すぐ
+    </button>
+  </div>
+
+  <!-- Toolbar: filter by type + genre legend -->
+  <div class="epg-toolbar">
+    <!-- Type filter -->
+    <div role="tablist" aria-label="チャンネル種別" style="display:flex;gap:2px;">
+      <button role="tab" aria-selected="true"
+              style="background:hsl(var(--primary));color:hsl(var(--primary-foreground));border-radius:4px;font-size:0.7rem;font-weight:700;padding:2px 10px;border:none;cursor:pointer;">すべて</button>
+      <button role="tab" aria-selected="false"
+              style="background:transparent;border:none;color:hsl(var(--muted-foreground));font-size:0.7rem;font-weight:600;padding:2px 10px;border-radius:4px;cursor:pointer;">GR</button>
+      <button role="tab" aria-selected="false"
+              style="background:transparent;border:none;color:hsl(var(--muted-foreground));font-size:0.7rem;font-weight:600;padding:2px 10px;border-radius:4px;cursor:pointer;">BS</button>
+      <button role="tab" aria-selected="false"
+              style="background:transparent;border:none;color:hsl(var(--muted-foreground));font-size:0.7rem;font-weight:600;padding:2px 10px;border-radius:4px;cursor:pointer;">CS</button>
+    </div>
+    <div style="width:1px;height:18px;background:hsl(var(--border));margin:0 4px;"></div>
+    <!-- Genre legend (compact) -->
+    <div style="display:flex;gap:8px;align-items:center;font-size:0.6rem;color:hsl(var(--muted-foreground));">
+      <span class="genre-news" style="display:inline-flex;align-items:center;gap:3px;"><span class="genre-dot"></span>報道</span>
+      <span class="genre-sports" style="display:inline-flex;align-items:center;gap:3px;"><span class="genre-dot"></span>スポーツ</span>
+      <span class="genre-drama" style="display:inline-flex;align-items:center;gap:3px;"><span class="genre-dot"></span>ドラマ</span>
+      <span class="genre-variety" style="display:inline-flex;align-items:center;gap:3px;"><span class="genre-dot"></span>バラエティ</span>
+      <span class="genre-anime" style="display:inline-flex;align-items:center;gap:3px;"><span class="genre-dot"></span>アニメ</span>
+      <span class="genre-movie" style="display:inline-flex;align-items:center;gap:3px;"><span class="genre-dot"></span>映画</span>
+      <span class="genre-docu" style="display:inline-flex;align-items:center;gap:3px;"><span class="genre-dot"></span>ドキュメンタリー</span>
+    </div>
+  </div>
+
+  <!-- EPG scroll area -->
+  <div class="epg-scroll-area" id="epgScroll">
+
+    <!-- Now-line (positioned at 21:13 = 21*60+13 = 1273 min from 00:00 = 1273*3px = 3819px from left + 72px channel col) -->
+    <!-- For demo: show "now" at roughly 21:13 (about 3h 13m into the visible 18:00–24:00 range) -->
+    <!-- In real usage this is absolute-positioned over the scroll area -->
+    <div class="now-line" style="left: calc(72px + 1273px * 3);"></div>
+
+    <div class="epg-grid" role="grid" aria-label="番組表グリッド">
+
+      <!-- ── Row 0: Time ruler ── -->
+      <!-- Corner -->
+      <div class="time-ruler-cell corner" role="columnheader" aria-label="チャンネル">
+        <span style="font-size:0.6rem;font-weight:600;color:hsl(var(--muted-foreground));">CH</span>
+      </div>
+      <!-- Hours 0..23 -->
+      <div class="time-ruler-cell" role="columnheader">00:00</div>
+      <div class="time-ruler-cell" role="columnheader">01:00</div>
+      <div class="time-ruler-cell" role="columnheader">02:00</div>
+      <div class="time-ruler-cell" role="columnheader">03:00</div>
+      <div class="time-ruler-cell" role="columnheader">04:00</div>
+      <div class="time-ruler-cell" role="columnheader">05:00</div>
+      <div class="time-ruler-cell" role="columnheader">06:00</div>
+      <div class="time-ruler-cell" role="columnheader">07:00</div>
+      <div class="time-ruler-cell" role="columnheader">08:00</div>
+      <div class="time-ruler-cell" role="columnheader">09:00</div>
+      <div class="time-ruler-cell" role="columnheader">10:00</div>
+      <div class="time-ruler-cell" role="columnheader">11:00</div>
+      <div class="time-ruler-cell" role="columnheader">12:00</div>
+      <div class="time-ruler-cell" role="columnheader">13:00</div>
+      <div class="time-ruler-cell" role="columnheader">14:00</div>
+      <div class="time-ruler-cell" role="columnheader">15:00</div>
+      <div class="time-ruler-cell" role="columnheader">16:00</div>
+      <div class="time-ruler-cell" role="columnheader">17:00</div>
+      <div class="time-ruler-cell" role="columnheader">18:00</div>
+      <div class="time-ruler-cell" role="columnheader">19:00</div>
+      <div class="time-ruler-cell" role="columnheader">20:00</div>
+      <div class="time-ruler-cell" role="columnheader" style="border-color:hsl(var(--destructive)/0.6);">21:00</div>
+      <div class="time-ruler-cell" role="columnheader">22:00</div>
+      <div class="time-ruler-cell" role="columnheader">23:00</div>
+
+      <!-- ── Row 1: NHK総合 (GR-1) ── -->
+      <div class="ch-label" role="rowheader" tabindex="0" aria-label="NHK総合 を視聴">
+        <span style="font-size:0.65rem;font-weight:700;color:hsl(221 83% 60%);">1</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;text-align:center;">NHK<br>総合</span>
+      </div>
+      <!-- Programs: span by 30min=90px, 60min=180px, etc. using grid-column span -->
+      <!-- 00:00 – 01:00 (60min) -->
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" aria-label="ニュース (00:00-00:45)"
+           style="grid-column: span 9;"> <!-- 45min = 9*5min steps, but grid is hourly so use pixel width -->
+        <!-- NOTE: In actual impl, cells use absolute positioning or fractional grid. For mock, we use grid-column:span with 1 col = 1 hour, cells span fractional hours -->
+        <!-- Here: use inline width override with CSS grid subgrid trick approximation -->
+        <div class="prog-cell-inner">
+          <span class="prog-title">NHKニュース</span>
+          <span class="prog-time">00:00–00:45</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-drama" tabindex="0" role="gridcell" aria-label="大河ドラマ (00:45-01:30)"
+           style="grid-column: span 9;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">大河ドラマ「光る君へ」</span>
+          <span class="prog-time">00:45–01:30</span>
+        </div>
+        <div class="reserve-badge" aria-label="録画予約済み">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+        </div>
+      </div>
+      <div class="prog-cell genre-other" tabindex="0" role="gridcell" style="grid-column: span 6;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">放送休止</span>
+          <span class="prog-time">01:30–02:00</span>
+        </div>
+      </div>
+      <!-- Remaining hours filled -->
+      <div class="prog-cell genre-docu" tabindex="0" role="gridcell" style="grid-column: span 12;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">NHKスペシャル 再放送</span>
+          <span class="prog-time">02:00–03:00</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-other" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner"><span class="prog-title" style="opacity:0.5;">深夜放送</span></div>
+      </div>
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">おはよう日本</span>
+          <span class="prog-time">06:00–07:30</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-edu" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">連続テレビ小説「おむすび」</span>
+          <span class="prog-time">07:30–08:30</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">NHKニュースおはよう日本</span>
+          <span class="prog-time">08:30–09:30</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">あさイチ</span>
+          <span class="prog-time">09:30–10:30</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-docu" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">所さん！事件ですよ</span>
+          <span class="prog-time">10:30–11:30</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" style="grid-column: span 12;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">ニュース</span>
+          <span class="prog-time">11:30–12:00</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">ニュース645</span>
+          <span class="prog-time">12:00–13:30</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">ごごナマ</span>
+          <span class="prog-time">13:30–15:30</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-sports" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">スポーツニュース</span>
+          <span class="prog-time">15:30–17:00</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" style="grid-column: span 12;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">ニュース</span>
+          <span class="prog-time">17:00–18:00</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" style="grid-column: span 12;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">首都圏ニュース845</span>
+          <span class="prog-time">18:00–19:00</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 12;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">チコちゃんに叱られる！</span>
+          <span class="prog-time">19:00–20:00</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 12;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">プロジェクトX</span>
+          <span class="prog-time">20:00–21:00</span>
+        </div>
+      </div>
+      <!-- 21:00 currently airing - highlighted -->
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" aria-current="true"
+           style="grid-column: span 6; box-shadow: 0 0 0 2px hsl(var(--primary)) inset;">
+        <div class="prog-cell-inner" style="background:hsl(var(--g)/0.30);">
+          <span class="prog-title" style="color:hsl(var(--primary));">ニュースウォッチ9</span>
+          <span class="prog-time" style="color:hsl(var(--primary)/0.8);">21:00–21:30 ● NOW</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-drama" tabindex="0" role="gridcell" style="grid-column: span 12;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">連続テレビ小説</span>
+          <span class="prog-time">21:30–22:30</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-drama" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner">
+          <span class="prog-title">クローズアップ現代</span>
+          <span class="prog-time">22:30–00:00</span>
+        </div>
+        <div class="reserve-badge" aria-label="録画予約済み">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+        </div>
+      </div>
+
+      <!-- ── Row 2: NHK Eテレ (GR-2) ── -->
+      <div class="ch-label" role="rowheader" tabindex="0" aria-label="NHK Eテレ を視聴">
+        <span style="font-size:0.65rem;font-weight:700;color:hsl(221 83% 60%);">2</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;text-align:center;">NHK<br>Eテレ</span>
+      </div>
+      <div class="prog-cell genre-edu" tabindex="0" role="gridcell" style="grid-column: span 36;">
+        <div class="prog-cell-inner"><span class="prog-title">教育放送</span><span class="prog-time">00:00–03:00</span></div>
+      </div>
+      <div class="prog-cell genre-other" tabindex="0" role="gridcell" style="grid-column: span 36;">
+        <div class="prog-cell-inner"><span class="prog-title" style="opacity:0.5;">放送休止</span></div>
+      </div>
+      <div class="prog-cell genre-edu" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner"><span class="prog-title">子ども向け教育番組</span><span class="prog-time">06:00–08:00</span></div>
+      </div>
+      <div class="prog-cell genre-edu" tabindex="0" role="gridcell" style="grid-column: span 36;">
+        <div class="prog-cell-inner"><span class="prog-title">高校講座</span><span class="prog-time">08:00–11:00</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner"><span class="prog-title">趣味の園芸</span><span class="prog-time">11:00–13:00</span></div>
+      </div>
+      <div class="prog-cell genre-anime" tabindex="0" role="gridcell" style="grid-column: span 30;">
+        <div class="prog-cell-inner"><span class="prog-title">アニメ一挙放送</span><span class="prog-time">13:00–15:30</span></div>
+      </div>
+      <div class="prog-cell genre-edu" tabindex="0" role="gridcell" style="grid-column: span 30;">
+        <div class="prog-cell-inner"><span class="prog-title">NHK高校講座</span><span class="prog-time">15:30–18:00</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner"><span class="prog-title">趣味どきっ！</span><span class="prog-time">18:00–20:00</span></div>
+      </div>
+      <div class="prog-cell genre-music" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">クラシック音楽館</span><span class="prog-time">20:00–21:30</span></div>
+      </div>
+      <!-- Currently airing on Eテレ -->
+      <div class="prog-cell genre-drama" tabindex="0" role="gridcell" aria-current="true"
+           style="grid-column: span 6; box-shadow: 0 0 0 2px hsl(var(--primary)) inset;">
+        <div class="prog-cell-inner" style="background:hsl(var(--g)/0.30);">
+          <span class="prog-title" style="color:hsl(var(--primary));">シリーズ深海</span>
+          <span class="prog-time" style="color:hsl(var(--primary)/0.8);">21:30 ● NOW</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-music" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner"><span class="prog-title">ETV特集 音楽の夜</span><span class="prog-time">22:00–00:00</span></div>
+      </div>
+
+      <!-- ── Row 3: TBS (GR-6) ── -->
+      <div class="ch-label" role="rowheader" tabindex="0" aria-label="TBS を視聴">
+        <span style="font-size:0.65rem;font-weight:700;color:hsl(221 83% 60%);">6</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;text-align:center;">TBS</span>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 12;">
+        <div class="prog-cell-inner"><span class="prog-title">バラエティ深夜版</span><span class="prog-time">00:00–01:00</span></div>
+      </div>
+      <div class="prog-cell genre-other" tabindex="0" role="gridcell" style="grid-column: span 60;">
+        <div class="prog-cell-inner"><span class="prog-title" style="opacity:0.5;">深夜〜早朝</span></div>
+      </div>
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">ラジオでGO!</span><span class="prog-time">06:00–07:30</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 30;">
+        <div class="prog-cell-inner"><span class="prog-title">日曜朝のバラエティ</span><span class="prog-time">07:30–10:00</span></div>
+      </div>
+      <div class="prog-cell genre-drama" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner"><span class="prog-title">サンデーモーニング</span><span class="prog-time">10:00–12:00</span></div>
+      </div>
+      <div class="prog-cell genre-sports" tabindex="0" role="gridcell" style="grid-column: span 36;">
+        <div class="prog-cell-inner"><span class="prog-title">ゴルフ中継</span><span class="prog-time">12:00–15:00</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner"><span class="prog-title">水戸黄門</span><span class="prog-time">15:00–17:00</span></div>
+      </div>
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" style="grid-column: span 12;">
+        <div class="prog-cell-inner"><span class="prog-title">JNNニュース</span><span class="prog-time">17:00–18:00</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">マツコの知らない世界</span><span class="prog-time">18:00–19:30</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">人生最高レストラン</span><span class="prog-time">19:30–21:00</span></div>
+      </div>
+      <!-- Currently airing TBS -->
+      <div class="prog-cell genre-drama" tabindex="0" role="gridcell" aria-current="true"
+           style="grid-column: span 12; box-shadow: 0 0 0 2px hsl(var(--primary)) inset;">
+        <div class="prog-cell-inner" style="background:hsl(var(--g)/0.30);">
+          <span class="prog-title" style="color:hsl(var(--primary));">日曜劇場「アンチヒーロー」</span>
+          <span class="prog-time" style="color:hsl(var(--primary)/0.8);">21:00 ● NOW</span>
+        </div>
+        <div class="reserve-badge" aria-label="録画予約済み">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="hsl(0 0% 96%)"><circle cx="12" cy="12" r="10"/></svg>
+        </div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">情報7daysニュースキャスター</span><span class="prog-time">22:00–00:00</span></div>
+      </div>
+
+      <!-- ── Row 4: フジテレビ (GR-8) ── -->
+      <div class="ch-label" role="rowheader" tabindex="0" aria-label="フジテレビ を視聴">
+        <span style="font-size:0.65rem;font-weight:700;color:hsl(221 83% 60%);">8</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));line-height:1.2;text-align:center;">フジ<br>TV</span>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">ミュージックフェア</span><span class="prog-time">00:00–01:30</span></div>
+      </div>
+      <div class="prog-cell genre-movie" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">映画「となりのトトロ」</span><span class="prog-time">01:30–03:00</span></div>
+        <div class="reserve-badge" aria-label="録画予約済み">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="hsl(0 0% 96%)"><circle cx="12" cy="12" r="10"/></svg>
+        </div>
+      </div>
+      <div class="prog-cell genre-other" tabindex="0" role="gridcell" style="grid-column: span 36;">
+        <div class="prog-cell-inner"><span class="prog-title" style="opacity:0.5;">深夜・放送休止</span></div>
+      </div>
+      <div class="prog-cell genre-news" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner"><span class="prog-title">めざましテレビ</span><span class="prog-time">06:00–08:00</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">ノンストップ！</span><span class="prog-time">08:00–09:30</span></div>
+      </div>
+      <div class="prog-cell genre-drama" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">ドラマ再放送</span><span class="prog-time">09:30–11:00</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 30;">
+        <div class="prog-cell-inner"><span class="prog-title">笑っていいとも！アーカイブ</span><span class="prog-time">11:00–13:30</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 30;">
+        <div class="prog-cell-inner"><span class="prog-title">バイキングMORE</span><span class="prog-time">13:30–16:00</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner"><span class="prog-title">みんなのニュース</span><span class="prog-time">16:00–18:00</span></div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">ぽかぽか</span><span class="prog-time">18:00–19:30</span></div>
+      </div>
+      <div class="prog-cell genre-drama" tabindex="0" role="gridcell" style="grid-column: span 18;">
+        <div class="prog-cell-inner"><span class="prog-title">ちびまる子ちゃん / サザエさん</span><span class="prog-time">19:30–21:00</span></div>
+      </div>
+      <!-- Currently airing Fuji -->
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" aria-current="true"
+           style="grid-column: span 12; box-shadow: 0 0 0 2px hsl(var(--primary)) inset;">
+        <div class="prog-cell-inner" style="background:hsl(var(--g)/0.30);">
+          <span class="prog-title" style="color:hsl(var(--primary));">VS魂</span>
+          <span class="prog-time" style="color:hsl(var(--primary)/0.8);">21:00 ● NOW</span>
+        </div>
+      </div>
+      <div class="prog-cell genre-variety" tabindex="0" role="gridcell" style="grid-column: span 24;">
+        <div class="prog-cell-inner"><span class="prog-title">千鳥の鬼レンチャン</span><span class="prog-time">22:00–00:00</span></div>
+      </div>
+
+    </div><!-- /epg-grid -->
+  </div><!-- /epg-scroll-area -->
+</div><!-- /epg-shell -->
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: MOBILE EPG (single-channel vertical scroll)     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:6px 16px;background:hsl(var(--muted)/0.3);border-top:1px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));margin-top:16px;">
+  EPG v1 · Mobile (390px) — 単一チャンネル縦スクロール
+</p>
+
+<div style="max-width:390px;margin:0 auto;border:1px solid hsl(var(--border));border-top:none;">
+
+  <!-- Mobile app bar -->
+  <div class="app-bar" style="padding:0 12px;">
+    <a href="/" style="display:inline-flex;align-items:center;color:hsl(var(--foreground));text-decoration:none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    </a>
+    <span style="font-weight:700;font-size:0.875rem;flex:1;text-align:center;">番組表</span>
+    <!-- Channel selector -->
+    <button aria-label="チャンネル選択" style="padding:4px 8px;border-radius:6px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));font-size:0.75rem;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;">
+      NHK総合
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+  </div>
+
+  <!-- Date + type filter row -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));padding:6px 12px;display:flex;align-items:center;gap:8px;">
+    <button style="padding:3px 8px;border-radius:4px;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--muted-foreground));font-size:0.7rem;cursor:pointer;">←</button>
+    <span style="font-size:0.8rem;font-weight:600;flex:1;text-align:center;">4月17日（木）</span>
+    <button style="padding:3px 8px;border-radius:4px;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--muted-foreground));font-size:0.7rem;cursor:pointer;">→</button>
+  </div>
+
+  <!-- Quick time jump row -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));padding:4px 12px;display:flex;gap:4px;overflow-x:auto;">
+    <button style="flex-shrink:0;padding:2px 8px;border-radius:4px;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--muted-foreground));font-size:0.7rem;cursor:pointer;">早朝</button>
+    <button style="flex-shrink:0;padding:2px 8px;border-radius:4px;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--muted-foreground));font-size:0.7rem;cursor:pointer;">朝</button>
+    <button style="flex-shrink:0;padding:2px 8px;border-radius:4px;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--muted-foreground));font-size:0.7rem;cursor:pointer;">昼</button>
+    <button style="flex-shrink:0;padding:2px 8px;border-radius:4px;border:1px solid hsl(var(--border));background:hsl(var(--primary));color:hsl(var(--primary-foreground));font-size:0.7rem;cursor:pointer;">夜</button>
+    <button style="flex-shrink:0;padding:2px 8px;border-radius:4px;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--muted-foreground));font-size:0.7rem;cursor:pointer;">深夜</button>
+  </div>
+
+  <!-- Program list (vertical scroll, time on left) -->
+  <div style="overflow-y:auto;max-height:360px;">
+    <!-- Time indicator -->
+    <div style="padding:4px 12px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));font-size:0.6875rem;font-weight:700;color:hsl(var(--muted-foreground));">18:00</div>
+
+    <!-- Program rows -->
+    <a href="/live/gr-1" tabindex="0"
+       style="display:grid;grid-template-columns:44px 1fr;border-bottom:1px solid hsl(var(--border));background:hsl(var(--background));text-decoration:none;color:inherit;transition:background 0.1s;"
+       aria-label="首都圏ニュース845 を視聴">
+      <div style="padding:10px 6px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;border-right:2px solid hsl(221 83% 55%);background:hsl(var(--card));">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(221 83% 60%);font-variant-numeric:tabular-nums;">18:00</span>
+        <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">30分</span>
+      </div>
+      <div style="padding:10px 12px;" class="genre-news">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <span style="width:6px;height:6px;border-radius:1px;background:hsl(var(--g));flex-shrink:0;display:inline-block;"></span>
+          <span style="font-size:0.8rem;font-weight:700;">首都圏ニュース845</span>
+        </div>
+        <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">18:00–18:30 · 30分</span>
+      </div>
+    </a>
+
+    <a href="/live/gr-1" tabindex="0"
+       style="display:grid;grid-template-columns:44px 1fr;border-bottom:1px solid hsl(var(--border));background:hsl(var(--background));text-decoration:none;color:inherit;"
+       aria-label="チコちゃんに叱られる！ を視聴">
+      <div style="padding:10px 6px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;border-right:2px solid hsl(221 83% 55%);background:hsl(var(--card));">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(221 83% 60%);">18:30</span>
+        <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">30分</span>
+      </div>
+      <div style="padding:10px 12px;" class="genre-variety">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <span style="width:6px;height:6px;border-radius:1px;background:hsl(var(--g));flex-shrink:0;display:inline-block;"></span>
+          <span style="font-size:0.8rem;font-weight:700;">チコちゃんに叱られる！</span>
+        </div>
+        <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">18:30–19:00 · 30分</span>
+      </div>
+    </a>
+
+    <!-- Now indicator -->
+    <div style="padding:3px 12px;background:hsl(var(--destructive)/0.12);border-top:2px solid hsl(var(--destructive));border-bottom:1px solid hsl(var(--border));display:flex;align-items:center;gap:6px;">
+      <span style="width:6px;height:6px;border-radius:50%;background:hsl(var(--destructive));flex-shrink:0;animation:pulse 1.5s ease-in-out infinite;"></span>
+      <span style="font-size:0.6875rem;font-weight:700;color:hsl(var(--destructive));">現在放送中 21:13</span>
+    </div>
+
+    <!-- Currently airing -->
+    <a href="/live/gr-1" tabindex="0" aria-current="true"
+       style="display:grid;grid-template-columns:44px 1fr;border-bottom:2px solid hsl(var(--primary));background:hsl(var(--primary)/0.06);text-decoration:none;color:inherit;"
+       aria-label="ニュースウォッチ9 を視聴（放送中）">
+      <div style="padding:10px 6px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;border-right:2px solid hsl(var(--primary));background:hsl(var(--primary)/0.08);">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(var(--primary));">21:00</span>
+        <span style="font-size:0.5rem;color:hsl(var(--primary)/0.7);">30分</span>
+      </div>
+      <div style="padding:10px 12px;" class="genre-news">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <span style="width:6px;height:6px;border-radius:1px;background:hsl(var(--g));flex-shrink:0;display:inline-block;"></span>
+          <span style="font-size:0.8rem;font-weight:700;color:hsl(var(--primary));">ニュースウォッチ9</span>
+          <span style="font-size:0.6rem;background:hsl(var(--destructive)/0.2);color:hsl(var(--destructive));padding:1px 5px;border-radius:2px;font-weight:700;">ON AIR</span>
+        </div>
+        <span style="font-size:0.7rem;color:hsl(var(--primary)/0.8);">21:00–21:30 · 残り17分</span>
+      </div>
+    </a>
+
+    <a href="/live/gr-1" tabindex="0"
+       style="display:grid;grid-template-columns:44px 1fr;border-bottom:1px solid hsl(var(--border));background:hsl(var(--background));text-decoration:none;color:inherit;">
+      <div style="padding:10px 6px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;border-right:2px solid hsl(var(--border));background:hsl(var(--card));">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(var(--muted-foreground));">21:30</span>
+        <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">60分</span>
+      </div>
+      <div style="padding:10px 12px;" class="genre-drama">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <span style="width:6px;height:6px;border-radius:1px;background:hsl(var(--g));flex-shrink:0;display:inline-block;"></span>
+          <span style="font-size:0.8rem;font-weight:700;">クローズアップ現代</span>
+        </div>
+        <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">21:30–22:30 · 60分</span>
+      </div>
+    </a>
+
+    <a href="/live/gr-1" tabindex="0"
+       style="display:grid;grid-template-columns:44px 1fr;border-bottom:1px solid hsl(var(--border));background:hsl(var(--background));text-decoration:none;color:inherit;">
+      <div style="padding:10px 6px;display:flex;flex-direction:column;align-items:flex-end;gap:2px;border-right:2px solid hsl(var(--border));background:hsl(var(--card));">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(var(--muted-foreground));">22:30</span>
+        <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">90分</span>
+      </div>
+      <div style="padding:10px 12px;" class="genre-docu">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <span style="width:6px;height:6px;border-radius:1px;background:hsl(var(--g));flex-shrink:0;display:inline-block;"></span>
+          <span style="font-size:0.8rem;font-weight:700;">NHKスペシャル</span>
+        </div>
+        <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">22:30–00:00 · 90分</span>
+      </div>
+    </a>
+  </div>
+
+  <!-- Mobile bottom: reserve floating button -->
+  <div style="background:hsl(var(--card));border-top:1px solid hsl(var(--border));padding:8px 12px;display:flex;gap:8px;">
+    <button tabindex="0" style="flex:1;padding:8px;border-radius:8px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));font-size:0.8rem;font-weight:600;border:none;cursor:pointer;">
+      今すぐ視聴
+    </button>
+    <button tabindex="0" style="padding:8px 12px;border-radius:8px;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--foreground));font-size:0.8rem;cursor:pointer;">
+      録画予約
+    </button>
+  </div>
+</div>
+
+<style>
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+</style>
+
+</body>
+</html>
