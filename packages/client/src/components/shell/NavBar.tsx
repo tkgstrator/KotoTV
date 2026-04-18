@@ -33,7 +33,7 @@ export function NavBar() {
             key={item.to}
             to={item.to}
             className={cn(
-              'flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 font-mono text-[0.625rem] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap transition-colors',
+              'flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 font-mono text-[0.75rem] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap transition-colors',
               'hover:bg-muted/20 hover:text-foreground',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:-outline-offset-[3px] focus-visible:rounded-sm',
               isActive(item.to) && 'border-primary text-foreground'
@@ -43,7 +43,7 @@ export function NavBar() {
             {item.label}
             <span
               className={cn(
-                'font-mono text-[0.5rem] tracking-[0.05em] text-muted-foreground',
+                'font-mono text-[0.625rem] tracking-[0.05em] text-muted-foreground',
                 isActive(item.to) && 'text-primary'
               )}
             >
@@ -58,7 +58,7 @@ export function NavBar() {
           <Link
             to={SETTINGS_ITEM.to}
             className={cn(
-              'flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 border-transparent bg-transparent px-2 font-mono text-[0.625rem] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap transition-colors',
+              'flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 border-transparent bg-transparent px-2 font-mono text-[0.75rem] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap transition-colors',
               'hover:bg-muted/20 hover:text-foreground',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm',
               isActive(SETTINGS_ITEM.to) && 'border-primary text-foreground'
@@ -68,7 +68,7 @@ export function NavBar() {
             {SETTINGS_ITEM.label}
             <span
               className={cn(
-                'font-mono text-[0.5rem] tracking-[0.05em] text-muted-foreground',
+                'font-mono text-[0.625rem] tracking-[0.05em] text-muted-foreground',
                 isActive(SETTINGS_ITEM.to) && 'text-primary'
               )}
             >
@@ -88,7 +88,7 @@ export function NavBar() {
             key={item.to}
             to={item.to}
             className={cn(
-              'relative flex flex-1 flex-col items-center justify-center gap-0.5 bg-transparent font-mono text-[0.5rem] font-bold uppercase tracking-[0.07em] text-muted-foreground no-underline transition-colors',
+              'relative flex flex-1 flex-col items-center justify-center gap-0.5 bg-transparent font-mono text-[0.625rem] font-bold uppercase tracking-[0.07em] text-muted-foreground no-underline transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm focus-visible:-outline-offset-[3px]',
               isActive(item.to) && 'text-primary'
             )}
@@ -97,9 +97,9 @@ export function NavBar() {
             {isActive(item.to) && (
               <span aria-hidden='true' className='absolute top-0 left-1/4 right-1/4 h-0.5 bg-primary' />
             )}
-            <span className='font-mono text-[0.625rem] font-bold'>{item.short}</span>
+            <span className='font-mono text-[0.75rem] font-bold'>{item.short}</span>
             <span
-              className={cn('font-mono text-[0.5rem] text-muted-foreground', isActive(item.to) && 'text-primary/70')}
+              className={cn('font-mono text-[0.625rem] text-muted-foreground', isActive(item.to) && 'text-primary/70')}
             >
               {item.route}
             </span>
