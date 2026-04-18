@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import { ChevronLeft } from 'lucide-react'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { HlsPlayer } from '@/components/player/HlsPlayer'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { StatusChip } from '@/components/shared/status-chip'
@@ -106,10 +106,53 @@ function NowStrip({ channelId }: { channelId: string }) {
   )
 }
 
+type LogEvent = { id: number; ts: string; level: 'ok' | 'err' | 'info'; message: string }
+
+const STICK_THRESHOLD_PX = 16
+
 function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | undefined; streamStatus: string }) {
   const nowDate = useClock()
   const now = format(nowDate, 'HH:mm:ss')
   const shortId = sessionId ? `${sessionId.slice(0, 8)}…` : '—'
+
+  const [logEvents, setLogEvents] = useState<LogEvent[]>(() => [
+    { id: 0, ts: '--:--:--', level: 'info', message: '[session] initializing…' }
+  ])
+  const logIdRef = useRef(1)
+  const pushLog = (level: LogEvent['level'], message: string) => {
+    setLogEvents((prev) => [...prev, { id: logIdRef.current++, ts: format(new Date(), 'HH:mm:ss'), level, message }])
+  }
+
+  useEffect(() => {
+    if (sessionId) pushLog('info', '[api] POST /api/streams/live → 201')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId])
+
+  useEffect(() => {
+    if (streamStatus === 'ready') {
+      pushLog('ok', '[stream] session acquired')
+      pushLog('info', '[hls] waiting for playlist…')
+    } else if (streamStatus === 'error') {
+      pushLog('err', '[stream] start failed')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streamStatus])
+
+  const logScrollRef = useRef<HTMLDivElement>(null)
+  const [stickToBottom, setStickToBottom] = useState(true)
+
+  useEffect(() => {
+    if (!stickToBottom) return
+    const el = logScrollRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [logEvents, stickToBottom])
+
+  function handleLogScroll(e: React.UIEvent<HTMLDivElement>) {
+    const el = e.currentTarget
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    setStickToBottom(distanceFromBottom <= STICK_THRESHOLD_PX)
+  }
 
   const statusVariant = streamStatus === 'ready' ? 'ok' : streamStatus === 'error' ? 'err' : 'info'
   const statusLabel =
@@ -178,35 +221,35 @@ function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | un
       </div>
 
       {/* LOG section */}
-      <div className='flex flex-1 flex-col overflow-hidden'>
+      <div className='relative flex flex-1 flex-col overflow-hidden'>
         <div className='border-b border-border px-3 pb-1 pt-2'>
           <SidebarSectionLabel>LOG</SidebarSectionLabel>
         </div>
-        <div className='flex-1 overflow-y-auto px-3 py-2 [scrollbar-width:thin]'>
-          <LogLine ts='--:--:--' level='info'>
-            [session] initializing…
-          </LogLine>
-          {sessionId && (
-            <LogLine ts={now} level='info'>
-              [api] POST /api/streams/live → 201
+        <div
+          ref={logScrollRef}
+          onScroll={handleLogScroll}
+          className='flex-1 overflow-y-auto px-3 py-2 [scrollbar-width:thin]'
+        >
+          {logEvents.map((ev) => (
+            <LogLine key={ev.id} ts={ev.ts} level={ev.level}>
+              {ev.message}
             </LogLine>
-          )}
-          {streamStatus === 'ready' && (
-            <>
-              <LogLine ts={now} level='ok'>
-                [stream] session acquired
-              </LogLine>
-              <LogLine ts={now} level='info'>
-                [hls] waiting for playlist…
-              </LogLine>
-            </>
-          )}
-          {streamStatus === 'error' && (
-            <LogLine ts={now} level='err'>
-              [stream] start failed
-            </LogLine>
-          )}
+          ))}
         </div>
+        {!stickToBottom && (
+          <button
+            type='button'
+            onClick={() => {
+              const el = logScrollRef.current
+              if (!el) return
+              el.scrollTop = el.scrollHeight
+              setStickToBottom(true)
+            }}
+            className='absolute bottom-1.5 right-1.5 rounded border border-border bg-card/90 px-2 py-0.5 font-mono text-[0.625rem] font-bold text-muted-foreground shadow-sm backdrop-blur hover:text-foreground'
+          >
+            最新へ ↓
+          </button>
+        )}
       </div>
     </aside>
   )
