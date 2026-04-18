@@ -376,7 +376,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
               TIME RANGE
             </Label>
-            <div className='flex flex-wrap gap-1.5'>
+            <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap'>
               {TIME_PRESETS.map((p) => {
                 const isActive = activePreset?.label === p.label
                 return (
@@ -393,7 +393,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                       }
                     }}
                     className={cn(
-                      'rounded border px-2 py-0.5 font-mono text-[0.625rem] font-bold transition-colors',
+                      'h-8 rounded border px-2 font-mono text-[0.6875rem] font-bold transition-colors sm:h-auto sm:py-0.5 sm:text-[0.625rem]',
                       isActive
                         ? 'border-primary/40 bg-primary/12 text-primary'
                         : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
