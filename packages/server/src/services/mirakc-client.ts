@@ -154,5 +154,30 @@ export const mirakcClient = {
 
   getLogoUrl(serviceId: number): string {
     return `${env.MIRAKC_URL}/api/services/${serviceId}/logo`
+  },
+
+  async getAvailableTunerCount(): Promise<number> {
+    if (_cachedTunerTotal !== null && Date.now() - _cachedTunerTotal.at < 60_000) {
+      return _cachedTunerTotal.value
+    }
+
+    try {
+      const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/status`, 5_000)
+      if (!res.ok) throw new MirakcError(res.status, `status ${res.status}`)
+      const data = (await res.json()) as {
+        tuners?: Array<{ isAvailable?: boolean }>
+      }
+      const tuners = data.tuners ?? []
+      const available = tuners.filter((t) => t.isAvailable === true).length
+      const value = available > 0 ? available : 2
+      _cachedTunerTotal = { value, at: Date.now() }
+      return value
+    } catch {
+      logger.warn({ module: 'mirakc-client' }, 'cannot fetch tuner status, using cached or default')
+      if (_cachedTunerTotal !== null) return _cachedTunerTotal.value
+      return 2
+    }
   }
 }
+
+let _cachedTunerTotal: { value: number; at: number } | null = null
