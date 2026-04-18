@@ -370,7 +370,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                       }
                     }}
                     className={cn(
-                      'flex h-7 w-7 items-center justify-center rounded border font-mono text-[0.6875rem] font-bold transition-colors',
+                      'flex h-9 flex-1 items-center justify-center rounded border font-mono text-[0.6875rem] font-bold transition-colors sm:h-7 sm:w-7 sm:flex-none',
                       active
                         ? 'border-primary/40 bg-primary/12 text-primary'
                         : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
