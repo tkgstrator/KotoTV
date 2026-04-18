@@ -25,7 +25,7 @@ test.describe('desktop navigation', () => {
       if (from.path === to.path) continue
       test(`nav ${from.path} -> ${to.path}`, async ({ page }) => {
         await page.goto(from.path)
-        await page.waitForLoadState('networkidle')
+        await page.waitForLoadState('domcontentloaded')
         await page.getByRole('link', { name: to.full }).click()
         await expect(page).toHaveURL(to.path)
         if (to.heading) {
@@ -38,7 +38,7 @@ test.describe('desktop navigation', () => {
   test('active route link carries aria-current="page"', async ({ page }) => {
     for (const r of ROUTES) {
       await page.goto(r.path)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('domcontentloaded')
       const active = page.getByRole('link', { name: r.full })
       await expect(active).toHaveAttribute('aria-current', 'page')
       // And every inactive nav link must NOT carry aria-current
@@ -52,7 +52,7 @@ test.describe('desktop navigation', () => {
 
   test('SPA navigation — no full document reload between routes', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     const documentRequests: string[] = []
     page.on('request', (req) => {
       if (req.resourceType() === 'document') documentRequests.push(req.url())
@@ -67,7 +67,7 @@ test.describe('desktop navigation', () => {
   test('keyboard: Tab reaches nav links, Enter navigates', async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'keyboard focus order is browser-dependent; chromium is canonical')
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     // Focus the first nav item directly so the test doesn't depend on the number
     // of prior focusable elements in the shell chrome.
     await page.getByRole('link', { name: '番組表 /epg' }).focus()
@@ -77,7 +77,7 @@ test.describe('desktop navigation', () => {
 
   test('browser back/forward works between routes', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     await page.getByRole('link', { name: '番組表 /epg' }).click()
     await expect(page).toHaveURL('/epg')
     await page.getByRole('link', { name: '録画 /recordings' }).click()
@@ -93,7 +93,7 @@ test.describe('desktop navigation', () => {
   test('deep-link reload works for every route', async ({ page }) => {
     for (const r of ROUTES) {
       await page.goto(r.path)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('domcontentloaded')
       await expect(page).toHaveURL(r.path)
       await page.reload()
       await expect(page).toHaveURL(r.path)
@@ -109,7 +109,7 @@ test.describe('mobile navigation', () => {
 
   test('bottom tabs are present and pinned to the bottom', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     const nav = page.getByRole('navigation', { name: 'モバイルナビゲーション' })
     await expect(nav).toBeVisible()
     const box = await nav.boundingBox()
@@ -120,7 +120,7 @@ test.describe('mobile navigation', () => {
   for (const r of ROUTES) {
     test(`mobile tab -> ${r.path}`, async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('domcontentloaded')
       const nav = page.getByRole('navigation', { name: 'モバイルナビゲーション' })
       await nav.getByRole('link', { name: r.short }).click()
       await expect(page).toHaveURL(r.path)
@@ -133,7 +133,7 @@ test.describe('mobile navigation', () => {
   test('mobile active tab carries aria-current="page"', async ({ page }) => {
     for (const r of ROUTES) {
       await page.goto(r.path)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('domcontentloaded')
       const nav = page.getByRole('navigation', { name: 'モバイルナビゲーション' })
       await expect(nav.getByRole('link', { name: r.short })).toHaveAttribute('aria-current', 'page')
     }
@@ -147,7 +147,7 @@ test.describe('shell chrome consistency', () => {
     const heights: Record<string, { health: number; nav: number }> = {}
     for (const r of ROUTES) {
       await page.goto(r.path)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('domcontentloaded')
       const health = page.getByRole('status', { name: 'グローバルヘルス' })
       const nav = page.getByRole('navigation', { name: navLabel })
       await expect(health).toBeVisible()
@@ -166,7 +166,7 @@ test.describe('shell chrome consistency', () => {
   test('wordmark reads "KotoTV" on every route', async ({ page }) => {
     for (const r of ROUTES) {
       await page.goto(r.path)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('domcontentloaded')
       await expect(page.getByRole('status', { name: 'グローバルヘルス' })).toContainText('KotoTV')
     }
   })
@@ -174,7 +174,7 @@ test.describe('shell chrome consistency', () => {
   test('PageHeader present on every route', async ({ page }) => {
     for (const r of ROUTES) {
       await page.goto(r.path)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('domcontentloaded')
       // Each route mounts a <section role="region"> with a page-specific aria-label
       const headers = await page.locator('section[aria-label]').all()
       expect(headers.length, `${r.path} must host a PageHeader`).toBeGreaterThan(0)
