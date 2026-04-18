@@ -5,7 +5,7 @@ import { logger as pinoLogger } from './lib/logger'
 import channelsRoute from './routes/channels'
 import programsRoute from './routes/programs'
 import recordingsRoute from './routes/recordings'
-import statusRoute from './routes/status'
+import { healthRoute, statusRoute } from './routes/status'
 import streamsRoute from './routes/streams'
 
 const app = new Hono()
@@ -30,6 +30,7 @@ const app = new Hono()
     return c.json({ error: { code: 500, message: 'internal server error' }, requestId: rid }, 500)
   })
   .route('/api/status', statusRoute)
+  .route('/api/health', healthRoute)
   .route('/api/channels', channelsRoute)
   .route('/api/programs', programsRoute)
   .route('/api/streams', streamsRoute)
