@@ -26,8 +26,8 @@ export function ProgramCell({ program, className }: ProgramCellProps) {
       )}
       style={{ '--genre-color': accentColor, borderLeftColor: accentColor } as React.CSSProperties}
     >
-      <span className='line-clamp-2 text-[0.6875rem] font-bold leading-[1.3] text-foreground'>{program.title}</span>
-      <span className='mt-[2px] font-mono text-[0.55rem] tabular-nums text-muted-foreground'>
+      <span className='line-clamp-2 text-[0.8125rem] font-bold leading-[1.3] text-foreground'>{program.title}</span>
+      <span className='mt-[3px] font-mono text-[0.625rem] tabular-nums text-muted-foreground'>
         {formatTimeRange(program.startAt, program.endAt)}
       </span>
       <div className='mt-1 flex flex-wrap gap-1'>
