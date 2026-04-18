@@ -243,4 +243,16 @@ toast.success("予約を削除しました", {
 
 ### Chosen variant
 
-v1 — pending user confirmation.
+**v3 — diagnostic dense** (confirmed by user 2026-04-17).
+
+Designer had recommended v1 (clinical minimal) for consistency with existing
+screens, but the user prefers the diagnostic-dense tone. Implementation
+implications:
+
+- Monospace type (`font-mono`) on status-code badges (`OK` / `ERR` / `WARN` / `FATAL`).
+- Inline log snippets in fatal errors and transcoder-warming states.
+- Existing channel-list and live-player mocks use `font-sans` throughout; keep
+  monospace *scoped* to status surfaces (badges, log lines, diagnostic cards),
+  not bleeding into body copy.
+- Shadcn primitive mapping stays the same (`Alert`, `Sonner`, `Skeleton`,
+  `Progress`) — only the visual skin differs.
