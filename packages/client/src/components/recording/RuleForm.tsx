@@ -500,7 +500,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
               className='flex-1 font-mono text-[0.75rem] sm:flex-none'
               onClick={() => navigate({ to: '/recordings/rules' })}
             >
-              CANCEL
+              キャンセル
             </Button>
             {existing && (
               <AlertDialog>

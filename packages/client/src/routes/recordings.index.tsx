@@ -80,7 +80,7 @@ function DeleteScheduleButton({ scheduleId }: { scheduleId: string }) {
           aria-label='予約キャンセル'
         >
           <Trash2 className='size-3' />
-          CANCEL
+          予約取消
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent className='border-destructive/40'>
