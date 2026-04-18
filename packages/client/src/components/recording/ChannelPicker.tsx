@@ -83,7 +83,7 @@ export function ChannelPicker({ channels, value, onChange }: ChannelPickerProps)
           </div>
           <AccordionContent className='pb-1'>
             {/* Fixed 4-column grid so rows align perfectly; labels truncate within cells. */}
-            <div className='grid grid-cols-4 gap-x-3 gap-y-1 pl-6 pr-2'>
+            <div className='grid grid-cols-2 gap-x-3 gap-y-1 pl-6 pr-2 sm:grid-cols-3 lg:grid-cols-4'>
               {(groups[type] ?? []).map((ch) => (
                 <div key={ch.id} className='flex min-w-0 items-center gap-2'>
                   <Checkbox
