@@ -53,7 +53,7 @@ export function TypeFilter({ value, onChange }: TypeFilterProps) {
             'flex-1 text-sm font-medium border-b-2 -mb-px transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
             value === tab.value
-              ? 'text-foreground border-foreground font-semibold'
+              ? 'text-foreground border-primary font-semibold'
               : 'text-muted-foreground border-transparent hover:text-foreground/80'
           )}
         >
