@@ -13,6 +13,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RecordingsRouteImport } from './routes/recordings'
 import { Route as EpgRouteImport } from './routes/epg'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LiveChannelIdRouteImport } from './routes/live/$channelId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -34,18 +35,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LiveChannelIdRoute = LiveChannelIdRouteImport.update({
+  id: '/live/$channelId',
+  path: '/live/$channelId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/epg': typeof EpgRoute
   '/recordings': typeof RecordingsRoute
   '/settings': typeof SettingsRoute
+  '/live/$channelId': typeof LiveChannelIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/epg': typeof EpgRoute
   '/recordings': typeof RecordingsRoute
   '/settings': typeof SettingsRoute
+  '/live/$channelId': typeof LiveChannelIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,20 @@ export interface FileRoutesById {
   '/epg': typeof EpgRoute
   '/recordings': typeof RecordingsRoute
   '/settings': typeof SettingsRoute
+  '/live/$channelId': typeof LiveChannelIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/epg' | '/recordings' | '/settings'
+  fullPaths: '/' | '/epg' | '/recordings' | '/settings' | '/live/$channelId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/epg' | '/recordings' | '/settings'
-  id: '__root__' | '/' | '/epg' | '/recordings' | '/settings'
+  to: '/' | '/epg' | '/recordings' | '/settings' | '/live/$channelId'
+  id:
+    | '__root__'
+    | '/'
+    | '/epg'
+    | '/recordings'
+    | '/settings'
+    | '/live/$channelId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +82,7 @@ export interface RootRouteChildren {
   EpgRoute: typeof EpgRoute
   RecordingsRoute: typeof RecordingsRoute
   SettingsRoute: typeof SettingsRoute
+  LiveChannelIdRoute: typeof LiveChannelIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +115,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/live/$channelId': {
+      id: '/live/$channelId'
+      path: '/live/$channelId'
+      fullPath: '/live/$channelId'
+      preLoaderRoute: typeof LiveChannelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +130,7 @@ const rootRouteChildren: RootRouteChildren = {
   EpgRoute: EpgRoute,
   RecordingsRoute: RecordingsRoute,
   SettingsRoute: SettingsRoute,
+  LiveChannelIdRoute: LiveChannelIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

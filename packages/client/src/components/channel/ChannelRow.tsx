@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import type { Channel } from '@telemax/server/src/schemas/Channel.dto'
 import { formatTimeRange, getProgress, getRemainingLabel, pickNextLabel } from '@/lib/program'
 import { cn } from '@/lib/utils'
@@ -21,9 +22,9 @@ export function ChannelRow({ channel }: ChannelRowProps) {
   const typeColor = TYPE_COLORS[channel.type]
 
   return (
-    /* Phase 2 will replace this <a> with a TanStack Router <Link to="/live/$channelId"> once that route exists */
-    <a
-      href={`/live/${channel.id}`}
+    <Link
+      to='/live/$channelId'
+      params={{ channelId: channel.id }}
       aria-label={`${channel.name} を視聴`}
       className={cn(
         'group relative flex items-stretch border-b border-border text-foreground no-underline',
@@ -97,6 +98,6 @@ export function ChannelRow({ channel }: ChannelRowProps) {
           </>
         ) : null}
       </div>
-    </a>
+    </Link>
   )
 }
