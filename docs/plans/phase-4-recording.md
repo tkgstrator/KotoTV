@@ -87,18 +87,27 @@ Recording.thumbnailUrl: string | null   # ← 独立フィールド。status の
 - [ ] CRUD API から新しい予約が追加されたら `setTimeout` を再登録するための event emitter または DB ポーリング (30s 周期)
 
 ### frontend
-- [ ] `useRecordings` フックを作成 (一覧取得・作成・削除の `useQuery`/`useMutation`、`onSuccess` で invalidate) — `packages/client/src/hooks/useRecordings.ts`
-- [ ] `RecordingScheduleForm` を `react-hook-form` + Zod スキーマで実装 (Shadcn `Form` + `Dialog`) — `packages/client/src/components/recording/RecordingScheduleForm.tsx`
-- [ ] `RecordingList` コンポーネント (ステータスバッジ、削除ボタン、削除確認 `AlertDialog`) — `packages/client/src/components/recording/RecordingList.tsx`
-- [ ] 録画一覧ページを作成 — `packages/client/src/routes/recordings/index.tsx`
-- [ ] 予約作成・削除の成功/失敗を `sonner` Toast で通知
+- [x] `useRecordings` フックを作成 (一覧取得・作成・削除の `useQuery`/`useMutation`、`onSuccess` で invalidate) — `packages/client/src/hooks/useRecordings.ts`
+- [x] `RecordingScheduleForm` を `react-hook-form` + Zod スキーマで実装 (Shadcn `Form` + `Dialog`) — `packages/client/src/components/recording/RecordingScheduleForm.tsx`
+- [x] `RecordingList` コンポーネント (ステータスバッジ、削除ボタン、削除確認 `AlertDialog`) — `packages/client/src/components/recording/RecordingList.tsx`
+- [x] 録画一覧ページを作成 — `packages/client/src/routes/recordings.index.tsx` (3 タブ: 予約/進行中/失敗/完了)
+- [x] 予約作成・削除の成功/失敗を `sonner` Toast で通知
 - [ ] `GET /api/recordings/events` に 1 本の SSE 接続を張り、`thumbnail-ready` 受信時に `queryClient.invalidateQueries({ queryKey: ['recordings'] })`。ポーリングではなく push で更新 — `packages/client/src/hooks/useRecordings.ts` または `packages/client/src/hooks/useRecordingEvents.ts`
-- [ ] ステータスバッジは Phase 2 で導入した `<StatusChip>` を variant マッピング (`scheduled→sched`, `recording→rec`, `completed→done`, `failed→err`) で再利用。ローカル再実装禁止 — `packages/client/src/components/recording/RecordingList.tsx`
+- [x] ステータスバッジは Phase 2 で導入した `<StatusChip>` を variant マッピング (`scheduled→sched`, `recording→rec`, `completed→done`, `failed→err`) で再利用 (その後、tab 内で冗長だったため一覧行からは外して section ヘッダー側に集約)
 - [ ] サムネ未生成時は Shadcn `Skeleton` を placeholder に表示、`thumbnailUrl` が届いたら差し替え
 
 ### qa
 - [ ] 型検査 + Biome
 - [ ] コミット単位: `feat(server): recording schema + routes`, `feat(streaming): recording manager`, `feat(client): recording UI`
+
+## Changes during execution (〜2026-04-18)
+
+- **完了録画カードに actions menu** (`再生` / `変換` / `削除`) を kebab DropdownMenu で追加、AlertDialog と open 連動
+- **pending / failed タブを lg+ で 2 カラムレイアウト**に変更
+- **prisma seed にサンプル完了録画を追加** して UI デザイン検証を Mirakc なしで可能に
+- **Tab switcher を full width ストレッチ**
+- **RecordingList 各行から冗長な StatusChip を除去**、section ヘッダー側に集約
+- **予約ボタン (`+ RESERVE` → `+ 予約`) を日本語化**、タブ上部の重複サマリを削除
 
 ## 共有コントラクト
 
