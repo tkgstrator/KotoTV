@@ -1,0 +1,62 @@
+{
+  "name": "Koto TV",
+  "dockerComposeFile": ["compose.yaml"],
+  "service": "app",
+  "workspaceFolder": "/home/vscode/app",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "vscode",
+  "containerEnv": {
+      "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  },
+  "mounts": [
+      "source=${env:HOME}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached,readonly",
+      "source=${env:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
+      "source=${env:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached,readonly"
+  ],
+  "remoteEnv": {
+      "WAKATIME_API_KEY": "${localEnv:WAKATIME_API_KEY}",
+      "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "configureZshAsDefaultShell": true
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/shyim/devcontainers-features/bun:0": {},
+    "ghcr.io/devcontainers/features/node:1.5.0": {
+      "version": "25.4.0"
+    },
+    "ghcr.io/stu-bell/devcontainer-features/claude-code:0": {},
+    "ghcr.io/devcontainers-extra/features/ffmpeg-apt-get:1": {},
+    "ghcr.io/duduribeiro/devcontainer-features/tmux:1": {},
+    "ghcr.io/dhoeric/features/act:1": {}
+  },
+  "postAttachCommand": "/bin/sh .devcontainer/postAttachCommand.sh",
+  "postCreateCommand": "/bin/sh .devcontainer/postCreateCommand.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Anthropic.claude-code",
+        "EditorConfig.EditorConfig",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "Lokalise.i18n-ally",
+        "PKief.material-icon-theme",
+        "Prisma.prisma",
+        "antfu.file-nesting",
+        "bierner.github-markdown-preview",
+        "bierner.markdown-mermaid",
+        "bierner.markdown-preview-github-styles",
+        "biomejs.biome",
+        "eamodio.gitlens",
+        "ms-vscode.vscode-typescript-next",
+        "pHofer94.vscode-taskviewexplorer",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "vsls-contrib.gitdoc"
+      ],
+      "settings": {
+      }
+    }
+  }
+}

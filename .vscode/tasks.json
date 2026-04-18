@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Update Dependencies",
+      "type": "shell",
+      "command": "act workflow_dispatch -W .github/workflows/update_dependencies.yaml --secret GITHUB_TOKEN=$(gh auth token)",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Update Dependencies (Dry Run)",
+      "type": "shell",
+      "command": "act workflow_dispatch -W .github/workflows/update_dependencies.yaml --secret GITHUB_TOKEN=$(gh auth token) -n",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    }
+  ]
+}
