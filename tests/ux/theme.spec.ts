@@ -18,6 +18,45 @@ test('--radius-status resolves to 3px', async ({ page }) => {
   expect(value).toBe('3px')
 })
 
+test('layout vars (--shell-offset etc.) resolve from the active theme', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForLoadState('domcontentloaded')
+
+  const vars = await page.evaluate(() => {
+    const s = getComputedStyle(document.documentElement)
+    return {
+      shellOffset: s.getPropertyValue('--shell-offset').trim(),
+      healthBar: s.getPropertyValue('--shell-health-bar-h').trim(),
+      navBar: s.getPropertyValue('--shell-nav-bar-h').trim(),
+      diagSidebar: s.getPropertyValue('--diag-sidebar-w').trim(),
+      nowStrip: s.getPropertyValue('--now-strip-h').trim()
+    }
+  })
+  // Don't hardcode px — themes are allowed to change these. Just assert non-empty.
+  for (const [name, v] of Object.entries(vars)) {
+    expect(v, `layout var ${name} must resolve`).not.toBe('')
+  }
+})
+
+test('data-mode="player" collapses --shell-offset', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForLoadState('domcontentloaded')
+
+  const before = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--shell-offset').trim()
+  )
+
+  await page.evaluate(() => document.documentElement.setAttribute('data-mode', 'player'))
+  const after = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--shell-offset').trim()
+  )
+
+  // player mode must be smaller than non-player mode
+  const toPx = (v: string) => Number.parseFloat(v.replace('px', ''))
+  expect(toPx(after)).toBeLessThan(toPx(before))
+  expect(toPx(after)).toBe(40)
+})
+
 test('status chip renders with monospace font family', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')

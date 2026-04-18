@@ -33,6 +33,7 @@
 
 @layer base {
   :root[data-theme='tech'] {
+    /* ── Palette (light) ───────────────────────────────────────────── */
     --background: oklch(0.98 0.002 247);
     --foreground: oklch(0.15 0.01 247);
     --card: oklch(0.97 0.002 247);
@@ -54,6 +55,35 @@
     --input: oklch(0.88 0.005 247);
     --ring: oklch(0.45 0.13 247);
     --radius: 0.5rem;
+
+    /* ── Shell / chrome dimensions ─────────────────────────────────── */
+    /* app-shell v12: 32px health bar + 40px nav bar stacked on desktop. */
+    --shell-health-bar-h: 32px;
+    --shell-nav-bar-h: 40px;
+    --shell-offset: 72px; /* = health-bar + nav-bar; kept as a literal so downstream calc() works */
+    /* Mobile bottom-tab nav (app-shell v14 pattern). */
+    --mobile-nav-h: 58px;
+
+    /* ── Player surfaces ───────────────────────────────────────────── */
+    /* live-player v10: permanent diagnostic sidebar on desktop. */
+    --diag-sidebar-w: 240px;
+    /* epg v4: pinned NOW-strip, also reused in recording-player v12 identity strip. */
+    --now-strip-h: 64px;
+
+    /* ── Layout containers ─────────────────────────────────────────── */
+    --container-max: 1440px;
+    --sidebar-w: 200px; /* only applies to themes that want a left sidebar; zero in tech */
+  }
+
+  /* Player mode — set by the shell when on /live/$id or /recordings/$id.
+   * Collapses the chrome to a single 40px back/session bar for both live
+   * and recording players (decision 2026-04-17). Components read the same
+   * --shell-offset var, so EPG sticky anchors / full-height layouts adapt
+   * automatically. */
+  :root[data-theme='tech'][data-mode='player'] {
+    --shell-health-bar-h: 0px;
+    --shell-nav-bar-h: 40px;
+    --shell-offset: 40px;
   }
 
   :root[data-theme='tech'].dark {

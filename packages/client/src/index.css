@@ -24,6 +24,18 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* Spacing aliases so layout vars work as Tailwind utilities.
+   * `h-shell-offset`, `top-shell-offset`, `pt-shell-offset`, `w-diag-sidebar`, etc.
+   * Values still come from the active theme file. */
+  --spacing-shell-offset: var(--shell-offset);
+  --spacing-shell-health-bar: var(--shell-health-bar-h);
+  --spacing-shell-nav-bar: var(--shell-nav-bar-h);
+  --spacing-mobile-nav: var(--mobile-nav-h);
+  --spacing-diag-sidebar: var(--diag-sidebar-w);
+  --spacing-now-strip: var(--now-strip-h);
+  --spacing-sidebar: var(--sidebar-w);
+  --spacing-container-max: var(--container-max);
 }
 
 /* Active theme(s). Add a new @import per theme; runtime swap via <html data-theme="...">. */
