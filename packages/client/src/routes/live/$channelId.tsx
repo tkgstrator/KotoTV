@@ -8,6 +8,7 @@ import { StatusChip } from '@/components/shared/status-chip'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
+import { useClock } from '@/hooks/useClock'
 import { useStream } from '@/hooks/useStream'
 import { formatTimeRange, getProgress } from '@/lib/program'
 import { cn } from '@/lib/utils'
@@ -106,7 +107,8 @@ function NowStrip({ channelId }: { channelId: string }) {
 }
 
 function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | undefined; streamStatus: string }) {
-  const now = format(new Date(), 'HH:mm:ss')
+  const nowDate = useClock()
+  const now = format(nowDate, 'HH:mm:ss')
   const shortId = sessionId ? `${sessionId.slice(0, 8)}…` : '—'
 
   const statusVariant = streamStatus === 'ready' ? 'ok' : streamStatus === 'error' ? 'err' : 'info'
@@ -118,8 +120,11 @@ function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | un
       aria-label='診断情報パネル'
       className={cn(
         'flex flex-col overflow-hidden bg-card',
-        'w-full border-t border-border',
-        'lg:w-[240px] lg:flex-shrink-0 lg:border-l lg:border-t-0'
+        /* mobile stacks below the video; reserve bottom-nav space so the LOG
+         * tail isn't obscured by the fixed bottom tabs. On lg+ the sidebar
+         * is on the right and the mobile nav is hidden, so no padding. */
+        'w-full border-t border-border pb-[var(--mobile-nav-h)]',
+        'lg:w-[240px] lg:flex-shrink-0 lg:border-l lg:border-t-0 lg:pb-0'
       )}
     >
       {/* STREAM section */}
@@ -239,6 +244,7 @@ function LivePage() {
   const { channelId } = Route.useParams()
   const stream = useStream(channelId)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const clock = useClock()
 
   const { data: channelsData } = useChannels()
   const channel = channelsData?.channels.find((c) => c.id === channelId)
@@ -296,7 +302,7 @@ function LivePage() {
         </div>
 
         <span className='font-mono text-[0.75rem] font-semibold tabular-nums text-muted-foreground'>
-          {format(new Date(), 'HH:mm:ss')}
+          {format(clock, 'HH:mm:ss')}
         </span>
       </header>
 
