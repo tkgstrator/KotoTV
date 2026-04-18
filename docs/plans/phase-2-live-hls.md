@@ -4,7 +4,7 @@
 |------|-----|
 | **目標** | チャンネル選択後にライブ映像が HLS で再生される。複数タブでプロセス共有、全タブ閉じで idle 停止 |
 | **工数** | 3-5 日 |
-| **ステータス** | 未着手 |
+| **ステータス** | 実行中 (Mirakc-free パート着手 2026-04-17) |
 | **前提フェーズ** | Phase 1 |
 
 ## 全体フロー
@@ -18,15 +18,33 @@
 
 ## 採択デザイン
 
-- 候補: `docs/mocks/live-player/v1.html` 他
-- 採択: _(未定)_
+- 採択: **v10** (`docs/mocks/live-player/v10.html`) — NOW-strip + 240px 永続右診断サイドバー
+- v11 推奨だったが、常時診断情報を優先してユーザーが v10 を選択 (2026-04-17)
+- ハンドオフメモ: `docs/mocks/live-player/README.md` §Chosen variant
+
+## 実行スプリット (2026-04-17)
+
+Mirakc 稼働待ち。影響しないパートを先行で実装し、Mirakc 稼働後は stream-manager の配線差し込みだけで済む構造にする。
+
+**Mirakc-free (今回):**
+- `buildFfmpegArgs()` 純関数 + 単体テスト (streaming)
+- `/api/streams/*` ルート + Zod スキーマ + 実装は stub (backend)
+- `HlsPlayer` / `<PlayerControls isLive>` / `useStream` / `/live/$channelId` (frontend)
+- Dockerfile FFmpeg 同梱 + compose tmpfs + HW accel overlay (devops)
+- `<StatusChip>` は既に `packages/client/src/components/shared/status-chip.tsx` に存在 (Phase 2 先出しコントラクト実装済み)
+
+**Mirakc 依存 (後続):**
+- `startTranscoder` / `waitForPlaylist` / `abort` / `streamManager` (streaming)
+- Mirakc `openLiveStream` 接続
+- `/api/streams/*` の stub → 実配線差し替え
+- E2E 検証 (チャンネル → 10s 以内初映像 / 複数タブ共有 / idle kill)
 
 ## チェックリスト
 
-### designer
-- [ ] `docs/mocks/live-player/` にプレイヤー画面のバリアント (overlay controls / persistent controls / minimal) を生成
-- [ ] リモコン操作を意識した focus ring 可視化、hover 非依存 UI
-- [ ] 縦 (portrait スマホ) / 横 (PC) の両レイアウト
+### designer ✅ 完了 2026-04-17
+- [x] `docs/mocks/live-player/` にバリアント生成 (v1-v3 legacy + v10-v12 diagnostic-dense)
+- [x] 縦 (portrait) / 横 (PC) レイアウト、focus ring 可視化
+- [x] v10 採択
 
 ### devops
 - [ ] Dockerfile の runtime stage に `apk add --no-cache ffmpeg` を追加 — `Dockerfile`
@@ -61,7 +79,7 @@
 - [ ] StrictMode の二重実行に備えて sessionId を `useRef` で管理し冪等化
 - [ ] `HlsPlayer` コンポーネント (hls.js ラッパー、iOS native 判定、`lowLatencyMode`、MEDIA/NETWORK エラー自動復旧) — `packages/client/src/components/player/HlsPlayer.tsx`
 - [ ] `<PlayerControls isLive>` 共有コンポーネントを作成 (再生/停止、ミュート、フルスクリーン、quality picker、±10s skip、rate picker)。`isLive={true}` ではシークバーを `role="progressbar"` (非インタラクティブ) とし、skip / rate は表示するが `aria-disabled="true"` で無効化 (Phase 5 の録画再生で `isLive={false}` 版として再利用) — `packages/client/src/components/player/PlayerControls.tsx`
-- [ ] `<StatusChip>` プリミティブをこのフェーズで先に用意 (Phase 2 プレイヤーの接続状態・バッファ状態表示に即利用)。API は `docs/mocks/app-shell/README.md` §StatusChip に準拠 (variants: `ok | warn | err | fatal | live | rec | sched | done | info | muted | buf`、props `variant`, `children`, `dot?`, `asLink?`, `className?`) — `packages/client/src/components/ui/status-chip.tsx`
+- [x] `<StatusChip>` プリミティブ実装済 — `packages/client/src/components/shared/status-chip.tsx` (`components/ui/` ではなく `components/shared/` に配置、ユーザー決定 2026-04-17。ui/ は Shadcn 生成物専用)
 - [ ] ライブページを作成、`Route.useParams()` で `channelId` を取得 — `packages/client/src/routes/live/$channelId.tsx`
 - [ ] `ChannelCard` にライブページ (`/live/$channelId`) への `<Link>` を追加 — `packages/client/src/components/channel/ChannelCard.tsx`
 - [ ] `:focus-visible` リングが全操作要素に出ることを確認
