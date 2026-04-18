@@ -13,7 +13,12 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure'
+    video: 'retain-on-failure',
+    /* deviceScaleFactor 2 so ad-hoc screenshots land at 2880x1800-ish on
+     * 1440x900 viewport — icon/text overlaps are legible rather than a
+     * blurry pile of pixels. Visual regression baselines stay at 1x (below)
+     * to keep repo size sane. */
+    deviceScaleFactor: 2
   },
   projects: [
     {
@@ -27,14 +32,16 @@ export default defineConfig({
       use: { ...devices['Pixel 7'] }
     },
     {
+      /* Visual-regression baselines — pin 1x DPR so committed snapshots are
+       * viewport-pixel sized (small repo footprint, deterministic diffs). */
       name: 'visual-desktop',
       testDir: './tests/visual',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } }
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 }
     },
     {
       name: 'visual-mobile',
       testDir: './tests/visual',
-      use: { ...devices['Pixel 7'] }
+      use: { ...devices['Pixel 7'], deviceScaleFactor: 1 }
     },
     {
       name: 'ux-audit',
