@@ -13,7 +13,9 @@ function IndexPage() {
 
   return (
     <>
-      <PageHeader ariaLabel='チャンネル種別フィルタ'>
+      <PageHeader ariaLabel='チャンネルヘッダー' className='items-center gap-2 px-3'>
+        <h1 className='font-mono text-[0.9375rem] font-bold leading-none'>チャンネル</h1>
+        <div className='flex-1' />
         <TypeFilter value={filter} onChange={setFilter} />
       </PageHeader>
       {filter === 'ALL' ? <ChannelList /> : <ChannelList type={filter} />}
