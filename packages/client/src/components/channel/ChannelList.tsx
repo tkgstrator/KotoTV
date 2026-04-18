@@ -21,7 +21,7 @@ const TYPE_ORDER: Channel['type'][] = ['GR', 'BS', 'CS', 'SKY']
 
 function SectionHeader({ type }: { type: Channel['type'] }) {
   return (
-    <div className='sticky top-filter-bar z-10 flex items-center gap-2 border-b border-border bg-background px-3 py-1.5'>
+    <div className='sticky top-page-header z-10 flex items-center gap-2 border-b border-border bg-background px-3 py-1.5'>
       <span className='h-2 w-2 flex-shrink-0 rounded-full' style={{ background: TYPE_COLORS[type] }} aria-hidden />
       <span className='text-[0.6875rem] font-bold uppercase tracking-widest text-muted-foreground'>
         {TYPE_LABELS[type]}
