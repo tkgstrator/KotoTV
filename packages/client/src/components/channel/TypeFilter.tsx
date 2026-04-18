@@ -39,12 +39,7 @@ export function TypeFilter({ value, onChange }: TypeFilterProps) {
   }
 
   return (
-    <div
-      ref={listRef}
-      role='tablist'
-      aria-label='チャンネル種別'
-      className='sticky top-0 z-20 flex h-filter-bar border-b border-border bg-background'
-    >
+    <div ref={listRef} role='tablist' aria-label='チャンネル種別' className='flex h-full w-full'>
       {TABS.map((tab, idx) => (
         <button
           key={tab.value}
