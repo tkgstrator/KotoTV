@@ -1,559 +1,24 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { HealthLogTail } from '@/components/settings/HealthLogTail'
+import { SUBSYSTEMS } from '@/components/settings/_shared'
+import { AboutTab } from '@/components/settings/AboutTab'
+import { DisplayTab } from '@/components/settings/DisplayTab'
+import { PlaybackTab } from '@/components/settings/PlaybackTab'
+import { RecordingTab } from '@/components/settings/RecordingTab'
+import { StatusTab } from '@/components/settings/StatusTab'
 import { StatusChip } from '@/components/shared/status-chip'
 import { PageHeader } from '@/components/shell/PageHeader'
-import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { type Subsystem, useHealth } from '@/hooks/useHealth'
-import { type CodecChoice, type QualityChoice, usePlaybackPrefs } from '@/hooks/usePlaybackPrefs'
-import { useRecordingPrefs } from '@/hooks/useRecordingPrefs'
-import { type ThemeChoice, useTheme } from '@/hooks/useTheme'
+import { useHealth } from '@/hooks/useHealth'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage
 })
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+const TAB_TRIGGER_CLASS =
+  'rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
 
-function fmtBytes(bytes: number): string {
-  const GB = 1024 * 1024 * 1024
-  const MB = 1024 * 1024
-  if (bytes >= GB) return `${(bytes / GB).toFixed(1)} GB`
-  if (bytes >= MB) return `${(bytes / MB).toFixed(0)} MB`
-  return `${bytes} B`
-}
-
-type SubStatus = 'ok' | 'warn' | 'err'
-
-function statusVariant(s: SubStatus) {
-  return s satisfies 'ok' | 'warn' | 'err'
-}
-
-// ─── Health strip ────────────────────────────────────────────────────────────
-
-const SUBSYSTEMS: { key: Subsystem; label: string }[] = [
-  { key: 'mirakc', label: 'mirakc' },
-  { key: 'ffmpeg', label: 'ffmpeg' },
-  { key: 'postgres', label: 'postgres' },
-  { key: 'tuners', label: 'tuners' }
-]
-
-// ─── Section heading ─────────────────────────────────────────────────────────
-
-function SectHead({ children }: { children: React.ReactNode }) {
-  return (
-    <div className='flex items-center gap-2 pb-[7px] pt-[18px] font-sans text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-muted-foreground'>
-      {children}
-      <div className='h-px flex-1 bg-border' />
-    </div>
-  )
-}
-
-// ─── Diag row ────────────────────────────────────────────────────────────────
-
-interface DiagRowProps {
-  status: SubStatus
-  name: string
-  detail: string
-  sub?: string
-  extra?: React.ReactNode
-  logTail?: React.ReactNode
-}
-
-function DiagRow({ status, name, detail, sub, extra, logTail }: DiagRowProps) {
-  return (
-    <div
-      className={cn(
-        'overflow-hidden rounded-[4px] border border-border',
-        status === 'warn' && 'border-l-[3px] border-l-amber-500',
-        status === 'err' && 'border-l-[3px] border-l-destructive'
-      )}
-    >
-      <div className='flex items-start'>
-        <div className='flex w-[52px] shrink-0 items-start justify-center border-r border-border/50 px-0 py-[9px]'>
-          <StatusChip variant={statusVariant(status)} size='sm'>
-            {status.toUpperCase()}
-          </StatusChip>
-        </div>
-        <div className='flex min-w-0 flex-1 flex-col gap-1 p-3'>
-          <div className='flex items-baseline justify-between gap-2'>
-            <div className='min-w-0'>
-              <p className='font-sans text-[0.6875rem] font-bold uppercase tracking-[0.04em] text-muted-foreground'>
-                {name}
-              </p>
-              <p className='font-sans text-[0.8125rem] text-foreground'>{detail}</p>
-              {sub && <p className='font-sans text-[0.6875rem] text-muted-foreground'>{sub}</p>}
-              {extra}
-            </div>
-          </div>
-        </div>
-      </div>
-      {logTail}
-    </div>
-  )
-}
-
-// ─── Status tab ──────────────────────────────────────────────────────────────
-
-function StatusTab() {
-  const { data, isError } = useHealth()
-
-  if (isError || !data) {
-    return (
-      <div className='py-8 text-center font-sans text-[0.8125rem] text-muted-foreground'>
-        ヘルスデータを取得できません
-      </div>
-    )
-  }
-
-  const diskPct =
-    data.disk.breakdown.total > 0
-      ? Math.round(((data.disk.breakdown.total - data.disk.breakdown.free) / data.disk.breakdown.total) * 100)
-      : 0
-
-  return (
-    <div className='mx-auto max-w-[720px] px-5 pb-10 max-[480px]:px-2.5'>
-      <SectHead>配信</SectHead>
-      <div className='flex flex-col gap-2.5'>
-        <DiagRow
-          status={data.mirakc.status}
-          name='MIRAKC'
-          detail={data.mirakc.detail}
-          logTail={<HealthLogTail subsystem='mirakc' status={data.mirakc.status} />}
-        />
-        <DiagRow
-          status={data.ffmpeg.status}
-          name='FFMPEG'
-          detail={data.ffmpeg.detail}
-          logTail={<HealthLogTail subsystem='ffmpeg' status={data.ffmpeg.status} />}
-        />
-        <DiagRow
-          status={data.tuners.status}
-          name='TUNERS'
-          detail={data.tuners.detail}
-          logTail={<HealthLogTail subsystem='tuners' status={data.tuners.status} />}
-        />
-      </div>
-
-      <SectHead>ストレージ</SectHead>
-      <DiagRow
-        status={data.disk.status}
-        name='DISK'
-        detail={data.disk.detail}
-        sub={`recordings ${fmtBytes(data.disk.breakdown.recordings)} · hls tmp ${fmtBytes(data.disk.breakdown.hlsTmpfs)}`}
-        extra={
-          <div className='mt-1.5 w-full max-w-[220px]'>
-            <div className='h-[3px] overflow-hidden rounded-[1px] bg-muted'>
-              <div
-                className={cn('h-full', data.disk.status === 'ok' ? 'bg-success' : 'bg-amber-500')}
-                style={{ width: `${diskPct}%` }}
-              />
-            </div>
-            {data.disk.status !== 'ok' && (
-              <p className='mt-1 font-sans text-[0.6875rem] tabular-nums text-amber-500'>{diskPct}% used</p>
-            )}
-          </div>
-        }
-        logTail={null}
-      />
-
-      <SectHead>ランタイム</SectHead>
-      <DiagRow
-        status={data.postgres.status}
-        name='POSTGRES'
-        detail={data.postgres.detail}
-        logTail={<HealthLogTail subsystem='postgres' status={data.postgres.status} />}
-      />
-    </div>
-  )
-}
-
-// ─── Theme segment control ────────────────────────────────────────────────────
-
-const THEME_OPTIONS: { value: ThemeChoice; label: string }[] = [
-  { value: 'light', label: 'LIGHT' },
-  { value: 'dark', label: 'DARK' },
-  { value: 'system', label: 'AUTO' }
-]
-
-const SEGMENT_ITEM_CLASS =
-  'bg-muted text-muted-foreground hover:bg-background/60 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:font-semibold data-[state=on]:hover:bg-primary'
-
-function ThemeSegment() {
-  const { theme, setTheme } = useTheme()
-
-  return (
-    <ToggleGroup
-      type='single'
-      value={theme}
-      onValueChange={(v) => v && setTheme(v as ThemeChoice)}
-      aria-label='テーマ選択'
-      size='sm'
-      className='shrink-0'
-    >
-      {THEME_OPTIONS.map((opt) => (
-        <ToggleGroupItem key={opt.value} value={opt.value} className={SEGMENT_ITEM_CLASS}>
-          {opt.label}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
-  )
-}
-
-// ─── Display tab ─────────────────────────────────────────────────────────────
-
-function DisplayTab() {
-  return (
-    <div className='mx-auto max-w-[720px] px-5 pb-10 font-sans max-[480px]:px-2.5'>
-      <SectHead>テーマ</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <div className='flex items-center justify-between gap-4 px-3.5 py-3'>
-          <div>
-            <p className='text-[0.875rem] font-medium text-foreground'>テーマ</p>
-            <p className='mt-0.5 text-[0.75rem] text-muted-foreground'>Light / Dark / システム設定に従う</p>
-          </div>
-          <ThemeSegment />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Playback tab ────────────────────────────────────────────────────────────
-
-const QUALITY_OPTIONS: { value: QualityChoice; label: string; resolution: string; detail: string }[] = [
-  { value: 'auto', label: 'AUTO', resolution: '可変', detail: '帯域と端末性能に応じて自動切替' },
-  { value: 'high', label: 'HIGH', resolution: '1080p', detail: '地デジ相当の高画質。Wi-Fi 推奨' },
-  { value: 'medium', label: 'MED', resolution: '720p', detail: '画質と帯域のバランス型。LTE でも可' },
-  { value: 'low', label: 'LOW', resolution: '480p', detail: '省帯域。弱電波・モバイル回線向け' }
-]
-
-const CODEC_OPTIONS: { value: CodecChoice; label: string; detail: string }[] = [
-  { value: 'auto', label: 'AUTO', detail: 'ブラウザが対応する中で最適なコーデックを自動選択' },
-  {
-    value: 'avc',
-    label: 'AVC (H.264)',
-    detail: '最も互換性が高い。全ての環境で再生可能だが、同画質だと帯域が大きめ'
-  },
-  {
-    value: 'hevc',
-    label: 'HEVC (H.265)',
-    detail: 'AVC より 30-50% 省帯域。iOS/macOS Safari と対応 GPU 環境で再生可'
-  },
-  {
-    value: 'vp9',
-    label: 'VP9',
-    detail: 'オープン規格で HEVC 同等の圧縮率。Chrome / Firefox / Edge で広くサポート'
-  }
-]
-
-interface SegmentProps<T extends string> {
-  ariaLabel: string
-  value: T
-  options: readonly { value: T; label: string }[]
-  onChange: (v: T) => void
-}
-
-function Segment<T extends string>({ ariaLabel, value, options, onChange }: SegmentProps<T>) {
-  return (
-    <ToggleGroup
-      type='single'
-      value={value}
-      onValueChange={(v) => v && onChange(v as T)}
-      aria-label={ariaLabel}
-      size='sm'
-      className='shrink-0'
-    >
-      {options.map((opt) => (
-        <ToggleGroupItem key={opt.value} value={opt.value} className={SEGMENT_ITEM_CLASS}>
-          {opt.label}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
-  )
-}
-
-function Row({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
-  return (
-    <div className='flex items-center justify-between gap-4 border-b border-border/60 px-3.5 py-3 last:border-b-0'>
-      <div className='min-w-0'>
-        <p className='text-[0.875rem] font-medium text-foreground'>{title}</p>
-        {sub && <p className='mt-0.5 text-[0.75rem] text-muted-foreground'>{sub}</p>}
-      </div>
-      <div className='shrink-0'>{children}</div>
-    </div>
-  )
-}
-
-// ─── Recording tab ────────────────────────────────────────────────────────────
-
-const RECORDING_CODEC_OPTIONS: { value: CodecChoice; label: string; detail: string }[] = [
-  { value: 'auto', label: 'AUTO', detail: 'ライブ視聴の優先コーデックに合わせる' },
-  { value: 'avc', label: 'AVC (H.264)', detail: '互換性最優先。全端末で再生可能だがファイル大' },
-  { value: 'hevc', label: 'HEVC (H.265)', detail: 'AVC より 30-50% 省サイズ。iOS / 最新端末で再生可' },
-  { value: 'vp9', label: 'VP9', detail: 'オープン規格。Chrome/Firefox/Edge 向け' }
-]
-
-function RecordingTab() {
-  const { prefs, update } = useRecordingPrefs()
-
-  return (
-    <div className='mx-auto max-w-[720px] px-5 pb-10 font-sans max-[480px]:px-2.5'>
-      <SectHead>変換</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <Row title='デフォルト出力コーデック' sub='録画完了後の変換で使う既定コーデック'>
-          <ToggleGroup
-            type='single'
-            value={prefs.defaultCodec}
-            onValueChange={(v) => v && update({ defaultCodec: v as CodecChoice })}
-            aria-label='デフォルト出力コーデック'
-            size='sm'
-            className='shrink-0'
-          >
-            {RECORDING_CODEC_OPTIONS.map((opt) => (
-              <ToggleGroupItem key={opt.value} value={opt.value} className={SEGMENT_ITEM_CLASS}>
-                {opt.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </Row>
-        <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-2.5'>
-          {RECORDING_CODEC_OPTIONS.map((o) => (
-            <div key={o.value} className='flex items-baseline gap-3 py-1.5'>
-              <dt
-                className={cn(
-                  'w-[90px] shrink-0 font-sans text-[0.75rem] font-semibold',
-                  prefs.defaultCodec === o.value ? 'text-primary' : 'text-muted-foreground'
-                )}
-              >
-                {o.label}
-              </dt>
-              <dd className='min-w-0 text-[0.75rem] text-muted-foreground'>{o.detail}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-
-      <SectHead>ルール既定値</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <Row title='デフォルト優先度' sub={`新規ルール作成時の初期値 (${prefs.defaultPriority} / 100)`}>
-          <input
-            type='range'
-            min={1}
-            max={100}
-            step={1}
-            value={prefs.defaultPriority}
-            onChange={(e) => update({ defaultPriority: Number(e.target.value) })}
-            aria-label='デフォルト優先度'
-            className='h-[22px] w-[160px] accent-primary'
-          />
-        </Row>
-        <Row title='再放送スキップをデフォルトで有効' sub='新規ルールの「重複回避」スイッチの初期状態'>
-          <Switch
-            checked={prefs.avoidDuplicatesDefault}
-            onCheckedChange={(v) => update({ avoidDuplicatesDefault: v })}
-            aria-label='再放送スキップをデフォルトで有効'
-          />
-        </Row>
-      </div>
-
-      <SectHead>ストレージ</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <Row title='変換後も .ts を保持' sub='オフなら変換完了時に .ts を削除してディスクを節約'>
-          <Switch
-            checked={prefs.keepTsAfterConvert}
-            onCheckedChange={(v) => update({ keepTsAfterConvert: v })}
-            aria-label='変換後も .ts を保持'
-          />
-        </Row>
-        <Row title='ディスク警告閾値' sub={`${prefs.diskWarnPct}% を超えるとステータスタブが WARN 表示になる`}>
-          <input
-            type='range'
-            min={50}
-            max={99}
-            step={1}
-            value={prefs.diskWarnPct}
-            onChange={(e) => update({ diskWarnPct: Number(e.target.value) })}
-            aria-label='ディスク警告閾値'
-            className='h-[22px] w-[160px] accent-primary'
-          />
-        </Row>
-      </div>
-
-      <p className='mt-3 font-sans text-[0.75rem] text-muted-foreground'>
-        ブラウザのローカルストレージに保存されます (端末ごと・アカウント同期なし)
-      </p>
-    </div>
-  )
-}
-
-// ─── Playback tab ────────────────────────────────────────────────────────────
-
-function PlaybackTab() {
-  const { prefs, update } = usePlaybackPrefs()
-
-  return (
-    <div className='mx-auto max-w-[720px] px-5 pb-10 font-sans max-[480px]:px-2.5'>
-      <SectHead>画質</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <Row title='デフォルト画質' sub='画質は解像度の上限を切替えます。ビットレートは各解像度に応じて自動決定'>
-          <Segment<QualityChoice>
-            ariaLabel='画質プリセット'
-            value={prefs.quality}
-            options={QUALITY_OPTIONS}
-            onChange={(v) => update({ quality: v })}
-          />
-        </Row>
-        <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-2.5 text-[0.75rem]'>
-          {QUALITY_OPTIONS.map((o) => (
-            <div key={o.value} className='flex items-baseline gap-3 py-1'>
-              <dt
-                className={cn(
-                  'w-[64px] shrink-0 font-sans text-[0.75rem] font-semibold',
-                  prefs.quality === o.value ? 'text-primary' : 'text-muted-foreground'
-                )}
-              >
-                {o.label}
-              </dt>
-              <dd className='w-[56px] shrink-0 font-sans tabular-nums text-[0.75rem] text-foreground'>
-                {o.resolution}
-              </dd>
-              <dd className='min-w-0 text-[0.75rem] text-muted-foreground'>{o.detail}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-
-      <SectHead>コーデック</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <Row title='優先コーデック' sub='未対応環境では自動的に AVC へフォールバック'>
-          <Segment<CodecChoice>
-            ariaLabel='コーデック'
-            value={prefs.codec}
-            options={CODEC_OPTIONS}
-            onChange={(v) => update({ codec: v })}
-          />
-        </Row>
-        <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-2.5'>
-          {CODEC_OPTIONS.map((o) => (
-            <div key={o.value} className='flex items-baseline gap-3 py-1.5'>
-              <dt
-                className={cn(
-                  'w-[90px] shrink-0 font-sans text-[0.75rem] font-semibold',
-                  prefs.codec === o.value ? 'text-primary' : 'text-muted-foreground'
-                )}
-              >
-                {o.label}
-              </dt>
-              <dd className='min-w-0 text-[0.75rem] text-muted-foreground'>{o.detail}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-
-      <SectHead>再生動作</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <Row title='自動再生' sub='チャンネル/録画を開いた直後に再生を開始'>
-          <Switch checked={prefs.autoplay} onCheckedChange={(v) => update({ autoplay: v })} aria-label='自動再生' />
-        </Row>
-        <Row title='低遅延モード' sub='ライブ時にバッファを最小化 (帯域不安定だとカクつく可能性)'>
-          <Switch
-            checked={prefs.lowLatency}
-            onCheckedChange={(v) => update({ lowLatency: v })}
-            aria-label='低遅延モード'
-          />
-        </Row>
-        <Row title='デフォルト音量' sub={`${Math.round(prefs.defaultVolume * 100)}%`}>
-          <input
-            type='range'
-            min={0}
-            max={100}
-            step={5}
-            value={Math.round(prefs.defaultVolume * 100)}
-            onChange={(e) => update({ defaultVolume: Number(e.target.value) / 100 })}
-            aria-label='デフォルト音量'
-            className='h-[22px] w-[140px] accent-primary'
-          />
-        </Row>
-      </div>
-
-      <p className='mt-3 font-sans text-[0.75rem] text-muted-foreground'>
-        ブラウザのローカルストレージに保存されます (端末ごと・アカウント同期なし)
-      </p>
-    </div>
-  )
-}
-
-// ─── About tab ────────────────────────────────────────────────────────────────
-
-const ABOUT_ROWS = [
-  { key: 'version', val: '0.1.0' },
-  { key: 'commit', val: 'dev' },
-  { key: 'built', val: '—' },
-  { key: 'bun', val: typeof Bun !== 'undefined' ? Bun.version : '—' }
-]
-
-const LINK_ROWS = [
-  { key: 'repo', val: 'tkgstrator/KotoTV', href: 'https://github.com/tkgstrator/KotoTV' },
-  { key: 'license', val: 'MIT License', href: 'https://github.com/tkgstrator/KotoTV/blob/master/LICENSE' },
-  { key: 'desc', val: 'KotoTV — 外出先ライブ視聴クライアント', href: null }
-]
-
-function AboutTab() {
-  return (
-    <div className='mx-auto max-w-[720px] px-5 pb-10 max-[480px]:px-2.5'>
-      <SectHead>バージョン</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        {ABOUT_ROWS.map(({ key, val }, i) => (
-          <div key={key} className={cn('flex gap-0', i < ABOUT_ROWS.length - 1 && 'border-b border-border/60')}>
-            <td className='w-[100px] shrink-0 px-3 py-1.5 font-sans text-[0.75rem] font-semibold text-muted-foreground'>
-              {key}
-            </td>
-            <td className='px-3 py-1.5 font-sans text-[0.75rem] text-foreground'>
-              {val}
-              {key === 'version' && (
-                <StatusChip variant='info' size='sm' className='ml-1.5'>
-                  DEV
-                </StatusChip>
-              )}
-            </td>
-          </div>
-        ))}
-      </div>
-
-      <SectHead>リンク</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        {LINK_ROWS.map(({ key, val, href }, i) => (
-          <div key={key} className={cn('flex gap-0', i < LINK_ROWS.length - 1 && 'border-b border-border/60')}>
-            <td className='w-[100px] shrink-0 px-3 py-1.5 font-sans text-[0.75rem] font-semibold text-muted-foreground'>
-              {key}
-            </td>
-            <td className='px-3 py-1.5 font-sans text-[0.75rem]'>
-              {href ? (
-                <a
-                  href={href}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
-                >
-                  {val}
-                </a>
-              ) : (
-                <span className='text-muted-foreground'>{val}</span>
-              )}
-            </td>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-function SettingsPage() {
+function HealthStrip() {
   const { data } = useHealth()
 
   const anyWarn = data
@@ -561,81 +26,68 @@ function SettingsPage() {
     : false
 
   return (
+    <div
+      role='status'
+      aria-label='システム健全性'
+      className={cn(
+        'sticky top-page-header z-10 flex shrink-0 items-stretch overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        anyWarn && 'border-b-amber-500/30 bg-amber-500/[0.04]'
+      )}
+    >
+      {SUBSYSTEMS.map(({ key, label }) => {
+        const sub = data?.[key]
+        const st = sub?.status ?? 'ok'
+        return (
+          <div
+            key={key}
+            className='flex shrink-0 items-center gap-1.5 border-r border-border px-3.5 py-[5px] last:border-r-0'
+          >
+            <span className='font-mono text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-muted-foreground'>
+              {label}
+            </span>
+            <StatusChip variant={st} size='sm'>
+              {st.toUpperCase()}
+            </StatusChip>
+            {sub && (
+              <span className={cn('font-mono text-[0.5625rem] text-muted-foreground', st !== 'ok' && 'text-amber-500')}>
+                {sub.detail}
+              </span>
+            )}
+          </div>
+        )
+      })}
+      <div className='ml-auto flex shrink-0 items-center px-3.5'>
+        <span className='font-mono text-[0.5625rem] text-muted-foreground/60'>更新 15s</span>
+      </div>
+    </div>
+  )
+}
+
+function SettingsPage() {
+  return (
     <>
       <PageHeader ariaLabel='設定ヘッダー' className='items-center gap-2 px-3'>
         <h1 className='font-mono text-[0.9375rem] font-bold leading-none'>設定</h1>
       </PageHeader>
 
-      {/* Pinned health strip */}
-      <div
-        role='status'
-        aria-label='システム健全性'
-        className={cn(
-          'sticky top-page-header z-10 flex shrink-0 items-stretch overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-          anyWarn && 'border-b-amber-500/30 bg-amber-500/[0.04]'
-        )}
-      >
-        {SUBSYSTEMS.map(({ key, label }) => {
-          const sub = data?.[key]
-          const st = sub?.status ?? 'ok'
-          return (
-            <div
-              key={key}
-              className='flex shrink-0 items-center gap-1.5 border-r border-border px-3.5 py-[5px] last:border-r-0'
-            >
-              <span className='font-mono text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-muted-foreground'>
-                {label}
-              </span>
-              <StatusChip variant={st} size='sm'>
-                {st.toUpperCase()}
-              </StatusChip>
-              {sub && (
-                <span
-                  className={cn('font-mono text-[0.5625rem] text-muted-foreground', st !== 'ok' && 'text-amber-500')}
-                >
-                  {sub.detail}
-                </span>
-              )}
-            </div>
-          )
-        })}
-        <div className='ml-auto flex shrink-0 items-center px-3.5'>
-          <span className='font-mono text-[0.5625rem] text-muted-foreground/60'>更新 15s</span>
-        </div>
-      </div>
+      <HealthStrip />
 
-      {/* Tabs */}
       <Tabs defaultValue='status' className='flex flex-1 flex-col'>
         <div className='sticky top-[calc(var(--page-header-h)+48px)] z-10 shrink-0 overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
           <TabsList className='h-auto w-full justify-start rounded-none bg-transparent p-0'>
-            <TabsTrigger
-              value='status'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
-            >
+            <TabsTrigger value='status' className={TAB_TRIGGER_CLASS}>
               ステータス
             </TabsTrigger>
-            <TabsTrigger
-              value='playback'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
-            >
+            <TabsTrigger value='playback' className={TAB_TRIGGER_CLASS}>
               再生
             </TabsTrigger>
-            <TabsTrigger
-              value='recording'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
-            >
+            <TabsTrigger value='recording' className={TAB_TRIGGER_CLASS}>
               録画
             </TabsTrigger>
-            <TabsTrigger
-              value='display'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
-            >
+            <TabsTrigger value='display' className={TAB_TRIGGER_CLASS}>
               表示設定
             </TabsTrigger>
-            <TabsTrigger
-              value='about'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
-            >
+            <TabsTrigger value='about' className={TAB_TRIGGER_CLASS}>
               情報
             </TabsTrigger>
           </TabsList>
