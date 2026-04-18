@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App Shell v13 — Icon Rail + Route-Chip Breadcrumb Health (Mobile-first bottom tabs)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:               'hsl(var(--background))',
+            foreground:               'hsl(var(--foreground))',
+            card:                     'hsl(var(--card))',
+            'card-foreground':        'hsl(var(--card-foreground))',
+            muted:                    'hsl(var(--muted))',
+            'muted-foreground':       'hsl(var(--muted-foreground))',
+            border:                   'hsl(var(--border))',
+            primary:                  'hsl(var(--primary))',
+            'primary-foreground':     'hsl(var(--primary-foreground))',
+            destructive:              'hsl(var(--destructive))',
+            'destructive-foreground': 'hsl(var(--destructive-foreground))',
+            ring:                     'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:             220 16% 93%;
+      --foreground:             222 22% 16%;
+      --card:                   0 0% 99%;
+      --card-foreground:        222 22% 16%;
+      --muted:                  215 12% 87%;
+      --muted-foreground:       215 10% 44%;
+      --border:                 214 14% 82%;
+      --primary:                221 83% 53%;
+      --primary-foreground:     210 40% 98%;
+      --ring:                   221 83% 53%;
+      --destructive:            0 72% 52%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 38%;
+      --warning:                38 92% 46%;
+    }
+    .dark {
+      --background:             222 22% 8%;
+      --foreground:             210 18% 90%;
+      --card:                   222 20% 12%;
+      --card-foreground:        210 18% 90%;
+      --muted:                  222 18% 18%;
+      --muted-foreground:       215 12% 52%;
+      --border:                 222 18% 20%;
+      --primary:                221 83% 60%;
+      --primary-foreground:     222 20% 10%;
+      --ring:                   221 83% 60%;
+      --destructive:            0 72% 58%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 46%;
+      --warning:                38 92% 50%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", ui-monospace, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 2px;
+    }
+
+    /* ── Chips ── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      padding: 2px 6px;
+      border-radius: 2px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .chip-ok     { background: hsl(var(--success)/0.12);     border-color: hsl(var(--success)/0.35);     color: hsl(var(--success)); }
+    .chip-warn   { background: hsl(var(--warning)/0.12);     border-color: hsl(var(--warning)/0.35);     color: hsl(var(--warning)); }
+    .chip-err    { background: hsl(var(--destructive)/0.15); border-color: hsl(var(--destructive)/0.45); color: hsl(var(--destructive)); }
+    .chip-live   { background: hsl(0 72% 58% / 0.15);        border-color: hsl(0 72% 58% / 0.4);         color: hsl(0 72% 68%); }
+    .chip-rec    { background: hsl(var(--destructive)/0.12); border-color: hsl(var(--destructive)/0.4);  color: hsl(var(--destructive)); }
+    .chip-info   { background: hsl(var(--primary)/0.1);      border-color: hsl(var(--primary)/0.3);      color: hsl(var(--primary)); }
+    .chip-muted  { background: hsl(var(--muted));            border-color: hsl(var(--border));           color: hsl(var(--muted-foreground)); }
+
+    /* ══════════════════════════════════════════════════
+       TOP COMPACT BAR
+       Combines: wordmark | breadcrumb-route-chip | health | queue
+       Height: 36px — minimal footprint
+    ══════════════════════════════════════════════════ */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      height: 36px;
+      padding: 0;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .top-wordmark {
+      font-size: 0.5625rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      color: hsl(var(--foreground));
+      padding: 0 10px;
+      flex-shrink: 0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      border-right: 1px solid hsl(var(--border));
+    }
+
+    /* Route breadcrumb chip — active route shown inline in top bar */
+    .route-crumb {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 10px;
+      height: 100%;
+      border-right: 1px solid hsl(var(--border)/0.6);
+      flex-shrink: 0;
+    }
+    .route-arrow {
+      font-size: 0.5rem;
+      color: hsl(var(--muted-foreground));
+    }
+    .route-chip {
+      font-size: 0.5rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 6px;
+      border-radius: 2px;
+      border: 1px solid hsl(var(--primary)/0.4);
+      background: hsl(var(--primary)/0.1);
+      color: hsl(var(--primary));
+    }
+
+    /* Health in top bar */
+    .top-health {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 10px;
+      height: 100%;
+      border-right: 1px solid hsl(var(--border)/0.6);
+    }
+    .top-health-key {
+      font-size: 0.4375rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .top-spacer { flex: 1; }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px;
+      height: 100%;
+      border-left: 1px solid hsl(var(--border)/0.6);
+    }
+    .top-kbd {
+      font-size: 0.4375rem;
+      color: hsl(var(--muted-foreground));
+      border: 1px solid hsl(var(--border));
+      padding: 1px 5px;
+      border-radius: 2px;
+    }
+
+    /* ══════════════════════════════════════════════════
+       MAIN LAYOUT: 56px rail + content
+    ══════════════════════════════════════════════════ */
+    .main-layout {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* 56px Icon Rail with subsystem health anchored below nav items */
+    .nav-rail {
+      width: 56px;
+      flex-shrink: 0;
+      background: hsl(222 24% 10%);
+      border-right: 1px solid hsl(var(--border));
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .rail-nav-group {
+      display: flex;
+      flex-direction: column;
+      padding: 6px 0;
+      flex: 1;
+    }
+
+    .rail-item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      width: 100%;
+      height: 52px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      color: hsl(var(--muted-foreground));
+      text-decoration: none;
+      transition: color 0.1s, background 0.1s;
+      flex-shrink: 0;
+    }
+    .rail-item:hover { background: hsl(var(--muted)/0.2); color: hsl(var(--foreground)); }
+    .rail-item.active { color: hsl(var(--primary)); }
+    .rail-item.active::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 10px; bottom: 10px;
+      width: 3px;
+      background: hsl(var(--primary));
+      border-radius: 2px 0 0 2px;
+    }
+    .rail-item:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -3px;
+      border-radius: 3px;
+    }
+    .rail-icon { font-size: 1rem; line-height: 1; }
+    .rail-label {
+      font-size: 0.4375rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .rail-badge {
+      position: absolute;
+      top: 5px; right: 4px;
+      font-size: 0.4375rem;
+      font-weight: 900;
+      background: hsl(var(--destructive));
+      color: hsl(var(--destructive-foreground));
+      padding: 1px 4px;
+      border-radius: 2px;
+    }
+
+    /* ── Rail health anchor (bottom of rail) ── */
+    .rail-health {
+      border-top: 1px solid hsl(var(--border));
+      padding: 6px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .rail-health-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 2px 0;
+    }
+    /* Single-dot indicator per subsystem */
+    .sys-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .sys-dot.ok   { background: hsl(var(--success)); }
+    .sys-dot.warn { background: hsl(var(--warning)); }
+    .sys-dot.err  { background: hsl(var(--destructive)); }
+    /* Tooltip on hover/focus */
+    .rail-health-item {
+      position: relative;
+      cursor: default;
+    }
+    .rail-health-item:hover .rail-tooltip,
+    .rail-health-item:focus-visible .rail-tooltip { display: block; }
+    .rail-tooltip {
+      display: none;
+      position: absolute;
+      left: 110%;
+      top: 50%;
+      transform: translateY(-50%);
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 3px;
+      padding: 4px 8px;
+      font-size: 0.5rem;
+      white-space: nowrap;
+      z-index: 100;
+      pointer-events: none;
+      color: hsl(var(--foreground));
+    }
+
+    /* ── Content area ── */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-width: 0;
+    }
+
+    /* Channel list */
+    .ch-section-head {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      padding: 12px 14px 5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      background: hsl(var(--background));
+      z-index: 10;
+    }
+    .ch-section-head::after { content: ''; flex: 1; height: 1px; background: hsl(var(--border)); }
+
+    .ch-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-bottom: 1px solid hsl(var(--border)/0.5);
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.1s;
+    }
+    .ch-row:hover { background: hsl(var(--muted)/0.3); }
+    .ch-row:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; border-radius: 2px; }
+    .ch-num { font-size: 0.5625rem; font-weight: 700; color: hsl(var(--muted-foreground)); width: 26px; text-align: right; flex-shrink: 0; }
+    .ch-name { font-size: 0.8125rem; font-weight: 600; flex: 0 0 auto; min-width: 90px; font-family: system-ui, -apple-system, sans-serif; }
+    .ch-prog { font-size: 0.6875rem; color: hsl(var(--muted-foreground)); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: system-ui, -apple-system, sans-serif; }
+
+    /* ══════════════════════════════════════════════════
+       PLAYER MODE BAR
+    ══════════════════════════════════════════════════ */
+    .player-bar {
+      display: none;
+      position: sticky; top: 0; z-index: 70;
+      background: hsl(222 24% 10%);
+      border-bottom: 1px solid hsl(var(--border));
+      height: 36px;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      flex-shrink: 0;
+    }
+    .player-bar.visible { display: flex; }
+    .back-btn {
+      background: transparent; border: none;
+      color: hsl(var(--muted-foreground)); cursor: pointer;
+      padding: 4px 8px; border-radius: 2px;
+      font-family: inherit; font-size: 0.5625rem; font-weight: 700; letter-spacing: 0.06em;
+      transition: color 0.1s;
+    }
+    .back-btn:hover { color: hsl(var(--foreground)); }
+    .back-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .vbar { width: 1px; height: 18px; background: hsl(var(--border)); flex-shrink: 0; }
+
+    /* ══════════════════════════════════════════════════
+       MOBILE (≤ 640px)
+    ══════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      .nav-rail { display: none; }
+      .content-area { padding-bottom: 56px; }
+
+      .mob-tabs {
+        display: flex !important;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 60;
+        height: 56px;
+        background: hsl(222 24% 10%);
+        border-top: 1px solid hsl(var(--border));
+      }
+      .mob-tab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        background: transparent;
+        border: none;
+        color: hsl(var(--muted-foreground));
+        cursor: pointer;
+        font-family: inherit;
+        text-decoration: none;
+        position: relative;
+      }
+      .mob-tab.active { color: hsl(var(--primary)); }
+      .mob-tab.active::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 25%; right: 25%;
+        height: 2px;
+        background: hsl(var(--primary));
+      }
+      .mob-tab:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -3px; border-radius: 2px; }
+      .mob-icon { font-size: 1.1rem; }
+      .mob-label { font-size: 0.4375rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+      .mob-badge {
+        position: absolute; top: 6px; right: calc(50% - 20px);
+        font-size: 0.4375rem; font-weight: 900;
+        background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground));
+        padding: 1px 3px; border-radius: 2px;
+      }
+      .demo-bar { bottom: 72px; }
+      /* Mobile top bar: hide some cells for space */
+      .top-health { display: none; }
+    }
+
+    .mob-tabs { display: none; }
+
+    /* Demo */
+    .demo-bar {
+      position: fixed; bottom: 16px; right: 16px;
+      display: flex; flex-direction: column; gap: 6px; z-index: 200;
+    }
+    .demo-btn {
+      font-family: inherit; font-size: 0.5625rem; font-weight: 700; letter-spacing: 0.06em;
+      padding: 5px 10px; border-radius: 3px;
+      border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground));
+      cursor: pointer;
+    }
+    .demo-btn:hover { background: hsl(var(--muted)); }
+    .demo-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- Player mode bar (replaces top-bar) -->
+<div class="player-bar" id="playerBar">
+  <button class="back-btn" onclick="togglePlayer()">← /channels</button>
+  <div class="vbar"></div>
+  <span class="chip chip-live">● LIVE</span>
+  <span style="font-size:0.6875rem;font-weight:700;letter-spacing:0.05em;">ch-27 · NHK総合</span>
+  <span class="chip chip-warn">BUF 3.4s</span>
+  <div class="vbar" style="margin-left:auto"></div>
+  <span style="font-size:0.4375rem;color:hsl(var(--muted-foreground));">nvenc · 34.2Mbps</span>
+</div>
+
+<!-- ══════ TOP COMPACT BAR ══════ -->
+<header class="top-bar" id="topBar">
+  <span class="top-wordmark">KTV</span>
+  <!-- Active route breadcrumb chip -->
+  <div class="route-crumb">
+    <span class="route-arrow">→</span>
+    <span class="route-chip" id="routeChip">/channels</span>
+  </div>
+  <!-- Per-subsystem health in top bar -->
+  <div class="top-health">
+    <span class="top-health-key">health</span>
+    <a href="#" class="chip chip-ok" id="topHealthChip">OK</a>
+    <span style="font-size:0.4375rem;color:hsl(var(--muted-foreground));">mirakc</span>
+    <span class="chip chip-ok" style="font-size:0.4375rem;">OK</span>
+    <span style="font-size:0.4375rem;color:hsl(var(--muted-foreground));">ffmpeg</span>
+    <span class="chip chip-ok" id="ffChipTop" style="font-size:0.4375rem;">OK</span>
+  </div>
+  <div class="top-spacer"></div>
+  <div class="top-right">
+    <span class="chip chip-rec">REC 1 · SCHED 3</span>
+    <span class="top-kbd">⌘K</span>
+  </div>
+</header>
+
+<!-- ══════ MAIN LAYOUT ══════ -->
+<div class="main-layout">
+
+  <!-- Icon rail with health dots at bottom -->
+  <nav class="nav-rail" aria-label="メインナビゲーション">
+    <div class="rail-nav-group">
+      <a href="#" class="rail-item active" aria-current="page" aria-label="チャンネル" onclick="setRoute('/channels', this)">
+        <span class="rail-icon">📺</span>
+        <span class="rail-label">CH</span>
+      </a>
+      <a href="#" class="rail-item" aria-label="番組表" onclick="setRoute('/epg', this)">
+        <span class="rail-icon">📋</span>
+        <span class="rail-label">EPG</span>
+      </a>
+      <a href="#" class="rail-item" aria-label="録画" onclick="setRoute('/recordings', this)">
+        <span class="rail-icon">⏺</span>
+        <span class="rail-label">REC</span>
+        <span class="rail-badge" aria-label="4件">4</span>
+      </a>
+      <div style="flex:1"></div>
+      <div style="height:1px;background:hsl(var(--border));margin:4px 8px;"></div>
+      <a href="#" class="rail-item" aria-label="設定" onclick="setRoute('/settings', this)">
+        <span class="rail-icon">⚙</span>
+        <span class="rail-label">CFG</span>
+      </a>
+    </div>
+
+    <!-- Health dots anchored at bottom of rail -->
+    <div class="rail-health" aria-label="サブシステム状態">
+      <div class="rail-health-item" tabindex="0" aria-label="mirakc: OK">
+        <span class="sys-dot ok" id="dot-mirakc"></span>
+        <div class="rail-tooltip">mirakc · OK</div>
+      </div>
+      <div class="rail-health-item" tabindex="0" aria-label="postgres: OK">
+        <span class="sys-dot ok" id="dot-pg"></span>
+        <div class="rail-tooltip">postgres · OK</div>
+      </div>
+      <div class="rail-health-item" tabindex="0" aria-label="ffmpeg: OK">
+        <span class="sys-dot ok" id="dot-ff"></span>
+        <div class="rail-tooltip">ffmpeg · OK</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Content area -->
+  <main class="content-area" id="mainContent">
+
+    <div class="ch-section-head">
+      <span class="chip chip-info">GR</span>
+      地上波
+    </div>
+    <a href="#" class="ch-row">
+      <span class="ch-num">1</span>
+      <span class="ch-name">NHK総合</span>
+      <span class="ch-prog">ニュース7 — 今日の天気と気象情報</span>
+      <span class="chip chip-live">● LIVE</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">3</span>
+      <span class="ch-name">NHK Eテレ</span>
+      <span class="ch-prog">プロフェッショナル 仕事の流儀</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">4</span>
+      <span class="ch-name">日本テレビ</span>
+      <span class="ch-prog">news every.</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">5</span>
+      <span class="ch-name">テレビ朝日</span>
+      <span class="ch-prog">報道ステーション</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">6</span>
+      <span class="ch-name">TBSテレビ</span>
+      <span class="ch-prog">NEWS23</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">7</span>
+      <span class="ch-name">テレビ東京</span>
+      <span class="ch-prog">WBS ワールドビジネスサテライト</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">8</span>
+      <span class="ch-name">フジテレビ</span>
+      <span class="ch-prog">FNN Live News α</span>
+    </a>
+
+    <div class="ch-section-head">
+      <span class="chip chip-muted">BS</span>
+      衛星放送
+    </div>
+    <a href="#" class="ch-row">
+      <span class="ch-num">101</span>
+      <span class="ch-name">NHK BS</span>
+      <span class="ch-prog">世界のドキュメンタリー</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">141</span>
+      <span class="ch-name">BS日テレ</span>
+      <span class="ch-prog">深夜の映画特集</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">151</span>
+      <span class="ch-name">BS朝日</span>
+      <span class="ch-prog">ドキュメンタリー</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">161</span>
+      <span class="ch-name">BS-TBS</span>
+      <span class="ch-prog">音楽の時間</span>
+    </a>
+
+  </main>
+</div>
+
+<!-- Mobile bottom tabs -->
+<nav class="mob-tabs" aria-label="モバイルナビゲーション">
+  <a href="#" class="mob-tab active" aria-current="page">
+    <span class="mob-icon">📺</span>
+    <span class="mob-label">CH</span>
+  </a>
+  <a href="#" class="mob-tab">
+    <span class="mob-icon">📋</span>
+    <span class="mob-label">EPG</span>
+  </a>
+  <a href="#" class="mob-tab">
+    <span class="mob-icon">⏺</span>
+    <span class="mob-label">REC</span>
+    <span class="mob-badge">4</span>
+  </a>
+  <a href="#" class="mob-tab">
+    <span class="mob-icon">⚙</span>
+    <span class="mob-label">CFG</span>
+  </a>
+</nav>
+
+<!-- Demo controls -->
+<div class="demo-bar">
+  <button class="demo-btn" onclick="togglePlayer()">⏯ Player mode</button>
+  <button class="demo-btn" onclick="toggleWarn()">⚠ WARN state</button>
+  <button class="demo-btn" onclick="toggleDark()">◑ Light/Dark</button>
+</div>
+
+<div style="position:fixed;top:5px;right:140px;font-size:0.5rem;color:hsl(var(--muted-foreground));letter-spacing:0.06em;z-index:300;">v13 · COMPACT TOP BAR + ROUTE BREADCRUMB + RAIL HEALTH DOTS</div>
+
+<script>
+  let playerMode = false;
+  let warnMode = false;
+
+  function setRoute(path, el) {
+    document.getElementById('routeChip').textContent = path;
+    document.querySelectorAll('.rail-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function togglePlayer() {
+    playerMode = !playerMode;
+    const pbar = document.getElementById('playerBar');
+    const tbar = document.getElementById('topBar');
+    const rail = document.querySelector('.nav-rail');
+
+    if (playerMode) {
+      pbar.classList.add('visible');
+      tbar.style.display = 'none';
+      rail.style.display = 'none';
+      document.getElementById('mainContent').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;">
+          <div style="width:100%;max-width:900px;aspect-ratio:16/9;background:hsl(222 30% 7%);display:flex;align-items:center;justify-content:center;border:1px solid hsl(var(--border));">
+            <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">[ VIDEO — HLS PLAYER ]</span>
+          </div>
+          <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));">Rail + top bar hidden. Session chip bar only.</span>
+        </div>`;
+    } else {
+      pbar.classList.remove('visible');
+      tbar.style.display = '';
+      rail.style.display = '';
+      document.getElementById('mainContent').innerHTML = channelListHTML;
+    }
+  }
+
+  function toggleWarn() {
+    warnMode = !warnMode;
+    const dotFf = document.getElementById('dot-ff');
+    const chipTop = document.getElementById('topHealthChip');
+    const chipFfTop = document.getElementById('ffChipTop');
+
+    if (warnMode) {
+      dotFf.className = 'sys-dot warn';
+      dotFf.parentElement.querySelector('.rail-tooltip').textContent = 'ffmpeg · WARN';
+      dotFf.parentElement.setAttribute('aria-label', 'ffmpeg: WARN');
+      chipTop.className = 'chip chip-warn'; chipTop.textContent = 'WARN'; chipTop.href = '#settings-status';
+      chipFfTop.className = 'chip chip-warn'; chipFfTop.textContent = 'WARN';
+    } else {
+      dotFf.className = 'sys-dot ok';
+      dotFf.parentElement.querySelector('.rail-tooltip').textContent = 'ffmpeg · OK';
+      dotFf.parentElement.setAttribute('aria-label', 'ffmpeg: OK');
+      chipTop.className = 'chip chip-ok'; chipTop.textContent = 'OK';
+      chipFfTop.className = 'chip chip-ok'; chipFfTop.textContent = 'OK';
+    }
+  }
+
+  function toggleDark() { document.documentElement.classList.toggle('dark'); }
+
+  const channelListHTML = document.getElementById('mainContent').innerHTML;
+</script>
+</body>
+</html>
