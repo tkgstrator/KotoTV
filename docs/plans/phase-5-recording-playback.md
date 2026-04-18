@@ -4,7 +4,7 @@
 |------|-----|
 | **目標** | `/recordings/:id` で録画ファイルがシーク対応の HLS 再生で視聴できる |
 | **工数** | 1-2 日 |
-| **ステータス** | 未着手 |
+| **ステータス** | 実行中 (Mirakc-free パート着手 2026-04-18) |
 | **前提フェーズ** | Phase 2, Phase 4 |
 
 ## 全体フロー
@@ -17,14 +17,25 @@
 
 ## 採択デザイン
 
-- 候補: `docs/mocks/recording-playback/v1.html` 他
-- 採択: _(未定)_
+- 採択: **v12** (`docs/mocks/recording-player/v12.html`) — inline-above-seek identity strip + collapsed fault log + auto-resume toast
+- 詳細: `docs/mocks/recording-player/README.md` §Chosen variant
+
+## 実行スプリット (2026-04-18)
+
+**Mirakc-free (今回):**
+- backend: `POST /api/streams/recording/:recordingId` stub、`GET /api/recordings/:id` 単体取得ルート
+- frontend: `/recordings/$id` ルート + recording-player v12 UI、`<PlayerControls isLive={false}>`、SeekbarChapters、resume chip、fault log collapsible、RecordingList から `<Link>` で導線
+
+**Mirakc-dep (後続):**
+- streaming: `acquireRecording()` + `buildRecordingHlsArgs()` (VOD HLS、`-hls_playlist_type vod` + `-hls_list_size 0`)
+- 録画ファイル → HLS transcode の実配信
+- 実在録画ファイルが DB にある状態での動作確認
 
 ## チェックリスト
 
-### designer
-- [ ] `docs/mocks/recording-playback/` にバリアント (ライブと同じ / シークバー強調 / チャプター候補)
-- [ ] ライブと録画画面のモード切替表示の扱い
+### designer ✅ 完了 2026-04-17
+- [x] `docs/mocks/recording-player/` に v1-v5 legacy + v10-v12 diagnostic-dense バリアント生成
+- [x] v12 採択 (inline strip + collapsed fault log)
 
 ### backend
 - [ ] `POST /api/streams/recording/:recordingId` ルートを実装 (stream-manager に委譲) — `packages/server/src/routes/streams.ts`
