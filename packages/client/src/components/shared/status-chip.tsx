@@ -27,7 +27,7 @@ export type StatusVariant =
   | 'buf'
 
 const chipVariants = cva(
-  'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-status border font-mono text-status font-bold uppercase tracking-status',
+  'inline-flex items-center rounded-status border font-mono font-bold uppercase tracking-status',
   {
     variants: {
       variant: {
@@ -42,9 +42,13 @@ const chipVariants = cva(
         info: 'bg-primary/12 border-primary/35 text-primary',
         buf: 'bg-amber-500/10 border-amber-500/30 text-amber-500',
         muted: 'bg-muted border-border text-muted-foreground'
+      },
+      size: {
+        default: 'gap-1 px-1.5 py-0.5 text-status',
+        sm: 'gap-[3px] px-1 py-[1px] text-[0.5rem] leading-none'
       }
     },
-    defaultVariants: { variant: 'info' }
+    defaultVariants: { variant: 'info', size: 'default' }
   }
 )
 
@@ -56,15 +60,17 @@ export interface StatusChipProps extends VariantProps<typeof chipVariants> {
   dot?: boolean
   asLink?: string
   className?: string
+  size?: 'default' | 'sm'
 }
 
-export function StatusChip({ variant, children, dot, asLink, className }: StatusChipProps) {
+export function StatusChip({ variant, children, dot, asLink, className, size }: StatusChipProps) {
   const shouldPulse = dot && PULSE_VARIANTS.includes(variant)
 
+  const dotSize = size === 'sm' ? 'size-1' : 'size-1.5'
   const dotEl = dot ? (
     <span
       aria-hidden='true'
-      className={cn('size-1.5 rounded-full bg-current flex-shrink-0', shouldPulse && 'animate-pulse')}
+      className={cn(dotSize, 'rounded-full bg-current flex-shrink-0', shouldPulse && 'animate-pulse')}
     />
   ) : null
 
@@ -75,7 +81,7 @@ export function StatusChip({ variant, children, dot, asLink, className }: Status
     </>
   )
 
-  const classes = cn(chipVariants({ variant }), className)
+  const classes = cn(chipVariants({ variant, size }), className)
 
   if (asLink) {
     return (
