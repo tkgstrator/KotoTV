@@ -238,7 +238,7 @@ export function RecordingList({ schedules, recordings }: RecordingListProps) {
       {/* REC NOW */}
       {recNow.length > 0 && (
         <section>
-          <SectionHeader label='REC NOW' count={recNow.length} />
+          <SectionHeader label='録画中' count={recNow.length} />
           {recNow.map((r) => (
             <RecordingRow key={r.id} rec={r} />
           ))}
@@ -248,7 +248,7 @@ export function RecordingList({ schedules, recordings }: RecordingListProps) {
       {/* SCHED */}
       {scheduled.length > 0 && (
         <section>
-          <SectionHeader label='SCHED' count={scheduled.length} />
+          <SectionHeader label='予約' count={scheduled.length} />
           {scheduled.map((s) => (
             <ScheduleRow key={s.id} schedule={s} />
           ))}
@@ -258,7 +258,7 @@ export function RecordingList({ schedules, recordings }: RecordingListProps) {
       {/* FAIL */}
       {failed.length > 0 && (
         <section>
-          <SectionHeader label='FAIL' count={failed.length} />
+          <SectionHeader label='失敗' count={failed.length} />
           {failed.map((r) => (
             <FailRow key={r.id} rec={r} />
           ))}
@@ -267,7 +267,7 @@ export function RecordingList({ schedules, recordings }: RecordingListProps) {
 
       {/* DONE */}
       <section>
-        <SectionHeader label='DONE' count={done.length} />
+        <SectionHeader label='完了' count={done.length} />
         {done.length === 0 ? (
           <div className='px-4 py-12'>
             <div className='inline-block rounded-sm border border-border bg-muted/60 px-3.5 py-2.5 font-mono text-[0.75rem] text-muted-foreground'>
