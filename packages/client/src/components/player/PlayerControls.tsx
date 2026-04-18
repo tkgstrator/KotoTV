@@ -1,6 +1,7 @@
 import { Maximize, Minimize, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import type * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { type Chapter, SeekbarChapters } from '@/components/player/SeekbarChapters'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -8,10 +9,13 @@ import { cn } from '@/lib/utils'
 const PLAYBACK_RATES = [0.5, 1.0, 1.25, 1.5, 2.0] as const
 const QUALITY_OPTIONS = ['auto', '高', '中', '低'] as const
 
+export type { Chapter }
+
 export interface PlayerControlsProps {
   isLive: boolean
   videoRef: React.RefObject<HTMLVideoElement | null>
   className?: string
+  chapters?: Chapter[]
 }
 
 /**
@@ -25,7 +29,7 @@ export interface PlayerControlsProps {
  *   - Seek bar is interactive (role="slider")
  *   - All controls are fully enabled
  */
-export function PlayerControls({ isLive, videoRef, className }: PlayerControlsProps) {
+export function PlayerControls({ isLive, videoRef, className, chapters }: PlayerControlsProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -189,11 +193,14 @@ export function PlayerControls({ isLive, videoRef, className }: PlayerControlsPr
             aria-valuemin={0}
             aria-valuemax={100}
             tabIndex={0}
-            className='flex-1 h-2 rounded-full bg-muted overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            className='relative flex-1 h-2 rounded-full bg-muted overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
             onClick={handleSeek}
             onKeyDown={handleSeekKey}
           >
             <div className='h-full bg-primary rounded-full' style={{ width: `${Math.round(progress * 100)}%` }} />
+            {chapters && chapters.length > 0 && duration > 0 && (
+              <SeekbarChapters chapters={chapters} duration={duration} />
+            )}
           </div>
         )}
 
