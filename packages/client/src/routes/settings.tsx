@@ -191,7 +191,9 @@ function ThemeSegment() {
           aria-pressed={theme === opt.value}
           className={cn(
             'relative grid place-items-center border-r border-border px-3 py-[5px] font-sans text-[0.75rem] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-            theme === opt.value ? 'bg-card text-foreground' : 'bg-transparent text-muted-foreground hover:bg-card/50'
+            theme === opt.value
+              ? 'bg-primary/15 text-primary'
+              : 'bg-transparent text-muted-foreground hover:bg-background/60'
           )}
         >
           <span aria-hidden className='invisible col-start-1 row-start-1 font-bold'>
@@ -274,7 +276,9 @@ function Segment<T extends string>({ ariaLabel, value, options, onChange }: Segm
           aria-pressed={value === opt.value}
           className={cn(
             'relative grid place-items-center border-r border-border px-3 py-[5px] font-sans text-[0.75rem] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-            value === opt.value ? 'bg-card text-foreground' : 'bg-transparent text-muted-foreground hover:bg-card/50'
+            value === opt.value
+              ? 'bg-primary/15 text-primary'
+              : 'bg-transparent text-muted-foreground hover:bg-background/60'
           )}
         >
           {/* Reserve bold width so the pill doesn't shift when the weight changes. */}
