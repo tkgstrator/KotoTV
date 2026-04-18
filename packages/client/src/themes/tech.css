@@ -82,16 +82,9 @@
     --sidebar-w: 200px; /* only applies to themes that want a left sidebar; zero in tech */
   }
 
-  /* Player mode — set by the shell when on /live/$id or /recordings/$id.
-   * Collapses the chrome to a single 40px back/session bar for both live
-   * and recording players (decision 2026-04-17). Components read the same
-   * --shell-offset var, so EPG sticky anchors / full-height layouts adapt
-   * automatically. */
-  :root[data-theme='tech'][data-mode='player'] {
-    --shell-health-bar-h: 0px;
-    --shell-nav-bar-h: 40px;
-    --shell-offset: 40px;
-  }
+  /* Note: player mode no longer collapses the chrome. Earlier drafts swapped
+   * --shell-offset to 40px on /live/$id, but that made navigation transitions
+   * jump vertically. Shell chrome is constant across every route. */
 
   :root[data-theme='tech'].dark {
     --background: oklch(0.12 0.008 247);

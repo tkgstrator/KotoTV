@@ -39,7 +39,7 @@
 - [ ] `EPGGrid` コンポーネントを `@tanstack/react-virtual` で実装 (縦横 2 軸の `useVirtualizer`) — `packages/client/src/components/epg/EPGGrid.tsx`
 - [ ] `ProgramCell` コンポーネントを作成 (番組名、時刻、ジャンル色分け、`date-fns` で時刻フォーマット) — `packages/client/src/components/epg/ProgramCell.tsx`
 - [ ] 現在時刻インジケータを `useEffect` + `setInterval(60_000)` で自動更新 — `packages/client/src/components/epg/EPGGrid.tsx`
-- [ ] NOW-strip (現在時刻 sticky 行) の sticky 位置は CSS 変数 `--shell-offset` (または Tailwind alias `top-shell-offset`) を参照してハードコードしない。値はテーマファイル `packages/client/src/themes/tech.css` が提供。`/live/$id` など player route では shell が `<html data-mode="player">` を設定して自動で 40px に縮退する — `packages/client/src/components/epg/EPGGrid.tsx`
+- [ ] NOW-strip (現在時刻 sticky 行) の sticky 位置は CSS 変数 `--shell-offset` (または Tailwind alias `top-shell-offset`) を参照してハードコードしない。値はテーマファイル `packages/client/src/themes/tech.css` が提供し、全ルートで常に同一 (shell chrome はプレイヤーページでも縮退しない仕様、決定 2026-04-17) — `packages/client/src/components/epg/EPGGrid.tsx`
 - [ ] `ProgramCell` のジャンル / 録画予約状態バッジは Phase 2 で用意した `<StatusChip>` を再利用 (ローカル再実装禁止) — `packages/client/src/components/epg/ProgramCell.tsx`
 - [ ] EPG ページ、search params (`at`, `channel`) を Zod で validate — `packages/client/src/routes/epg.tsx`
 - [ ] 番組セル → `/live/$channelId` の `<Link>` — `packages/client/src/components/epg/ProgramCell.tsx`
@@ -51,7 +51,7 @@
 
 ## 共有コントラクト (参照)
 
-- **`--shell-offset` / レイアウト変数**: テーマファイル (`packages/client/src/themes/tech.css`) が全てのレイアウト次元 (`--shell-offset`, `--now-strip-h`, `--diag-sidebar-w`, `--sidebar-w`, `--container-max` 等) を提供する。EPG は NOW-strip sticky top にこの変数を使うだけ。モード切替 (player ↔ 非 player) は shell が `<html data-mode>` を切り替え、値の分岐はテーマファイル側で完結する。
+- **`--shell-offset` / レイアウト変数**: テーマファイル (`packages/client/src/themes/tech.css`) が全てのレイアウト次元 (`--shell-offset`, `--now-strip-h`, `--diag-sidebar-w`, `--sidebar-w`, `--container-max` 等) を提供する。EPG は NOW-strip sticky top にこの変数を使うだけ。shell chrome は全ルートで不変 (プレイヤーページでも縮退しない、決定 2026-04-17)。
 - **`<StatusChip>`**: Phase 2 で frontend が先に実装する共有プリミティブ。EPG セル内のジャンル / 録画予約状態表示に利用する。
 
 ## 検証基準
