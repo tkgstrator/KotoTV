@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { addDays, addHours, startOfMinute } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
+import { type FilterValue, TypeFilter } from '@/components/channel/TypeFilter'
 import { EPGGrid } from '@/components/epg/EPGGrid'
 import { StatusChip } from '@/components/shared/status-chip'
 import { PageHeader } from '@/components/shell/PageHeader'
@@ -12,15 +13,21 @@ import { useChannels } from '@/hooks/useChannels'
 import type { Program } from '@/hooks/usePrograms'
 import { useProgramsForChannels } from '@/hooks/usePrograms'
 
+const FILTER_VALUES: FilterValue[] = ['ALL', 'GR', 'BS', 'CS']
+
 interface EpgSearch {
   at?: string | undefined
   channel?: string | undefined
+  type?: FilterValue | undefined
 }
 
 function validateEpgSearch(raw: Record<string, unknown>): EpgSearch {
   const result: EpgSearch = {}
   if (typeof raw.at === 'string') result.at = raw.at
   if (typeof raw.channel === 'string') result.channel = raw.channel
+  if (typeof raw.type === 'string' && (FILTER_VALUES as string[]).includes(raw.type)) {
+    result.type = raw.type as FilterValue
+  }
   return result
 }
 
@@ -30,8 +37,9 @@ export const Route = createFileRoute('/epg')({
 })
 
 function EpgPage() {
-  const { at, channel: highlightChannelId } = Route.useSearch()
+  const { at, channel: highlightChannelId, type: typeParam } = Route.useSearch()
   const navigate = useNavigate({ from: '/epg' })
+  const type: FilterValue = typeParam ?? 'ALL'
 
   const windowStart = useMemo(() => {
     const base = at ? new Date(at) : new Date()
@@ -49,7 +57,10 @@ function EpgPage() {
 
   const { data: channelsData, isPending: channelsPending, isError: channelsError } = useChannels()
 
-  const channels: Channel[] = useMemo(() => channelsData?.channels ?? [], [channelsData])
+  const channels: Channel[] = useMemo(() => {
+    const all = channelsData?.channels ?? []
+    return type === 'ALL' ? all : all.filter((c) => c.type === type)
+  }, [channelsData, type])
 
   const channelIds = useMemo(() => channels.map((c) => c.id), [channels])
 
@@ -78,24 +89,29 @@ function EpgPage() {
 
   function goToPrevDay() {
     navigate({
-      search: { at: addDays(windowStart, -1).toISOString() }
+      search: (prev) => ({ ...prev, at: addDays(windowStart, -1).toISOString() })
     })
   }
 
   function goToNextDay() {
     navigate({
-      search: { at: addDays(windowStart, 1).toISOString() }
+      search: (prev) => ({ ...prev, at: addDays(windowStart, 1).toISOString() })
     })
   }
 
   function goToNow() {
-    navigate({ search: {} })
+    navigate({ search: (prev) => ({ ...prev, at: undefined }) })
+  }
+
+  function setType(value: FilterValue) {
+    navigate({ search: (prev) => ({ ...prev, type: value === 'ALL' ? undefined : value }) })
   }
 
   if (channelsPending) {
     return (
       <>
         <EpgHeader windowStart={windowStart} onPrevDay={goToPrevDay} onNextDay={goToNextDay} onNow={goToNow} />
+        <EpgTypeBar type={type} onChange={setType} />
         <div className='flex flex-col gap-2 p-4'>
           {Array.from({ length: 8 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton
@@ -110,6 +126,7 @@ function EpgPage() {
     return (
       <>
         <EpgHeader windowStart={windowStart} onPrevDay={goToPrevDay} onNextDay={goToNextDay} onNow={goToNow} />
+        <EpgTypeBar type={type} onChange={setType} />
         <div className='flex flex-col items-center justify-center gap-2 py-16'>
           <StatusChip variant='err'>サーバーに接続できません</StatusChip>
           <p className='text-[0.75rem] text-muted-foreground'>mirakc が起動しているか確認してください</p>
@@ -122,6 +139,7 @@ function EpgPage() {
     return (
       <>
         <EpgHeader windowStart={windowStart} onPrevDay={goToPrevDay} onNextDay={goToNextDay} onNow={goToNow} />
+        <EpgTypeBar type={type} onChange={setType} />
         <p className='px-4 py-8 text-[0.875rem] text-muted-foreground'>チャンネルが見つかりません</p>
       </>
     )
@@ -130,6 +148,7 @@ function EpgPage() {
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <EpgHeader windowStart={windowStart} onPrevDay={goToPrevDay} onNextDay={goToNextDay} onNow={goToNow} />
+      <EpgTypeBar type={type} onChange={setType} />
       <EPGGrid
         channels={channels}
         programsByChannel={programsByChannel}
@@ -137,6 +156,14 @@ function EpgPage() {
         gridStartAt={windowStart}
         highlightChannelId={highlightChannelId}
       />
+    </div>
+  )
+}
+
+function EpgTypeBar({ type, onChange }: { type: FilterValue; onChange: (v: FilterValue) => void }) {
+  return (
+    <div className='sticky top-page-header z-20 flex h-page-header shrink-0 border-b border-border bg-background'>
+      <TypeFilter value={type} onChange={onChange} />
     </div>
   )
 }
