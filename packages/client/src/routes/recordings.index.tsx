@@ -256,7 +256,7 @@ function DoneCardInner({
           <Button
             variant='ghost'
             size='icon'
-            className='absolute right-1 top-1 size-7 rounded-sm bg-foreground/60 text-background backdrop-blur-sm hover:bg-foreground/80 hover:text-background focus-visible:ring-2 focus-visible:ring-ring'
+            className='absolute right-1 top-1 size-7 rounded-sm bg-background/80 text-foreground backdrop-blur-sm hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
             aria-label='操作メニュー'
             onClick={(e) => e.stopPropagation()}
           >
