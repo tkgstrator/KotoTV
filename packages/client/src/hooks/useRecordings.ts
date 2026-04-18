@@ -6,6 +6,18 @@ import { api } from '@/api/client'
 
 export const RECORDINGS_KEY = ['recordings'] as const
 
+export function useRecording(id: string) {
+  return useQuery({
+    queryKey: ['recordings', id] as const,
+    queryFn: async () => {
+      const res = await api.api.recordings[':id'].$get({ param: { id } })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return res.json()
+    },
+    staleTime: 60_000
+  })
+}
+
 export function useRecordings() {
   return useQuery({
     queryKey: RECORDINGS_KEY,
