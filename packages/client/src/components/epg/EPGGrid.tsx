@@ -22,26 +22,25 @@ import type { Program } from '@kototv/server/src/schemas/Program.dto'
 import { Link } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { addHours, format, startOfHour } from 'date-fns'
-import { Play } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useClock } from '@/hooks/useClock'
-import { formatTimeRange, genreToColor, getProgress } from '@/lib/program'
+import { formatTimeRange, genreToColor } from '@/lib/program'
 import { cn } from '@/lib/utils'
 import { ProgramCell } from './ProgramCell'
 
-/** Pixels per minute in the future grid. 2px/min = 120px/hour. */
-const PX_PER_MIN = 2
+/** Pixels per minute in the future grid. 3px/min = 180px/hour, 90px per 30-min slot. */
+const PX_PER_MIN = 3
 
 /** Channel label column width in px (sticky left). */
-const CH_COL_W = 68
+const CH_COL_W = 80
 
 /** Number of hours shown in the future grid. */
 const GRID_HOURS = 8
 
 /** Row height for the future grid (px). Fixed — no measureElement needed. */
-const ROW_H = 56
+const ROW_H = 80
 
 /** Estimated height for one agenda section: header (32) + ~4 programs × 72px. */
 const AGENDA_SECTION_ESTIMATE = 32 + 4 * 72
@@ -57,78 +56,6 @@ interface EPGGridProps {
 }
 
 // ─── NOW-strip ────────────────────────────────────────────────────────────────
-
-interface NowCardProps {
-  channel: Channel
-  program: Program | null
-  now: Date
-  highlighted: boolean
-}
-
-function NowCard({ channel, program, now, highlighted }: NowCardProps) {
-  const accentColor = program ? genreToColor(program.genres[0] ?? '') : 'oklch(0.55 0.04 247)'
-  const progress = program ? getProgress(program.startAt, program.endAt, now.getTime()) : 0
-  const remaining = program ? Math.max(0, Math.ceil((new Date(program.endAt).getTime() - now.getTime()) / 60_000)) : 0
-
-  return (
-    <li
-      className={cn(
-        'relative flex w-[160px] flex-shrink-0 scroll-ml-4 snap-start flex-col rounded-md border p-2',
-        'bg-background transition-colors list-none',
-        highlighted && 'ring-2 ring-ring ring-offset-1'
-      )}
-      style={{
-        borderColor: `color-mix(in oklch, ${accentColor} 40%, transparent)`,
-        borderLeftWidth: '3px',
-        borderLeftColor: accentColor
-      }}
-    >
-      <span className='mb-[3px] text-[0.6rem] font-semibold text-muted-foreground'>
-        {channel.channelNumber} {channel.name}
-      </span>
-
-      {program ? (
-        <>
-          <span className='line-clamp-2 text-[0.75rem] font-bold leading-[1.3]'>{program.title}</span>
-          <span className='mt-[3px] font-mono text-[0.6rem] tabular-nums text-muted-foreground'>
-            {formatTimeRange(program.startAt, program.endAt)} · 残り{remaining}分
-          </span>
-          <div
-            role='progressbar'
-            aria-label='番組経過'
-            aria-valuenow={Math.round(progress * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            className='mt-1.5 h-[3px] overflow-hidden rounded-full bg-border'
-          >
-            <div
-              className='h-full rounded-full transition-[width] duration-1000'
-              style={{ width: `${Math.round(progress * 100)}%`, background: accentColor }}
-            />
-          </div>
-        </>
-      ) : (
-        <span className='text-[0.7rem] text-muted-foreground'>番組情報なし</span>
-      )}
-
-      <Link
-        to='/live/$channelId'
-        params={{ channelId: channel.id }}
-        aria-label={`${channel.name}を視聴`}
-        className={cn(
-          'mt-1.5 flex w-full items-center justify-center gap-1 rounded py-1',
-          'text-[0.65rem] font-bold text-[oklch(0.98_0.002_247)]',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-          'hover:opacity-85 transition-opacity'
-        )}
-        style={{ background: accentColor }}
-      >
-        <Play className='size-[9px]' aria-hidden />
-        今すぐ視聴
-      </Link>
-    </li>
-  )
-}
 
 // ─── Future grid helpers ───────────────────────────────────────────────────────
 
@@ -198,7 +125,7 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
           className='absolute left-0 top-0 z-30 flex items-center justify-center border-b border-r-2 border-border bg-card'
           style={{ width: CH_COL_W, height: 28 }}
         >
-          <span className='font-mono text-[0.6rem] font-bold text-muted-foreground'>CH</span>
+          <span className='font-mono text-[0.6875rem] font-bold text-muted-foreground'>CH</span>
         </div>
 
         {/* Time ticks */}
@@ -211,7 +138,7 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
                 className='absolute top-0 flex h-full items-center border-l border-border/50 pl-1'
                 style={{ left }}
               >
-                <span className='font-mono text-[0.65rem] font-bold text-muted-foreground'>
+                <span className='font-mono text-[0.75rem] font-bold text-muted-foreground'>
                   {format(tick, 'HH:mm')}
                 </span>
               </div>
@@ -252,10 +179,10 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
                 )}
                 style={{ width: CH_COL_W, height: ROW_H }}
               >
-                <span className='font-mono text-[0.65rem] font-bold' style={{ color: genreToColor('') }}>
+                <span className='font-mono text-[0.8125rem] font-bold' style={{ color: genreToColor('') }}>
                   {ch.channelNumber}
                 </span>
-                <span className='mt-[2px] text-center text-[0.55rem] leading-[1.2] text-muted-foreground'>
+                <span className='mt-[3px] text-center text-[0.625rem] leading-[1.2] text-muted-foreground'>
                   {ch.name.length > 6 ? `${ch.name.slice(0, 6)}…` : ch.name}
                 </span>
               </button>
@@ -580,16 +507,6 @@ export function EPGGrid({
 
   const [activeChannelId, setActiveChannelId] = useState<string | null>(highlightChannelId ?? channels[0]?.id ?? null)
 
-  const nowPrograms = useMemo(() => {
-    const map = new Map<string, Program | null>()
-    for (const ch of channels) {
-      const all = programsByChannel.get(ch.id) ?? []
-      const current = all.find((p) => new Date(p.startAt) <= now && new Date(p.endAt) > now) ?? null
-      map.set(ch.id, current)
-    }
-    return map
-  }, [channels, programsByChannel, now])
-
   // Jump to the section whose id matches channelId
   const handleChipClick = useCallback(
     (channelId: string) => {
@@ -613,32 +530,7 @@ export function EPGGrid({
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      {/* ── NOW-strip (desktop + mobile) ── */}
-      <section
-        className='sticky top-0 z-30 shrink-0 border-b-2 border-border bg-card py-2'
-        aria-label='現在放送中の番組'
-      >
-        <div className='flex items-center gap-1.5 px-4 pb-1.5 font-mono text-[0.65rem] font-bold uppercase tracking-[0.08em] text-destructive'>
-          <span aria-hidden className='size-2 animate-pulse rounded-full bg-destructive' />
-          ON AIR NOW — {format(now, 'HH:mm')}
-        </div>
-        <ul
-          aria-label='現在放送中'
-          className='flex gap-2 overflow-x-auto px-4 [scroll-snap-type:x_mandatory] [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-        >
-          {channels.map((ch) => (
-            <NowCard
-              key={ch.id}
-              channel={ch}
-              program={nowPrograms.get(ch.id) ?? null}
-              now={now}
-              highlighted={ch.id === highlightChannelId}
-            />
-          ))}
-        </ul>
-      </section>
-
-      {/* ── Mobile: channel quick-jump strip (below NOW-strip, above agenda) ── */}
+      {/* ── Mobile: channel quick-jump strip (above agenda) ── */}
       <div className='shrink-0 border-b border-border bg-card md:hidden'>
         <ChannelChipStrip channels={channels} activeChannelId={activeChannelId} onChipClick={handleChipClick} />
       </div>
