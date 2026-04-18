@@ -85,8 +85,18 @@ export function useRecordingEvents() {
       if (destroyed) return
       es = new EventSource('/api/recordings/events')
 
-      es.onmessage = () => {
+      es.onmessage = (ev: MessageEvent) => {
         queryClient.invalidateQueries({ queryKey: RECORDINGS_KEY })
+
+        try {
+          const data = JSON.parse(ev.data) as { type?: string; programTitle?: string }
+          if (data.type === 'rule-matched') {
+            toast.info(`新しいルール予約: ${data.programTitle ?? ''}`)
+            queryClient.invalidateQueries({ queryKey: ['rules'] })
+          }
+        } catch {
+          // non-JSON event data is fine — just invalidate recordings as above
+        }
       }
 
       es.onerror = () => {
