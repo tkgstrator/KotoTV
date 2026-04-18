@@ -29,6 +29,7 @@
    * `h-shell-offset`, `top-shell-offset`, `pt-shell-offset`, `w-diag-sidebar`, etc.
    * Values still come from the active theme file. */
   --spacing-shell-offset: var(--shell-offset);
+  --spacing-filter-bar: var(--filter-bar-h);
   --spacing-shell-health-bar: var(--shell-health-bar-h);
   --spacing-shell-nav-bar: var(--shell-nav-bar-h);
   --spacing-mobile-nav: var(--mobile-nav-h);
