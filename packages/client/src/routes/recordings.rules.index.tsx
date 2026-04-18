@@ -86,7 +86,7 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
       ? `${minutesToHHMM(rule.timeStartMinutes)}〜${minutesToHHMM(rule.timeEndMinutes)}`
       : '終日'
 
-  const keywordSummary = rule.keyword ? `${rule.keyword} [${rule.keywordMode === 'regex' ? 'RE' : 'LIT'}]` : '—'
+  const keywordSummary = rule.keyword ? `${rule.keyword} [${rule.keywordMode === 'regex' ? '正規' : '完全'}]` : '—'
 
   return (
     <div className='group flex items-center gap-3 border-b border-border bg-card px-4 py-2.5 transition-colors hover:bg-muted/40'>
@@ -109,7 +109,7 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
       {/* channels */}
       <div className='hidden w-16 shrink-0 sm:block'>
         <span className='font-mono tabular-nums text-[0.6875rem] text-muted-foreground'>
-          {rule.channelIds.length === 0 ? 'ALL' : `${rule.channelIds.length} CH`}
+          {rule.channelIds.length === 0 ? '全て' : `${rule.channelIds.length} 局`}
         </span>
       </div>
 
@@ -166,18 +166,10 @@ function RecordingRulesPage() {
       {/* Column headers (desktop) */}
       <div className='hidden items-center gap-3 border-b border-border bg-muted/30 px-4 py-1.5 sm:flex'>
         <div className='w-9 shrink-0' />
-        <div className='flex-1 font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
-          NAME / KEYWORD
-        </div>
-        <div className='w-16 shrink-0 font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
-          CHANNELS
-        </div>
-        <div className='w-28 shrink-0 font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
-          SCHEDULE
-        </div>
-        <div className='w-10 shrink-0 text-right font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
-          PRI
-        </div>
+        <div className='flex-1 text-[0.6875rem] font-semibold text-muted-foreground'>名前 / キーワード</div>
+        <div className='w-16 shrink-0 text-[0.6875rem] font-semibold text-muted-foreground'>チャンネル</div>
+        <div className='w-28 shrink-0 text-[0.6875rem] font-semibold text-muted-foreground'>スケジュール</div>
+        <div className='w-10 shrink-0 text-right text-[0.6875rem] font-semibold text-muted-foreground'>優先度</div>
         <div className='w-16 shrink-0' />
       </div>
 
