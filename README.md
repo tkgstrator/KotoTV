@@ -143,13 +143,13 @@ docker compose up -d
 
 | 層 | 採用 |
 |----|------|
-| Runtime | Bun（`npm` / `yarn` / `pnpm` 不使用） |
+| Runtime | Bun |
 | HTTP | Hono + `Bun.serve`、`hc<AppType>` で RPC 型共有 |
 | DB | Postgres 17 + Prisma Migrate |
 | Client build | Vite + `@tanstack/router-plugin` + `@tailwindcss/vite` |
 | UI | React 19 + Tailwind v4 + Shadcn/ui |
-| Player | hls.js（`<HlsPlayer>` を live/recording で共有） |
-| Lint/Format | Biome（フック / Stop / QA / CI の 4 層） |
+| Player | hls.js |
+| Lint/Format | Biome |
 
 詳細は [`CLAUDE.md`](CLAUDE.md) と [`docs/plans/roadmap.md`](docs/plans/roadmap.md)。
 
