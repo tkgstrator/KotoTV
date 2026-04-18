@@ -399,7 +399,7 @@ const LINK_ROWS = [
 function AboutTab() {
   return (
     <div className='mx-auto max-w-[720px] px-5 pb-10 max-[480px]:px-2.5'>
-      <SectHead>Version</SectHead>
+      <SectHead>バージョン</SectHead>
       <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
         {ABOUT_ROWS.map(({ key, val }, i) => (
           <div key={key} className={cn('flex gap-0', i < ABOUT_ROWS.length - 1 && 'border-b border-border/60')}>
@@ -418,7 +418,7 @@ function AboutTab() {
         ))}
       </div>
 
-      <SectHead>Links</SectHead>
+      <SectHead>リンク</SectHead>
       <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
         {LINK_ROWS.map(({ key, val, href }, i) => (
           <div key={key} className={cn('flex gap-0', i < LINK_ROWS.length - 1 && 'border-b border-border/60')}>
@@ -525,7 +525,7 @@ function SettingsPage() {
               value='about'
               className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
             >
-              About
+              情報
             </TabsTrigger>
           </TabsList>
         </div>
