@@ -29,7 +29,12 @@ RecordingSchedule.status:
   pending → recording → completed
                      ↘ failed
   pending → cancelled (before start)
+
+Recording.status: 'scheduled' | 'recording' | 'completed' | 'failed'
+Recording.thumbnailUrl: string | null   # ← 独立フィールド。status の sub-state ではない
 ```
+
+サムネイル抽出は録画完了の前進条件にしない。`completed` 遷移は録画ファイル書き込み完了のみで満たし、サムネ生成は非同期の後続ジョブ。
 
 ## チェックリスト
 
@@ -53,6 +58,9 @@ RecordingSchedule.status:
 - [ ] `GET /api/recordings` (一覧)、`POST /api/recordings` (予約作成)、`DELETE /api/recordings/:id` (削除) — `packages/server/src/routes/recordings.ts`
 - [ ] 予約作成時に Mirakc クライアント経由で番組存在確認 (past-in-time は 400) — `packages/server/src/routes/recordings.ts`
 - [ ] recordings ルートを `app.ts` にマウントし `AppType` を更新 — `packages/server/src/app.ts`
+- [ ] `Recording` モデルに `thumbnailUrl String?` フィールドを追加 (status の sub-state ではなく独立カラム) — `packages/server/src/prisma/schema.prisma`
+- [ ] `GET /api/recordings/events` (または `/api/recordings/:id/events`) を SSE で実装。イベント形式 `{ type: 'thumbnail-ready', recordingId, thumbnailUrl }` ほか将来の状態遷移通知 — `packages/server/src/routes/recordings.ts`
+- [ ] SSE ルートのクライアント切断検知 (`c.req.raw.signal`) と in-memory subscriber リストのクリーンアップ
 
 ### streaming
 - [ ] `recording-manager.ts` を実装: 起動時に `pending` スケジュールをロードし `startAt` で `setTimeout` 登録 — `packages/server/src/services/recording-manager.ts`
@@ -60,6 +68,8 @@ RecordingSchedule.status:
 - [ ] 録画用 FFmpeg は HLS とは別コマンド: `-c copy -f mp4 -movflags +faststart` ベース、再エンコード不要 — `packages/server/src/lib/ffmpeg.ts` に `buildRecordArgs()` 追加
 - [ ] 録画終了時刻 (`endAt`) で FFmpeg に `q` キー送信または `AbortSignal` で正常終了
 - [ ] エラー時は `status='failed'` + ログに stderr を保存
+- [ ] `completed` 遷移後にバックグラウンドでサムネイル抽出ジョブを enqueue: FFmpeg で代表フレーム 1 枚を `data/thumbnails/<recordingId>.jpg` に書き出し、`Recording.thumbnailUrl` を UPDATE → SSE で `thumbnail-ready` を emit。抽出失敗は `thumbnailUrl=null` のまま放置 (録画完了自体は成功扱い) — `packages/server/src/services/recording-manager.ts`
+- [ ] サムネ抽出ジョブは録画本体の FFmpeg プロセスとは分離し、`completed` 遷移自体は抽出完了を待たない
 - [ ] CRUD API から新しい予約が追加されたら `setTimeout` を再登録するための event emitter または DB ポーリング (30s 周期)
 
 ### frontend
@@ -68,10 +78,18 @@ RecordingSchedule.status:
 - [ ] `RecordingList` コンポーネント (ステータスバッジ、削除ボタン、削除確認 `AlertDialog`) — `packages/client/src/components/recording/RecordingList.tsx`
 - [ ] 録画一覧ページを作成 — `packages/client/src/routes/recordings/index.tsx`
 - [ ] 予約作成・削除の成功/失敗を `sonner` Toast で通知
+- [ ] `GET /api/recordings/events` に 1 本の SSE 接続を張り、`thumbnail-ready` 受信時に `queryClient.invalidateQueries({ queryKey: ['recordings'] })`。ポーリングではなく push で更新 — `packages/client/src/hooks/useRecordings.ts` または `packages/client/src/hooks/useRecordingEvents.ts`
+- [ ] ステータスバッジは Phase 2 で導入した `<StatusChip>` を variant マッピング (`scheduled→sched`, `recording→rec`, `completed→done`, `failed→err`) で再利用。ローカル再実装禁止 — `packages/client/src/components/recording/RecordingList.tsx`
+- [ ] サムネ未生成時は Shadcn `Skeleton` を placeholder に表示、`thumbnailUrl` が届いたら差し替え
 
 ### qa
 - [ ] 型検査 + Biome
 - [ ] コミット単位: `feat(server): recording schema + routes`, `feat(streaming): recording manager`, `feat(client): recording UI`
+
+## 共有コントラクト
+
+- **サムネイルパイプライン**: `Recording.thumbnailUrl` は status と独立したフィールド。録画完了 → 非同期でサムネ抽出 → SSE で push という三段構造。クライアントはポーリングではなく SSE 購読で `['recordings']` を invalidate する。
+- **`<StatusChip>`**: Phase 2 で導入される共有プリミティブ (variants `sched / rec / done / err` 等)。録画一覧のステータスバッジはこれを使う。詳細は [`docs/mocks/app-shell/README.md`](../mocks/app-shell/README.md) §StatusChip と [`docs/mocks/recordings/README.md`](../mocks/recordings/README.md) (v10)。
 
 ## 検証基準
 
@@ -81,6 +99,8 @@ RecordingSchedule.status:
 - [ ] 存在しない番組 ID 指定で 404 が返る
 - [ ] `DELETE /api/recordings/:id` で DB レコードが削除される (対応する録画ファイルもディスクから削除)
 - [ ] サーバ再起動後も `pending` スケジュールが復元されて正しく起動する
+- [ ] 録画完了から数秒以内に `thumbnail-ready` SSE イベントが届き、クライアントの一覧サムネが push 更新される (ポーリング依存なし)
+- [ ] サムネ抽出失敗時も録画レコード自体は `completed` として成立する
 
 ## リスクと緩和策
 
