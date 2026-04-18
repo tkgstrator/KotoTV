@@ -111,6 +111,10 @@ entirely non-monospace, making the contrast unambiguous.
 
 ---
 
+## Chosen variant
+
+**v12 — Tabbed + pinned health strip** (confirmed by user 2026-04-17, aligned with designer recommendation).
+
 ## Recommendation
 
 **v12** — Pinned health strip solves the core tension: the user can see all
