@@ -19,6 +19,8 @@
 - [ ] `config.ts` の Zod スキーマを整理 — `packages/server/src/lib/config.ts`
 - [ ] 全ルートのレスポンス型を `satisfies ResponseSchema` で明示化 — `packages/server/src/routes/*.ts`
 - [ ] `GET /api/health` を追加。レスポンス形式: `{ mirakc, postgres, ffmpeg, tuners, disk }` の各フィールドが `{ status: 'ok' | 'warn' | 'err', detail: string }`。app-shell サマリと settings status tab の両方が同じ query key `['health']` で consume するため、形式を先に固定する — `packages/server/src/routes/status.ts`
+- [ ] `GET /api/health/logs?subsystem=<name>` を追加 (決定 2026-04-17)。各サブシステム (mirakc / postgres / ffmpeg / tuners) ごとに pino log の **直近 100 行 ring-buffer** を持ち、subsystem クエリで返す。settings status tab の WARN/ERR 時 log-tail drawer が consume — `packages/server/src/routes/status.ts` + `packages/server/src/lib/log-buffer.ts`
+- [ ] `disk` フィールドを directory breakdown 対応に拡張 (決定 2026-04-17)。レスポンス shape: `disk: { status, detail, breakdown: { recordings: bytes, hlsTmpfs: bytes, free: bytes, total: bytes } }`。`recordings` は `SUM(size_bytes)` on `Recording` テーブル、`hlsTmpfs` は tmpfs マウントの `statvfs`、`free`/`total` は data disk の `statvfs`。`du` 走査は使わない — `packages/server/src/routes/status.ts`
 
 ### streaming
 - [ ] 起動時に `HLS_DIR` 配下の孤児セッションディレクトリを削除 (サーバ再起動で残留した tmpfs は実際は消えるが、disk 配置に切り替えた場合の保険) — `packages/server/src/services/stream-manager.ts`
@@ -26,6 +28,7 @@
 - [ ] zombie プロセス検出 (`Bun.spawn` の `proc.exited` が resolved なのに Map に残っているセッション) → 自動クリーンアップ
 
 ### frontend
+- [ ] settings status tab で WARN/ERR が出ている subsystem をタップすると `GET /api/health/logs?subsystem=<name>` を叩いて直近 100 行を Shadcn `Collapsible` に inline 表示する drawer を実装 — `packages/client/src/components/settings/HealthLogTail.tsx`
 - [ ] 全 `useQuery` / `useMutation` のエラーを `sonner` Toast に統一するグローバルハンドラを設定 (`QueryClient` の `defaultOptions`) — `packages/client/src/main.tsx`
 - [ ] モバイル・タブレット・デスクトップのブレークポイント対応 (Tailwind `sm:` / `md:` / `lg:`) — `packages/client/src/components/**`
 - [ ] `ChannelList` / `EPGGrid` / `RecordingList` のローディング・空状態・エラー状態を Shadcn `Skeleton` / `Alert` で整備
@@ -61,10 +64,10 @@
 - **Toast 乱発**: エラーが複数連鎖した時に Toast が積み上がる → `sonner` の `duration` とキー重複排除を設定。
 - **Docker image slim 化の過剰最適化**: `node_modules` を落としすぎて prisma の native binding が欠けることがある → `prisma generate` 出力は必ず含める。
 
-## オープン質問 (実装前にユーザー判断)
+## 決定済み項目 (当初 open だったもの)
 
-- **settings status tab の log-tail ドロワー**: designer v10/v12 の settings モックでは WARN/ERR 時に直近ログをインラインで開ける drawer が含まれる。これを実装するには `GET /api/health/logs?subsystem=<name>` が必要で現 Phase 6 スコープ外。今 Phase に含めるか、別 Phase に先送りするか確認。
-- **disk 使用量のディレクトリ別内訳**: designer v11 の settings モックでは recordings ディレクトリと hls tmpfs を別々に可視化していた。これには `du` 走査 または `statvfs + walk` が必要で、現 Phase 6 の `disk: { free bytes }` より重い。単一 free bytes にとどめるか、directory breakdown を含めるか確認。
+- **log-tail エンドポイント**: 採用 (2026-04-17)。上記 backend チェックリスト参照。
+- **disk breakdown**: 採用 (2026-04-17)。`du` は使わず DB sum + `statvfs` でまかなう。
 
 ## 共有コントラクト
 
