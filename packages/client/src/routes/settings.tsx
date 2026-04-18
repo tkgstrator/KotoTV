@@ -192,7 +192,7 @@ function ThemeSegment() {
           className={cn(
             'relative grid place-items-center border-r border-border px-3 py-[5px] font-sans text-[0.75rem] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
             theme === opt.value
-              ? 'bg-primary/15 text-primary'
+              ? 'bg-primary text-primary-foreground shadow-inner'
               : 'bg-transparent text-muted-foreground hover:bg-background/60'
           )}
         >
@@ -277,7 +277,7 @@ function Segment<T extends string>({ ariaLabel, value, options, onChange }: Segm
           className={cn(
             'relative grid place-items-center border-r border-border px-3 py-[5px] font-sans text-[0.75rem] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
             value === opt.value
-              ? 'bg-primary/15 text-primary'
+              ? 'bg-primary text-primary-foreground shadow-inner'
               : 'bg-transparent text-muted-foreground hover:bg-background/60'
           )}
         >
