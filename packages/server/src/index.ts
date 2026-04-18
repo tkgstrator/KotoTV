@@ -3,7 +3,11 @@ import { app } from './app'
 import { env } from './lib/config'
 import { logger } from './lib/logger'
 
-await mkdir(env.HLS_DIR, { recursive: true })
+try {
+  await mkdir(env.HLS_DIR, { recursive: true })
+} catch (err) {
+  logger.error({ err, HLS_DIR: env.HLS_DIR }, 'failed to create HLS_DIR — streams will fail until resolved')
+}
 
 const server = Bun.serve({
   fetch: app.fetch,

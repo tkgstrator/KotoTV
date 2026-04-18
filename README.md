@@ -1,4 +1,4 @@
-# telemax (仮称) — KonomiTV-clone on Bun + Hono
+# KotoTV — KonomiTV-clone on Bun + Hono
 
 外出先からのライブ視聴を最優先に、KonomiTV を TypeScript 統一スタックでクリーンに再構築するプロジェクト。
 
@@ -16,7 +16,7 @@
 ```sh
 # devcontainer 起動 (VS Code) → 以下は全部コンテナ内で実行
 bun install
-bunx prisma migrate dev          # DB = postgres://postgres@postgres:5432/telemax
+bunx prisma migrate dev          # DB = postgres://postgres@postgres:5432/kototv
 bun run --cwd packages/client dev  # Vite: http://localhost:5173
 bun run --cwd packages/server dev  # Hono: http://localhost:11575
 ```

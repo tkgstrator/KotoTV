@@ -1,5 +1,5 @@
+import type { ChannelType } from '@kototv/server/src/schemas/Channel.dto'
 import { useQuery } from '@tanstack/react-query'
-import type { ChannelType } from '@telemax/server/src/schemas/Channel.dto'
 import { api } from '@/api/client'
 
 export type { ChannelType }
