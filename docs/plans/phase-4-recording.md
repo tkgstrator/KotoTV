@@ -40,15 +40,22 @@
 
 ```
 RecordingSchedule.status:
-  pending → recording → completed
-                     ↘ failed
+  pending → recording → recorded_ts → converting → completed
+                     ↘ failed      ↘ convert_failed (再試行可)
   pending → cancelled (before start)
 
-Recording.status: 'scheduled' | 'recording' | 'completed' | 'failed'
-Recording.thumbnailUrl: string | null   # ← 独立フィールド。status の sub-state ではない
+Recording.status: 'scheduled' | 'recording' | 'recorded_ts' | 'converting' | 'completed' | 'failed' | 'convert_failed'
+Recording.filePath:
+  recording      → .tmp.ts
+  recorded_ts    → .ts (一次保存完了、変換待ち)
+  converting     → .ts (変換中、別プロセスが書いてる .mp4 は Recording には未反映)
+  completed      → .mp4 (変換後、.ts は削除 or 保持 (ユーザー設定))
+Recording.thumbnailUrl: string | null   # ← 独立フィールド
 ```
 
-サムネイル抽出は録画完了の前進条件にしない。`completed` 遷移は録画ファイル書き込み完了のみで満たし、サムネ生成は非同期の後続ジョブ。
+- サムネイル抽出は録画完了の前進条件にしない。`completed` 遷移は .mp4 変換完了のみで満たし、サムネ生成は非同期の後続ジョブ
+- `convert_failed` は .ts を保持したまま失敗状態に遷移し、UI から再試行可能。NVEnc セッション不足などの一時的失敗を想定
+- `.ts` を残すか削除するかはユーザー設定 (将来 Phase 6 で追加)、デフォルト削除
 
 ## チェックリスト
 
@@ -77,12 +84,32 @@ Recording.thumbnailUrl: string | null   # ← 独立フィールド。status の
 - [ ] SSE ルートのクライアント切断検知 (`c.req.raw.signal`) と in-memory subscriber リストのクリーンアップ
 
 ### streaming
+
+**アーキテクチャ決定 (2026-04-18): TS 先保存 → 後変換 (EPGStation 方式)**
+
+理由:
+- コンシューマ GeForce の NVEnc 同時セッション数は Turing/Ampere で 3、Ada で 5-8 と限定的。4 チューナー構成で全録画 + ライブ視聴が重なると枠不足
+- 録画中に `-c copy` だけで .ts を書けば NVEnc / QSV を一切消費せず、ライブ視聴側に全エンコード枠を譲れる
+- 変換は完了後のバックグラウンドキューで逐次実行すれば HW エンコーダは常に 1 セッションのみ占有
+- TS を一次保存しておけば、変換失敗時の再試行・コーデック変更・字幕/ARIB メタ抽出の余地が残る
+
+段階:
+
+1. **録画ステージ (realtime)** — Mirakc TS をそのまま `.ts` ファイルに保存
+2. **変換ステージ (background queue)** — 完了後に `.ts` → `.mp4` (AVC/HEVC/VP9) を逐次処理、HW エンコーダ 1 セッションのみ占有
+
+チェックリスト:
+
 - [ ] `recording-manager.ts` を実装: 起動時に `pending` スケジュールをロードし `startAt` で `setTimeout` 登録 — `packages/server/src/services/recording-manager.ts`
-- [ ] 予約時刻到達 → Mirakc で `openLiveStream(serviceId)` → `Bun.spawn` FFmpeg で TS→MP4 (or MKV) 保存 → DB の `Recording` に `filePath`, `sizeBytes`, `durationSec` を INSERT
-- [ ] 録画用 FFmpeg は HLS とは別コマンド: `-c copy -f mp4 -movflags +faststart` ベース、再エンコード不要 — `packages/server/src/lib/ffmpeg.ts` に `buildRecordArgs()` 追加
+- [ ] 予約時刻到達 → Mirakc `openLiveStream(serviceId)` → `Bun.spawn` FFmpeg で **`-c copy -f mpegts` で `.ts` に書き出し** → DB の `Recording` に `filePath` (.ts), `sizeBytes`, `durationSec` を INSERT、status=`recorded_ts`
+- [ ] 録画用 FFmpeg コマンドは `buildRecordArgs()` に分離: `-c copy -f mpegts -y <path>.ts`、HW accel 不要 — `packages/server/src/lib/ffmpeg.ts`
 - [ ] 録画終了時刻 (`endAt`) で FFmpeg に `q` キー送信または `AbortSignal` で正常終了
-- [ ] エラー時は `status='failed'` + ログに stderr を保存
-- [ ] `completed` 遷移後にバックグラウンドでサムネイル抽出ジョブを enqueue: FFmpeg で代表フレーム 1 枚を `data/thumbnails/<recordingId>.jpg` に書き出し、`Recording.thumbnailUrl` を UPDATE → SSE で `thumbnail-ready` を emit。抽出失敗は `thumbnailUrl=null` のまま放置 (録画完了自体は成功扱い) — `packages/server/src/services/recording-manager.ts`
+- [ ] エラー時は `status='failed'` + `failureReason` に `ffmpeg_exit_<code>` / `mirakc_unreachable` / `disk_full` 等をセット、ログに stderr 保存
+- [ ] 録画中は一時拡張子 `.tmp.ts` を使い完走後にリネーム (ファイル破損を避ける)
+- [ ] **変換キュー (conversion-queue.ts)** を実装: 同時実行 1 (HW エンコーダ占有回避)、`status=recorded_ts` の録画を `converting` → `completed` に遷移、出力 `.mp4` を `filePath` に更新 — `packages/server/src/services/conversion-queue.ts`
+- [ ] 変換用 FFmpeg コマンド `buildConvertArgs({hwAccel, codec, input, output})` を追加: `nvenc` / `qsv` / `vaapi` / `libx264` の分岐 — `packages/server/src/lib/ffmpeg.ts`
+- [ ] 変換失敗時は `.ts` を保持したまま `status='convert_failed'` に。UI から再試行可能 (失敗タブに表示)
+- [ ] `completed` 遷移後にバックグラウンドでサムネイル抽出ジョブを enqueue: FFmpeg で代表フレーム 1 枚を `data/thumbnails/<recordingId>.jpg` に書き出し、`Recording.thumbnailUrl` を UPDATE → SSE で `thumbnail-ready` を emit。抽出失敗は `thumbnailUrl=null` のまま放置 — `packages/server/src/services/recording-manager.ts`
 - [ ] サムネ抽出ジョブは録画本体の FFmpeg プロセスとは分離し、`completed` 遷移自体は抽出完了を待たない
 - [ ] CRUD API から新しい予約が追加されたら `setTimeout` を再登録するための event emitter または DB ポーリング (30s 周期)
 
