@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App Shell v11 — Left Sidebar with Embedded Health + Mobile Drawer (Mobile-first)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:               'hsl(var(--background))',
+            foreground:               'hsl(var(--foreground))',
+            card:                     'hsl(var(--card))',
+            'card-foreground':        'hsl(var(--card-foreground))',
+            muted:                    'hsl(var(--muted))',
+            'muted-foreground':       'hsl(var(--muted-foreground))',
+            border:                   'hsl(var(--border))',
+            primary:                  'hsl(var(--primary))',
+            'primary-foreground':     'hsl(var(--primary-foreground))',
+            destructive:              'hsl(var(--destructive))',
+            'destructive-foreground': 'hsl(var(--destructive-foreground))',
+            ring:                     'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:             220 16% 93%;
+      --foreground:             222 22% 16%;
+      --card:                   0 0% 99%;
+      --card-foreground:        222 22% 16%;
+      --muted:                  215 12% 87%;
+      --muted-foreground:       215 10% 44%;
+      --border:                 214 14% 82%;
+      --primary:                221 83% 53%;
+      --primary-foreground:     210 40% 98%;
+      --ring:                   221 83% 53%;
+      --destructive:            0 72% 52%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 38%;
+      --warning:                38 92% 46%;
+    }
+    .dark {
+      --background:             222 22% 8%;
+      --foreground:             210 18% 90%;
+      --card:                   222 20% 12%;
+      --card-foreground:        210 18% 90%;
+      --muted:                  222 18% 18%;
+      --muted-foreground:       215 12% 52%;
+      --border:                 222 18% 20%;
+      --primary:                221 83% 60%;
+      --primary-foreground:     222 20% 10%;
+      --ring:                   221 83% 60%;
+      --destructive:            0 72% 58%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 46%;
+      --warning:                38 92% 50%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", ui-monospace, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      /* Mobile-first: single column */
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 2px;
+    }
+
+    /* ── Status chips ── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      padding: 2px 6px;
+      border-radius: 2px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .chip-ok     { background: hsl(var(--success)/0.12);     border-color: hsl(var(--success)/0.35);     color: hsl(var(--success)); }
+    .chip-warn   { background: hsl(var(--warning)/0.12);     border-color: hsl(var(--warning)/0.35);     color: hsl(var(--warning)); }
+    .chip-err    { background: hsl(var(--destructive)/0.15); border-color: hsl(var(--destructive)/0.45); color: hsl(var(--destructive)); }
+    .chip-live   { background: hsl(0 72% 58% / 0.15);        border-color: hsl(0 72% 58% / 0.4);         color: hsl(0 72% 68%); }
+    .chip-rec    { background: hsl(var(--destructive)/0.12); border-color: hsl(var(--destructive)/0.4);  color: hsl(var(--destructive)); }
+    .chip-info   { background: hsl(var(--primary)/0.1);      border-color: hsl(var(--primary)/0.3);      color: hsl(var(--primary)); }
+    .chip-muted  { background: hsl(var(--muted));            border-color: hsl(var(--border));           color: hsl(var(--muted-foreground)); }
+
+    /* ══════════════════════════════════════
+       MOBILE LAYOUT (default, ≤ 640px)
+    ══════════════════════════════════════ */
+
+    /* Top app bar (mobile) */
+    .mob-appbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      height: 48px;
+      background: hsl(222 24% 10%);
+      border-bottom: 1px solid hsl(var(--border));
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      flex-shrink: 0;
+    }
+    .hamburger {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .hamburger span {
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: hsl(var(--foreground));
+      border-radius: 1px;
+    }
+    .hamburger:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+    .mob-wordmark {
+      font-size: 0.6875rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      color: hsl(var(--foreground));
+      text-transform: uppercase;
+    }
+    .mob-health-chip {
+      margin-left: auto;
+    }
+    .mob-queue-chip {
+      flex-shrink: 0;
+    }
+
+    /* Mobile health strip (below app bar) */
+    .mob-health-strip {
+      display: flex;
+      overflow-x: auto;
+      scrollbar-width: none;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      flex-shrink: 0;
+    }
+    .mob-health-strip::-webkit-scrollbar { display: none; }
+    .mob-health-cell {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-right: 1px solid hsl(var(--border));
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .mob-health-cell:last-child { border-right: none; }
+    .health-key {
+      font-size: 0.5rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: hsl(var(--muted-foreground));
+      text-transform: uppercase;
+    }
+
+    /* Mobile drawer overlay */
+    .drawer-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: hsl(222 22% 8% / 0.7);
+    }
+    .drawer-overlay.open { display: block; }
+
+    .drawer {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: 240px;
+      z-index: 90;
+      background: hsl(222 24% 10%);
+      border-right: 1px solid hsl(var(--border));
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.2s ease;
+    }
+    .drawer.open { transform: translateX(0); }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .drawer-wordmark {
+      font-size: 0.75rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      color: hsl(var(--foreground));
+      text-transform: uppercase;
+      flex: 1;
+    }
+    .drawer-close {
+      background: transparent;
+      border: none;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 0.875rem;
+    }
+    .drawer-close:hover { color: hsl(var(--foreground)); }
+    .drawer-close:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+
+    /* Drawer health panel (top anchor) */
+    .drawer-health {
+      padding: 10px 14px;
+      border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--muted)/0.15);
+    }
+    .drawer-health-title {
+      font-size: 0.5rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 6px;
+    }
+    .health-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 3px 0;
+    }
+    .health-name {
+      font-size: 0.5625rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    /* Drawer nav items */
+    .drawer-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+    .drawer-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      text-decoration: none;
+      border: none;
+      background: transparent;
+      width: 100%;
+      position: relative;
+      font-family: inherit;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      transition: color 0.1s, background 0.1s;
+    }
+    .drawer-item:hover { background: hsl(var(--muted)/0.25); color: hsl(var(--foreground)); }
+    .drawer-item.active { color: hsl(var(--primary)); }
+    .drawer-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 6px; bottom: 6px;
+      width: 3px;
+      background: hsl(var(--primary));
+      border-radius: 0 2px 2px 0;
+    }
+    .drawer-item:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -3px;
+      border-radius: 2px;
+    }
+    .drawer-icon { font-size: 1rem; flex-shrink: 0; width: 20px; text-align: center; }
+    .drawer-item-badge {
+      margin-left: auto;
+      font-size: 0.4375rem;
+      font-weight: 900;
+      background: hsl(var(--destructive));
+      color: hsl(var(--destructive-foreground));
+      padding: 1px 4px;
+      border-radius: 2px;
+    }
+    .drawer-sep { height: 1px; background: hsl(var(--border)); margin: 4px 14px; }
+
+    /* Drawer footer */
+    .drawer-footer {
+      padding: 10px 14px;
+      border-top: 1px solid hsl(var(--border));
+    }
+    .drawer-ver { font-size: 0.4375rem; color: hsl(var(--muted-foreground)); letter-spacing: 0.06em; }
+
+    /* ── Content area ── */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-height: 0;
+    }
+
+    /* ── Channel list stub ── */
+    .ch-section-head {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      padding: 12px 14px 5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      background: hsl(var(--background));
+      z-index: 10;
+    }
+    .ch-section-head::after { content: ''; flex: 1; height: 1px; background: hsl(var(--border)); }
+
+    .ch-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-bottom: 1px solid hsl(var(--border)/0.5);
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.1s;
+    }
+    .ch-row:hover { background: hsl(var(--muted)/0.3); }
+    .ch-row:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+      border-radius: 2px;
+    }
+    .ch-num {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      width: 26px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .ch-name {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      flex: 0 0 auto;
+      min-width: 80px;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .ch-prog {
+      font-size: 0.6875rem;
+      color: hsl(var(--muted-foreground));
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    /* ── Player mode bar ── */
+    .player-bar {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      height: 48px;
+      background: hsl(222 24% 10%);
+      border-bottom: 1px solid hsl(var(--border));
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      flex-shrink: 0;
+    }
+    .player-bar.visible { display: flex; }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 0.6875rem;
+      transition: color 0.1s;
+    }
+    .back-btn:hover { color: hsl(var(--foreground)); }
+    .back-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+    .toolbar-sep { width: 1px; height: 20px; background: hsl(var(--border)); flex-shrink: 0; }
+
+    /* ══════════════════════════════════════
+       DESKTOP OVERRIDE (≥ 641px)
+    ══════════════════════════════════════ */
+    @media (min-width: 641px) {
+      body { flex-direction: row; }
+
+      .mob-appbar { display: none; }
+      .mob-health-strip { display: none; }
+
+      /* Desktop sidebar replaces drawer */
+      .drawer-overlay { display: none !important; }
+      .drawer {
+        position: sticky !important;
+        top: 0 !important;
+        left: auto !important;
+        transform: none !important;
+        transition: none !important;
+        width: 200px;
+        height: 100vh;
+        flex-shrink: 0;
+        overflow-y: auto;
+        border-right: 1px solid hsl(var(--border));
+      }
+
+      .content-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-width: 0;
+        height: 100vh;
+      }
+    }
+
+    /* ── Demo controls ── */
+    .demo-bar {
+      position: fixed;
+      bottom: 16px; right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 200;
+    }
+    .demo-btn {
+      font-family: inherit;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 5px 10px;
+      border-radius: 3px;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      cursor: pointer;
+    }
+    .demo-btn:hover { background: hsl(var(--muted)); }
+    .demo-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+  MOBILE: Top App Bar
+══════════════════════════════════════ -->
+<header class="mob-appbar" id="mobAppbar">
+  <button class="hamburger" onclick="openDrawer()" aria-label="メニューを開く" aria-expanded="false" id="hamburgerBtn">
+    <span></span><span></span><span></span>
+  </button>
+  <span class="mob-wordmark">KonomiTV</span>
+  <a href="#" class="chip chip-ok mob-health-chip" id="mobHealthChip" aria-label="システム正常">OK</a>
+  <span class="chip chip-rec mob-queue-chip">REC 1 · SCHED 3</span>
+</header>
+
+<!-- Mobile health strip -->
+<div class="mob-health-strip" role="status" id="mobHealthStrip">
+  <div class="mob-health-cell"><span class="health-key">mirakc</span><span class="chip chip-ok">OK</span></div>
+  <div class="mob-health-cell"><span class="health-key">postgres</span><span class="chip chip-ok">OK</span></div>
+  <div class="mob-health-cell"><span class="health-key">ffmpeg</span><span class="chip chip-ok" id="ffmpegChipMob">OK</span></div>
+  <div class="mob-health-cell"><span class="health-key">tuners</span><span class="chip chip-info">1/4</span></div>
+</div>
+
+<!-- ══════════════════════════════════════
+  MOBILE PLAYER BAR
+══════════════════════════════════════ -->
+<div class="player-bar" id="playerBar">
+  <button class="back-btn" onclick="togglePlayer()">← /channels</button>
+  <div class="toolbar-sep"></div>
+  <span class="chip chip-live">● LIVE</span>
+  <span style="font-size:0.6875rem;font-weight:700;letter-spacing:0.05em;">ch-27 · NHK総合</span>
+  <span class="chip chip-warn">BUF 3.4s</span>
+  <span style="flex:1"></span>
+  <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">nvenc</span>
+</div>
+
+<!-- ══════════════════════════════════════
+  DRAWER OVERLAY (mobile)
+══════════════════════════════════════ -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()" aria-hidden="true"></div>
+
+<!-- ══════════════════════════════════════
+  LEFT SIDEBAR / DRAWER
+  (sidebar on desktop, drawer on mobile)
+══════════════════════════════════════ -->
+<aside class="drawer" id="drawer" role="navigation" aria-label="サイドバーナビゲーション">
+  <div class="drawer-header">
+    <span class="drawer-wordmark">KonomiTV</span>
+    <button class="drawer-close" onclick="closeDrawer()" aria-label="閉じる">✕</button>
+  </div>
+
+  <!-- Health panel anchored at top of sidebar -->
+  <div class="drawer-health" id="drawerHealth">
+    <div class="drawer-health-title">SYSTEM HEALTH</div>
+    <div class="health-row">
+      <span class="health-name">mirakc</span>
+      <span class="chip chip-ok">OK</span>
+    </div>
+    <div class="health-row">
+      <span class="health-name">postgres</span>
+      <span class="chip chip-ok">OK</span>
+    </div>
+    <div class="health-row">
+      <span class="health-name">ffmpeg</span>
+      <span class="chip chip-ok" id="ffmpegChipSidebar">OK</span>
+    </div>
+    <div class="health-row">
+      <span class="health-name">tuners</span>
+      <span class="chip chip-info">1/4</span>
+    </div>
+    <!-- Queue summary -->
+    <div style="margin-top:8px;padding-top:7px;border-top:1px solid hsl(var(--border));">
+      <div class="drawer-health-title" style="margin-bottom:4px;">QUEUE</div>
+      <div class="health-row">
+        <span class="health-name">recording</span>
+        <span class="chip chip-rec">REC 1</span>
+      </div>
+      <div class="health-row">
+        <span class="health-name">scheduled</span>
+        <span class="chip chip-info">SCHED 3</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="drawer-nav">
+    <a href="#" class="drawer-item active" aria-current="page">
+      <span class="drawer-icon">📺</span>
+      チャンネル
+    </a>
+    <a href="#" class="drawer-item">
+      <span class="drawer-icon">📋</span>
+      番組表 (EPG)
+    </a>
+    <a href="#" class="drawer-item">
+      <span class="drawer-icon">⏺</span>
+      録画
+      <span class="drawer-item-badge">4</span>
+    </a>
+    <div class="drawer-sep"></div>
+    <a href="#" class="drawer-item">
+      <span class="drawer-icon">⚙</span>
+      設定
+    </a>
+  </nav>
+
+  <div class="drawer-footer">
+    <div class="drawer-ver">KonomiTV v0.9.1 · 2026-04-17</div>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════════════
+  CONTENT WRAPPER (desktop flex sibling to sidebar)
+══════════════════════════════════════ -->
+<div class="content-wrapper" id="contentWrapper">
+
+  <!-- Desktop health strip (inside content wrapper, pinned below nothing since no top toolbar) -->
+  <!-- On desktop: top of content area acts as the health strip equivalent via sidebar -->
+
+  <main class="content-area" id="mainContent">
+
+    <div class="ch-section-head">
+      <span class="chip chip-info">GR</span>
+      地上波
+    </div>
+    <a href="#" class="ch-row">
+      <span class="ch-num">1</span>
+      <span class="ch-name">NHK総合</span>
+      <span class="ch-prog">ニュース7 — 今日の天気と気象情報</span>
+      <span class="chip chip-live">● LIVE</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">3</span>
+      <span class="ch-name">NHK Eテレ</span>
+      <span class="ch-prog">プロフェッショナル 仕事の流儀</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">4</span>
+      <span class="ch-name">日本テレビ</span>
+      <span class="ch-prog">news every.</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">5</span>
+      <span class="ch-name">テレビ朝日</span>
+      <span class="ch-prog">報道ステーション</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">6</span>
+      <span class="ch-name">TBSテレビ</span>
+      <span class="ch-prog">NEWS23</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">7</span>
+      <span class="ch-name">テレビ東京</span>
+      <span class="ch-prog">WBS ワールドビジネスサテライト</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">8</span>
+      <span class="ch-name">フジテレビ</span>
+      <span class="ch-prog">FNN Live News α</span>
+    </a>
+
+    <div class="ch-section-head">
+      <span class="chip chip-muted">BS</span>
+      衛星放送
+    </div>
+    <a href="#" class="ch-row">
+      <span class="ch-num">101</span>
+      <span class="ch-name">NHK BS</span>
+      <span class="ch-prog">世界のドキュメンタリー</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">141</span>
+      <span class="ch-name">BS日テレ</span>
+      <span class="ch-prog">深夜の映画特集</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">151</span>
+      <span class="ch-name">BS朝日</span>
+      <span class="ch-prog">ドキュメンタリー</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">161</span>
+      <span class="ch-name">BS-TBS</span>
+      <span class="ch-prog">音楽の時間</span>
+    </a>
+
+  </main>
+</div>
+
+<!-- Demo controls -->
+<div class="demo-bar" role="group" aria-label="デモ操作">
+  <button class="demo-btn" onclick="togglePlayer()">⏯ Player mode</button>
+  <button class="demo-btn" onclick="toggleWarn()">⚠ WARN state</button>
+  <button class="demo-btn" onclick="toggleDark()">◑ Light/Dark</button>
+</div>
+
+<div style="position:fixed;top:8px;right:140px;font-size:0.5rem;color:hsl(var(--muted-foreground));letter-spacing:0.06em;z-index:300;">v11 · SIDEBAR-HEALTH-PANEL + MOBILE-DRAWER (mobile-first)</div>
+
+<script>
+  function openDrawer() {
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawerOverlay').classList.add('open');
+    document.getElementById('hamburgerBtn').setAttribute('aria-expanded', 'true');
+    document.getElementById('drawer').querySelector('a').focus();
+  }
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawerOverlay').classList.remove('open');
+    document.getElementById('hamburgerBtn').setAttribute('aria-expanded', 'false');
+  }
+
+  let playerMode = false;
+  let warnMode = false;
+
+  function togglePlayer() {
+    playerMode = !playerMode;
+    const playerBar = document.getElementById('playerBar');
+    const mobAppbar = document.getElementById('mobAppbar');
+    const mobStrip = document.getElementById('mobHealthStrip');
+
+    if (playerMode) {
+      playerBar.classList.add('visible');
+      mobAppbar.style.display = 'none';
+      mobStrip.style.display = 'none';
+      // On desktop: hide sidebar
+      document.getElementById('drawer').style.display = 'none';
+      document.getElementById('mainContent').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;background:hsl(var(--background));">
+          <div style="width:100%;max-width:900px;aspect-ratio:16/9;background:hsl(222 30% 7%);display:flex;align-items:center;justify-content:center;border:1px solid hsl(var(--border));">
+            <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-family:inherit;">[ VIDEO — HLS PLAYER ]</span>
+          </div>
+          <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));">Sidebar hidden. Shell = session chip only.</span>
+        </div>`;
+    } else {
+      playerBar.classList.remove('visible');
+      mobAppbar.style.display = '';
+      mobStrip.style.display = '';
+      document.getElementById('drawer').style.display = '';
+      document.getElementById('mainContent').innerHTML = channelListHTML;
+    }
+  }
+
+  function toggleWarn() {
+    warnMode = !warnMode;
+    const chips = [
+      document.getElementById('ffmpegChipMob'),
+      document.getElementById('ffmpegChipSidebar'),
+      document.getElementById('mobHealthChip'),
+    ];
+    if (warnMode) {
+      chips[0].className = 'chip chip-warn'; chips[0].textContent = 'WARN';
+      chips[1].className = 'chip chip-warn'; chips[1].textContent = 'WARN';
+      chips[2].className = 'chip chip-warn'; chips[2].textContent = 'WARN';
+      // Warn-tint sidebar health
+      document.getElementById('drawerHealth').style.background = 'hsl(var(--warning)/0.06)';
+    } else {
+      chips[0].className = 'chip chip-ok'; chips[0].textContent = 'OK';
+      chips[1].className = 'chip chip-ok'; chips[1].textContent = 'OK';
+      chips[2].className = 'chip chip-ok'; chips[2].textContent = 'OK';
+      document.getElementById('drawerHealth').style.background = '';
+    }
+  }
+
+  function toggleDark() {
+    document.documentElement.classList.toggle('dark');
+  }
+
+  const channelListHTML = document.getElementById('mainContent').innerHTML;
+</script>
+</body>
+</html>

@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App Shell v10 — Top Toolbar + Health Strip + 56px Icon Rail</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:               'hsl(var(--background))',
+            foreground:               'hsl(var(--foreground))',
+            card:                     'hsl(var(--card))',
+            'card-foreground':        'hsl(var(--card-foreground))',
+            muted:                    'hsl(var(--muted))',
+            'muted-foreground':       'hsl(var(--muted-foreground))',
+            border:                   'hsl(var(--border))',
+            primary:                  'hsl(var(--primary))',
+            'primary-foreground':     'hsl(var(--primary-foreground))',
+            destructive:              'hsl(var(--destructive))',
+            'destructive-foreground': 'hsl(var(--destructive-foreground))',
+            ring:                     'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:             220 16% 93%;
+      --foreground:             222 22% 16%;
+      --card:                   0 0% 99%;
+      --card-foreground:        222 22% 16%;
+      --muted:                  215 12% 87%;
+      --muted-foreground:       215 10% 44%;
+      --border:                 214 14% 82%;
+      --primary:                221 83% 53%;
+      --primary-foreground:     210 40% 98%;
+      --ring:                   221 83% 53%;
+      --destructive:            0 72% 52%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 38%;
+      --warning:                38 92% 46%;
+    }
+    .dark {
+      --background:             222 22% 8%;
+      --foreground:             210 18% 90%;
+      --card:                   222 20% 12%;
+      --card-foreground:        210 18% 90%;
+      --muted:                  222 18% 18%;
+      --muted-foreground:       215 12% 52%;
+      --border:                 222 18% 20%;
+      --primary:                221 83% 60%;
+      --primary-foreground:     222 20% 10%;
+      --ring:                   221 83% 60%;
+      --destructive:            0 72% 58%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 46%;
+      --warning:                38 92% 50%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", ui-monospace, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 2px;
+    }
+
+    /* ── Status chips ── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      padding: 2px 6px;
+      border-radius: 2px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .chip-ok     { background: hsl(var(--success)/0.12);     border-color: hsl(var(--success)/0.35);     color: hsl(var(--success)); }
+    .chip-warn   { background: hsl(var(--warning)/0.12);     border-color: hsl(var(--warning)/0.35);     color: hsl(var(--warning)); }
+    .chip-err    { background: hsl(var(--destructive)/0.15); border-color: hsl(var(--destructive)/0.45); color: hsl(var(--destructive)); }
+    .chip-live   { background: hsl(0 72% 58% / 0.15);        border-color: hsl(0 72% 58% / 0.4);         color: hsl(0 72% 68%); }
+    .chip-rec    { background: hsl(var(--destructive)/0.12); border-color: hsl(var(--destructive)/0.4);  color: hsl(var(--destructive)); }
+    .chip-info   { background: hsl(var(--primary)/0.1);      border-color: hsl(var(--primary)/0.3);      color: hsl(var(--primary)); }
+    .chip-muted  { background: hsl(var(--muted));            border-color: hsl(var(--border));           color: hsl(var(--muted-foreground)); }
+
+    /* ── Top toolbar ── */
+    .top-toolbar {
+      position: sticky; top: 0; z-index: 60;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      height: 44px;
+      flex-shrink: 0;
+    }
+    .wordmark {
+      font-size: 0.6875rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      color: hsl(var(--foreground));
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .toolbar-sep {
+      width: 1px;
+      height: 20px;
+      background: hsl(var(--border));
+      flex-shrink: 0;
+    }
+
+    /* ── Health strip (pinned below toolbar) ── */
+    .health-strip {
+      position: sticky;
+      top: 44px;
+      z-index: 50;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: stretch;
+      overflow-x: auto;
+      flex-shrink: 0;
+      scrollbar-width: none;
+    }
+    .health-strip::-webkit-scrollbar { display: none; }
+    .health-cell {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 12px;
+      border-right: 1px solid hsl(var(--border));
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .health-cell:last-child { border-right: none; }
+    .health-key {
+      font-size: 0.5rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: hsl(var(--muted-foreground));
+      text-transform: uppercase;
+    }
+
+    /* warn-tinted strip */
+    .health-strip.warn-mode {
+      background: hsl(var(--warning)/0.04);
+      border-bottom-color: hsl(var(--warning)/0.3);
+    }
+
+    /* ── Main layout: rail + content ── */
+    .main-layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ── 56px icon rail ── */
+    .nav-rail {
+      width: 56px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background: hsl(222 24% 10%); /* slightly darker than card */
+      border-right: 1px solid hsl(var(--border));
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: none;
+      padding: 8px 0;
+    }
+    .nav-rail::-webkit-scrollbar { display: none; }
+
+    .rail-item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      width: 100%;
+      height: 52px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      color: hsl(var(--muted-foreground));
+      text-decoration: none;
+      transition: color 0.1s, background 0.1s;
+      flex-shrink: 0;
+    }
+    .rail-item:hover { background: hsl(var(--muted)/0.2); color: hsl(var(--foreground)); }
+    .rail-item.active { color: hsl(var(--primary)); }
+    /* Active accent stripe on right edge */
+    .rail-item.active::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 8px; bottom: 8px;
+      width: 3px;
+      background: hsl(var(--primary));
+      border-radius: 2px 0 0 2px;
+    }
+    .rail-item:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -3px;
+      border-radius: 3px;
+    }
+    .rail-icon { font-size: 1.1rem; line-height: 1; }
+    .rail-label {
+      font-size: 0.4375rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .rail-badge {
+      position: absolute;
+      top: 6px; right: 6px;
+      font-size: 0.4375rem;
+      font-weight: 900;
+      background: hsl(var(--destructive));
+      color: hsl(var(--destructive-foreground));
+      padding: 1px 4px;
+      border-radius: 2px;
+      min-width: 14px;
+      text-align: center;
+    }
+
+    .rail-spacer { flex: 1; }
+    .rail-sep {
+      height: 1px;
+      background: hsl(var(--border));
+      margin: 4px 8px;
+    }
+
+    /* ── Content area ── */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-width: 0;
+    }
+
+    /* ── Channel list stub ── */
+    .ch-section-head {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      padding: 12px 14px 5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      background: hsl(var(--background));
+      z-index: 10;
+    }
+    .ch-section-head::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: hsl(var(--border));
+    }
+    .ch-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-bottom: 1px solid hsl(var(--border)/0.5);
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.1s;
+    }
+    .ch-row:hover { background: hsl(var(--muted)/0.3); }
+    .ch-row:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+      border-radius: 2px;
+    }
+    .ch-num {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      width: 24px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .ch-name {
+      font-size: 0.75rem;
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .ch-prog {
+      font-size: 0.6875rem;
+      color: hsl(var(--muted-foreground));
+      flex: 2;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    /* ── Player-mode overlay ── */
+    .player-mode-bar {
+      display: none;
+      position: sticky; top: 0; z-index: 70;
+      background: hsl(222 24% 10%);
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 0 12px;
+      height: 44px;
+      align-items: center;
+      gap: 10px;
+    }
+    .player-mode-bar.visible { display: flex; }
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 0.6875rem;
+      transition: color 0.1s;
+    }
+    .back-btn:hover { color: hsl(var(--foreground)); }
+    .back-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
+    /* ── Mobile bottom tabs ── */
+    .mobile-tabs {
+      display: none;
+    }
+
+    /* ── Demo controls ── */
+    .demo-bar {
+      position: fixed;
+      bottom: 16px; right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 100;
+    }
+    .demo-btn {
+      font-family: inherit;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 5px 10px;
+      border-radius: 3px;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .demo-btn:hover { background: hsl(var(--muted)); }
+    .demo-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+
+    /* ── Responsive: mobile ── */
+    @media (max-width: 640px) {
+      .nav-rail { display: none; }
+      .mobile-tabs {
+        display: flex;
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 60;
+        background: hsl(222 24% 10%);
+        border-top: 1px solid hsl(var(--border));
+        height: 60px;
+      }
+      .mob-tab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        background: transparent;
+        border: none;
+        color: hsl(var(--muted-foreground));
+        cursor: pointer;
+        font-family: inherit;
+        text-decoration: none;
+        position: relative;
+      }
+      .mob-tab.active { color: hsl(var(--primary)); }
+      .mob-tab.active::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 20%; right: 20%;
+        height: 2px;
+        background: hsl(var(--primary));
+        border-radius: 0 0 2px 2px;
+      }
+      .mob-tab:focus-visible {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: -3px;
+        border-radius: 2px;
+      }
+      .mob-icon { font-size: 1.1rem; }
+      .mob-label {
+        font-size: 0.4375rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .mob-badge {
+        position: absolute;
+        top: 4px;
+        right: calc(50% - 18px);
+        font-size: 0.4375rem;
+        font-weight: 900;
+        background: hsl(var(--destructive));
+        color: hsl(var(--destructive-foreground));
+        padding: 1px 3px;
+        border-radius: 2px;
+        min-width: 12px;
+        text-align: center;
+      }
+      .content-area { padding-bottom: 60px; }
+      .demo-bar { bottom: 76px; }
+      .health-strip { top: 44px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+  PLAYER-MODE BAR (shown when player active)
+══════════════════════════════════════════ -->
+<div class="player-mode-bar" id="playerBar">
+  <button class="back-btn" onclick="togglePlayer()" aria-label="戻る">
+    ← /channels
+  </button>
+  <div class="toolbar-sep"></div>
+  <span class="chip chip-live">● LIVE</span>
+  <span style="font-size:0.6875rem; font-weight:700; letter-spacing:0.05em; font-family:inherit;">ch-27 · NHK総合</span>
+  <span class="chip chip-warn">BUF 3.4s</span>
+  <span class="chip chip-info">HLS</span>
+  <span style="flex:1"></span>
+  <span style="font-size:0.5rem; color:hsl(var(--muted-foreground));">TUNER-01 · nvenc</span>
+</div>
+
+<!-- ══════════════════════════════════════════
+  TOP TOOLBAR (hidden in player mode)
+══════════════════════════════════════════ -->
+<header class="top-toolbar" id="topToolbar">
+  <span class="wordmark">KonomiTV</span>
+  <div class="toolbar-sep"></div>
+  <!-- Health summary — compact, links to /settings?tab=status when WARN/ERR -->
+  <a href="#" class="chip chip-ok" id="globalHealthChip" tabindex="0" aria-label="システム正常 — 詳細はSettings">OK</a>
+  <div class="toolbar-sep"></div>
+  <!-- Queue awareness -->
+  <span class="chip chip-rec">REC 1 · SCHED 3</span>
+  <span style="flex:1"></span>
+  <!-- ⌘K hint -->
+  <span style="font-size:0.5rem; color:hsl(var(--muted-foreground)); letter-spacing:0.06em;">⌘K</span>
+</header>
+
+<!-- ══════════════════════════════════════════
+  HEALTH STRIP (subsystem detail)
+══════════════════════════════════════════ -->
+<div class="health-strip" id="healthStrip" role="status" aria-label="サブシステム健全性">
+  <div class="health-cell">
+    <span class="health-key">mirakc</span>
+    <span class="chip chip-ok">OK</span>
+  </div>
+  <div class="health-cell">
+    <span class="health-key">postgres</span>
+    <span class="chip chip-ok">OK</span>
+  </div>
+  <div class="health-cell">
+    <span class="health-key">ffmpeg</span>
+    <span class="chip chip-ok">OK</span>
+  </div>
+  <div class="health-cell">
+    <span class="health-key">tuners</span>
+    <span class="chip chip-info">1/4</span>
+  </div>
+  <div class="health-cell" style="margin-left:auto; border-right:none; border-left:1px solid hsl(var(--border));">
+    <span style="font-size:0.5rem; color:hsl(var(--muted-foreground));">v0.9.1</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+  MAIN LAYOUT
+══════════════════════════════════════════ -->
+<div class="main-layout" id="mainLayout">
+
+  <!-- 56px Icon Rail -->
+  <nav class="nav-rail" aria-label="メインナビゲーション" id="navRail">
+    <a href="#" class="rail-item active" aria-current="page" aria-label="チャンネル">
+      <span class="rail-icon">📺</span>
+      <span class="rail-label">CH</span>
+    </a>
+    <a href="#" class="rail-item" aria-label="番組表">
+      <span class="rail-icon">📋</span>
+      <span class="rail-label">EPG</span>
+    </a>
+    <a href="#" class="rail-item" aria-label="録画">
+      <span class="rail-icon">⏺</span>
+      <span class="rail-label">REC</span>
+      <span class="rail-badge" aria-label="録画中1件、予約3件">4</span>
+    </a>
+    <div class="rail-spacer"></div>
+    <div class="rail-sep"></div>
+    <a href="#" class="rail-item" aria-label="設定">
+      <span class="rail-icon">⚙</span>
+      <span class="rail-label">CFG</span>
+    </a>
+  </nav>
+
+  <!-- Content: simplified channel list stub -->
+  <main class="content-area" id="mainContent" aria-label="コンテンツ">
+
+    <!-- Section: GR -->
+    <div class="ch-section-head">
+      <span class="chip chip-info">GR</span>
+      地上波
+    </div>
+    <a href="#" class="ch-row">
+      <span class="ch-num">1</span>
+      <span class="ch-name">NHK総合</span>
+      <span class="ch-prog">ニュース7 — 今日の天気と気象情報</span>
+      <span class="chip chip-live">● LIVE</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">3</span>
+      <span class="ch-name">NHK Eテレ</span>
+      <span class="ch-prog">プロフェッショナル 仕事の流儀</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">4</span>
+      <span class="ch-name">日本テレビ</span>
+      <span class="ch-prog">news every.</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">5</span>
+      <span class="ch-name">テレビ朝日</span>
+      <span class="ch-prog">報道ステーション</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">6</span>
+      <span class="ch-name">TBSテレビ</span>
+      <span class="ch-prog">NEWS23</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">7</span>
+      <span class="ch-name">テレビ東京</span>
+      <span class="ch-prog">WBS ワールドビジネスサテライト</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">8</span>
+      <span class="ch-name">フジテレビ</span>
+      <span class="ch-prog">FNN Live News α</span>
+    </a>
+
+    <!-- Section: BS -->
+    <div class="ch-section-head">
+      <span class="chip chip-muted">BS</span>
+      衛星放送
+    </div>
+    <a href="#" class="ch-row">
+      <span class="ch-num">101</span>
+      <span class="ch-name">NHK BS</span>
+      <span class="ch-prog">世界のドキュメンタリー</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">141</span>
+      <span class="ch-name">BS日テレ</span>
+      <span class="ch-prog">深夜の映画特集</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">151</span>
+      <span class="ch-name">BS朝日</span>
+      <span class="ch-prog">ドキュメンタリー</span>
+    </a>
+    <a href="#" class="ch-row">
+      <span class="ch-num">161</span>
+      <span class="ch-name">BS-TBS</span>
+      <span class="ch-prog">音楽の時間</span>
+    </a>
+
+  </main>
+</div>
+
+<!-- Mobile bottom tabs -->
+<nav class="mobile-tabs" aria-label="モバイルナビゲーション">
+  <a href="#" class="mob-tab active" aria-current="page" aria-label="チャンネル">
+    <span class="mob-icon">📺</span>
+    <span class="mob-label">CH</span>
+  </a>
+  <a href="#" class="mob-tab" aria-label="番組表">
+    <span class="mob-icon">📋</span>
+    <span class="mob-label">EPG</span>
+  </a>
+  <a href="#" class="mob-tab" aria-label="録画">
+    <span class="mob-icon">⏺</span>
+    <span class="mob-label">REC</span>
+    <span class="mob-badge" aria-label="4件">4</span>
+  </a>
+  <a href="#" class="mob-tab" aria-label="設定">
+    <span class="mob-icon">⚙</span>
+    <span class="mob-label">CFG</span>
+  </a>
+</nav>
+
+<!-- Demo controls -->
+<div class="demo-bar" role="group" aria-label="デモ操作">
+  <button class="demo-btn" onclick="togglePlayer()">⏯ Player mode</button>
+  <button class="demo-btn" onclick="toggleWarn()">⚠ WARN state</button>
+  <button class="demo-btn" onclick="toggleDark()">◑ Light/Dark</button>
+</div>
+
+<script>
+  let playerMode = false;
+  let warnMode = false;
+
+  function togglePlayer() {
+    playerMode = !playerMode;
+    const bar = document.getElementById('playerBar');
+    const toolbar = document.getElementById('topToolbar');
+    const strip = document.getElementById('healthStrip');
+    const rail = document.getElementById('navRail');
+    const layout = document.getElementById('mainLayout');
+
+    if (playerMode) {
+      bar.classList.add('visible');
+      toolbar.style.display = 'none';
+      strip.style.display = 'none';
+      rail.style.display = 'none';
+      // Simulate player content area
+      document.getElementById('mainContent').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;background:hsl(var(--background));flex-direction:column;gap:12px;">
+          <div style="width:100%;max-width:900px;aspect-ratio:16/9;background:hsl(222 30% 7%);display:flex;align-items:center;justify-content:center;border:1px solid hsl(var(--border));">
+            <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-family:inherit;">[ VIDEO AREA — HLS PLAYER ]</span>
+          </div>
+          <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));">Shell reduced to session chip only. ← チャンネルに戻る</span>
+        </div>`;
+    } else {
+      bar.classList.remove('visible');
+      toolbar.style.display = '';
+      strip.style.display = '';
+      rail.style.display = '';
+      document.getElementById('mainContent').innerHTML = channelListHTML;
+    }
+  }
+
+  function toggleWarn() {
+    warnMode = !warnMode;
+    const chip = document.getElementById('globalHealthChip');
+    const strip = document.getElementById('healthStrip');
+    const ffmpegCell = strip.querySelectorAll('.health-cell')[2];
+
+    if (warnMode) {
+      chip.className = 'chip chip-warn';
+      chip.textContent = 'WARN';
+      chip.href = '#settings-status';
+      chip.title = 'ffmpeg: elevated memory — click for details';
+      strip.classList.add('warn-mode');
+      ffmpegCell.querySelector('.chip').className = 'chip chip-warn';
+      ffmpegCell.querySelector('.chip').textContent = 'WARN';
+    } else {
+      chip.className = 'chip chip-ok';
+      chip.textContent = 'OK';
+      chip.title = '';
+      strip.classList.remove('warn-mode');
+      ffmpegCell.querySelector('.chip').className = 'chip chip-ok';
+      ffmpegCell.querySelector('.chip').textContent = 'OK';
+    }
+  }
+
+  function toggleDark() {
+    document.documentElement.classList.toggle('dark');
+  }
+
+  // Save channel list HTML for restore after player mode
+  const channelListHTML = document.getElementById('mainContent').innerHTML;
+</script>
+
+<!-- ── Variant label ── -->
+<div style="position:fixed;top:8px;right:140px;font-size:0.5rem;color:hsl(var(--muted-foreground));letter-spacing:0.06em;z-index:200;">v10 · TOP-TOOLBAR + HEALTH-STRIP + 56px RAIL</div>
+
+</body>
+</html>
