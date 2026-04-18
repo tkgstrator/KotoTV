@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception'
 import { requestId } from 'hono/request-id'
 import { logger as pinoLogger } from './lib/logger'
 import channelsRoute from './routes/channels'
+import programsRoute from './routes/programs'
 import statusRoute from './routes/status'
 import streamsRoute from './routes/streams'
 
@@ -29,6 +30,7 @@ const app = new Hono()
   })
   .route('/api/status', statusRoute)
   .route('/api/channels', channelsRoute)
+  .route('/api/programs', programsRoute)
   .route('/api/streams', streamsRoute)
 
 export { app }

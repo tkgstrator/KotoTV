@@ -1,4 +1,4 @@
-# telemax (仮称) — 実装ロードマップ
+# KotoTV — 実装ロードマップ
 
 KonomiTV の Python 実装や黒魔術的手法を避け、TypeScript 統一スタックでクリーンに再構築する。外出先からのライブ視聴 (HW トランスコード) が最重要要件。将来的に tvOS/FireTV のリモコン操作 UI にも対応したい。
 
@@ -82,7 +82,7 @@ services:
 ## プロジェクト構造 (Phase 0 完了後)
 
 ```
-telemax/
+kototv/
 ├── package.json                  # Bun workspace root
 ├── tsconfig.base.json
 ├── compose.yaml

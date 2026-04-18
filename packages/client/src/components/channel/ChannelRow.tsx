@@ -1,5 +1,5 @@
+import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import { Link } from '@tanstack/react-router'
-import type { Channel } from '@telemax/server/src/schemas/Channel.dto'
 import { formatTimeRange, getProgress, getRemainingLabel, pickNextLabel } from '@/lib/program'
 import { cn } from '@/lib/utils'
 
