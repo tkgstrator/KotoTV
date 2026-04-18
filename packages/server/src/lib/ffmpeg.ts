@@ -95,3 +95,162 @@ function buildVideoFlags(hwAccel: HwAccel, videoBitrate: number): string[] {
       return ['-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency', '-b:v', `${videoBitrate}k`]
   }
 }
+
+// ---------------------------------------------------------------------------
+// Recording: TS copy (no re-encode, HW encoder untouched)
+// ---------------------------------------------------------------------------
+
+export type RecordArgsOptions = {
+  /** Absolute output path. Should end with .ts (MPEG-TS container). */
+  outputPath: string
+}
+
+/**
+ * Build the FFmpeg argument array for recording a live channel to MPEG-TS.
+ *
+ * Uses `-c copy -f mpegts` — no decode, no re-encode. This consumes
+ * zero HW encoder sessions so the GPU stays free for live viewing.
+ * The resulting .ts is converted to .mp4 afterward via `buildConvertArgs`.
+ *
+ * Input is `pipe:0` (stdin); caller pipes the Mirakc MPEG-TS into it.
+ */
+export function buildRecordArgs(opts: RecordArgsOptions): string[] {
+  const { outputPath } = opts
+  return [
+    '-y',
+    '-i',
+    'pipe:0',
+    // Copy all streams without re-encoding. Audio (AAC-LATM), video (H.264),
+    // subtitles (ARIB captions), and PMT metadata are preserved verbatim.
+    '-c',
+    'copy',
+    '-map',
+    '0',
+    '-f',
+    'mpegts',
+    outputPath
+  ]
+}
+
+// ---------------------------------------------------------------------------
+// Conversion: .ts → .mp4 / .webm (background queue, serial HW encode)
+// ---------------------------------------------------------------------------
+
+export type OutputCodec = 'avc' | 'hevc' | 'vp9'
+
+export type ConvertArgsOptions = {
+  /** Absolute input path (typically the .ts recorded by buildRecordArgs). */
+  inputPath: string
+  /** Absolute output path. Extension must match the codec (.mp4 for avc/hevc, .webm for vp9). */
+  outputPath: string
+  /** HW encoder backend. libx264 / libx265 / libvpx-vp9 when 'none'. */
+  hwAccel: HwAccel
+  /** Output video codec. Container is inferred (mp4 for avc/hevc, webm for vp9). */
+  codec: OutputCodec
+  /** Video bitrate in kbps. Default: 4000. */
+  videoBitrate?: number
+  /** Audio bitrate in kbps. Default: 128. */
+  audioBitrate?: number
+}
+
+/**
+ * Build the FFmpeg argument array for converting a recorded .ts file to
+ * the final container (.mp4 or .webm) with HW-accelerated encoding.
+ *
+ * VP9 does not use NVEnc / VAAPI — always falls back to libvpx-vp9
+ * because vp9 HW support in FFmpeg is patchy and not worth the branching.
+ */
+export function buildConvertArgs(opts: ConvertArgsOptions): string[] {
+  const { inputPath, outputPath, hwAccel, codec, videoBitrate = 4000, audioBitrate = 128 } = opts
+
+  const hwPreInput = buildHwPreInput(codec === 'vp9' ? 'none' : hwAccel)
+
+  const input = ['-i', inputPath]
+
+  // Same first-V / first-A mapping as the live transcode — ignore ancillary PIDs.
+  const mapping = ['-map', '0:v:0', '-map', '0:a:0']
+
+  const videoFlags = buildConvertVideoFlags(codec, codec === 'vp9' ? 'none' : hwAccel, videoBitrate)
+
+  // AAC for MP4; Opus for WebM (VP9)
+  const audioFlags =
+    codec === 'vp9' ? ['-c:a', 'libopus', '-b:a', `${audioBitrate}k`] : ['-c:a', 'aac', '-b:a', `${audioBitrate}k`]
+
+  // Container + fast-start (mp4 moov atom at head for immediate playback)
+  const containerFlags = codec === 'vp9' ? ['-f', 'webm'] : ['-f', 'mp4', '-movflags', '+faststart']
+
+  return ['-y', ...hwPreInput, ...input, ...mapping, ...videoFlags, ...audioFlags, ...containerFlags, outputPath]
+}
+
+function buildConvertVideoFlags(codec: OutputCodec, hwAccel: HwAccel, videoBitrate: number): string[] {
+  const bv = ['-b:v', `${videoBitrate}k`]
+
+  if (codec === 'vp9') {
+    // libvpx-vp9 always (no HW path). Deadline=good+cpu-used=2 is a
+    // sensible quality/speed trade-off for batch conversion.
+    return ['-c:v', 'libvpx-vp9', '-deadline', 'good', '-cpu-used', '2', ...bv]
+  }
+
+  if (codec === 'hevc') {
+    switch (hwAccel) {
+      case 'nvenc':
+        return ['-c:v', 'hevc_nvenc', '-preset', 'p5', ...bv]
+      case 'qsv':
+        return ['-c:v', 'hevc_qsv', '-preset', 'medium', ...bv]
+      case 'vaapi':
+        return ['-vf', 'format=nv12,hwupload', '-c:v', 'hevc_vaapi', ...bv]
+      default:
+        return ['-c:v', 'libx265', '-preset', 'medium', ...bv]
+    }
+  }
+
+  // codec === 'avc'
+  switch (hwAccel) {
+    case 'nvenc':
+      return ['-c:v', 'h264_nvenc', '-preset', 'p5', ...bv]
+    case 'qsv':
+      return ['-c:v', 'h264_qsv', '-preset', 'medium', ...bv]
+    case 'vaapi':
+      return ['-vf', 'format=nv12,hwupload', '-c:v', 'h264_vaapi', ...bv]
+    default:
+      return ['-c:v', 'libx264', '-preset', 'medium', ...bv]
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Thumbnail: single frame extraction for recording UI
+// ---------------------------------------------------------------------------
+
+export type ThumbnailArgsOptions = {
+  inputPath: string
+  outputPath: string
+  /** Seek offset in seconds. Default: 60 (skip opening titles / black frames). */
+  atSeconds?: number
+  /** Output width in px; height preserves aspect. Default: 480. */
+  width?: number
+}
+
+/**
+ * Build the FFmpeg argument array for extracting a single representative
+ * frame at `atSeconds` into a JPEG. `-ss` before `-i` uses fast seek on
+ * keyframes — acceptable for thumbnails; slightly inaccurate but ~100x faster.
+ */
+export function buildThumbnailArgs(opts: ThumbnailArgsOptions): string[] {
+  const { inputPath, outputPath, atSeconds = 60, width = 480 } = opts
+  return [
+    '-y',
+    '-ss',
+    String(atSeconds),
+    '-i',
+    inputPath,
+    '-vframes',
+    '1',
+    '-vf',
+    `scale=${width}:-1`,
+    '-f',
+    'image2',
+    '-q:v',
+    '3',
+    outputPath
+  ]
+}
