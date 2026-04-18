@@ -156,7 +156,8 @@ function RecordingRulesPage() {
         <div className='flex-1' />
         <Link to='/recordings/rules/new'>
           <Button size='sm' className='h-7 gap-1.5 px-3 font-mono text-[0.75rem] font-bold'>
-            <Plus className='size-3.5' />+ 新規ルール
+            <Plus className='size-3.5' />
+            新規ルール
           </Button>
         </Link>
       </PageHeader>
