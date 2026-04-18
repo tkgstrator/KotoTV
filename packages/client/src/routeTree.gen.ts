@@ -13,8 +13,11 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RecordingsRouteImport } from './routes/recordings'
 import { Route as EpgRouteImport } from './routes/epg'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RecordingsRulesRouteImport } from './routes/recordings.rules'
 import { Route as RecordingsIdRouteImport } from './routes/recordings/$id'
 import { Route as LiveChannelIdRouteImport } from './routes/live/$channelId'
+import { Route as RecordingsRulesNewRouteImport } from './routes/recordings.rules.new'
+import { Route as RecordingsRulesIdRouteImport } from './routes/recordings.rules.$id'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -36,6 +39,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecordingsRulesRoute = RecordingsRulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
+  getParentRoute: () => RecordingsRoute,
+} as any)
 const RecordingsIdRoute = RecordingsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -46,6 +54,16 @@ const LiveChannelIdRoute = LiveChannelIdRouteImport.update({
   path: '/live/$channelId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecordingsRulesNewRoute = RecordingsRulesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => RecordingsRulesRoute,
+} as any)
+const RecordingsRulesIdRoute = RecordingsRulesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => RecordingsRulesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +72,9 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
+  '/recordings/rules': typeof RecordingsRulesRouteWithChildren
+  '/recordings/rules/$id': typeof RecordingsRulesIdRoute
+  '/recordings/rules/new': typeof RecordingsRulesNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +83,9 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
+  '/recordings/rules': typeof RecordingsRulesRouteWithChildren
+  '/recordings/rules/$id': typeof RecordingsRulesIdRoute
+  '/recordings/rules/new': typeof RecordingsRulesNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +95,9 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
+  '/recordings/rules': typeof RecordingsRulesRouteWithChildren
+  '/recordings/rules/$id': typeof RecordingsRulesIdRoute
+  '/recordings/rules/new': typeof RecordingsRulesNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +108,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/live/$channelId'
     | '/recordings/$id'
+    | '/recordings/rules'
+    | '/recordings/rules/$id'
+    | '/recordings/rules/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +119,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/live/$channelId'
     | '/recordings/$id'
+    | '/recordings/rules'
+    | '/recordings/rules/$id'
+    | '/recordings/rules/new'
   id:
     | '__root__'
     | '/'
@@ -97,6 +130,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/live/$channelId'
     | '/recordings/$id'
+    | '/recordings/rules'
+    | '/recordings/rules/$id'
+    | '/recordings/rules/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -137,6 +173,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recordings/rules': {
+      id: '/recordings/rules'
+      path: '/rules'
+      fullPath: '/recordings/rules'
+      preLoaderRoute: typeof RecordingsRulesRouteImport
+      parentRoute: typeof RecordingsRoute
+    }
     '/recordings/$id': {
       id: '/recordings/$id'
       path: '/$id'
@@ -151,15 +194,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LiveChannelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recordings/rules/new': {
+      id: '/recordings/rules/new'
+      path: '/new'
+      fullPath: '/recordings/rules/new'
+      preLoaderRoute: typeof RecordingsRulesNewRouteImport
+      parentRoute: typeof RecordingsRulesRoute
+    }
+    '/recordings/rules/$id': {
+      id: '/recordings/rules/$id'
+      path: '/$id'
+      fullPath: '/recordings/rules/$id'
+      preLoaderRoute: typeof RecordingsRulesIdRouteImport
+      parentRoute: typeof RecordingsRulesRoute
+    }
   }
 }
 
+interface RecordingsRulesRouteChildren {
+  RecordingsRulesIdRoute: typeof RecordingsRulesIdRoute
+  RecordingsRulesNewRoute: typeof RecordingsRulesNewRoute
+}
+
+const RecordingsRulesRouteChildren: RecordingsRulesRouteChildren = {
+  RecordingsRulesIdRoute: RecordingsRulesIdRoute,
+  RecordingsRulesNewRoute: RecordingsRulesNewRoute,
+}
+
+const RecordingsRulesRouteWithChildren = RecordingsRulesRoute._addFileChildren(
+  RecordingsRulesRouteChildren,
+)
+
 interface RecordingsRouteChildren {
   RecordingsIdRoute: typeof RecordingsIdRoute
+  RecordingsRulesRoute: typeof RecordingsRulesRouteWithChildren
 }
 
 const RecordingsRouteChildren: RecordingsRouteChildren = {
   RecordingsIdRoute: RecordingsIdRoute,
+  RecordingsRulesRoute: RecordingsRulesRouteWithChildren,
 }
 
 const RecordingsRouteWithChildren = RecordingsRoute._addFileChildren(
