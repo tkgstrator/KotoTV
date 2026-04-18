@@ -489,7 +489,7 @@ function RecordingsPage() {
                 </Button>
               </div>
             ) : (
-              <div className='grid grid-cols-1 lg:grid-cols-2'>
+              <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'>
                 {pendingItems.map((item) =>
                   'startAt' in item ? (
                     <ScheduleRowEnhanced
@@ -529,7 +529,7 @@ function RecordingsPage() {
                 </div>
               </div>
             ) : (
-              <div className='grid grid-cols-1 lg:grid-cols-2'>
+              <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'>
                 {failedItems.map((item) =>
                   'startAt' in item ? (
                     <ScheduleRowEnhanced
