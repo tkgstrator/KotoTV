@@ -153,10 +153,12 @@ const recordingsRoute = new Hono()
     if (!existing) {
       throw new HTTPException(404, { message: 'schedule not found' })
     }
-    if (existing.status !== 'pending') {
-      throw new HTTPException(409, { message: `cannot delete schedule in status '${existing.status}'` })
+    if (existing.status === 'recording') {
+      throw new HTTPException(409, { message: `cannot delete schedule in status 'recording'` })
     }
 
+    // TODO(fs): unlink the recorded file on disk when the Recording row carries a filePath.
+    await prisma.recording.deleteMany({ where: { scheduleId } })
     await prisma.recordingSchedule.delete({ where: { id: scheduleId } })
 
     return new Response(null, { status: 204 })

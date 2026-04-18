@@ -2,8 +2,9 @@ import type { Recording, RecordingSchedule } from '@kototv/server/src/schemas/Re
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { format, intervalToDuration } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { CalendarPlus, ListFilter, Trash2 } from 'lucide-react'
+import { CalendarPlus, ListFilter, MoreVertical, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { RecordingScheduleForm } from '@/components/recording/RecordingScheduleForm'
 import { StatusChip } from '@/components/shared/status-chip'
 import { PageHeader } from '@/components/shell/PageHeader'
@@ -19,6 +20,13 @@ import {
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRecordingRules } from '@/hooks/useRecordingRules'
@@ -194,35 +202,107 @@ function DoneCard({ rec }: { rec: Recording }) {
   const durationLabel = rec.durationSec ? formatDuration(rec.durationSec) : null
   const sizeLabel = rec.sizeBytes ? formatBytes(rec.sizeBytes) : null
 
+  return <DoneCardInner rec={rec} dateLabel={dateLabel} durationLabel={durationLabel} sizeLabel={sizeLabel} />
+}
+
+function DoneCardInner({
+  rec,
+  dateLabel,
+  durationLabel,
+  sizeLabel
+}: {
+  rec: Recording
+  dateLabel: string
+  durationLabel: string | null
+  sizeLabel: string | null
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const { mutate: deleteRecording, isPending: isDeleting } = useDeleteRecording()
+
   return (
-    <Link
-      to='/recordings/$id'
-      params={{ id: rec.id }}
-      className='flex flex-col bg-card transition-colors hover:bg-muted/40 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring'
-    >
-      <div className='relative w-full pt-[56.25%]'>
-        {rec.thumbnailUrl ? (
-          <img src={rec.thumbnailUrl} alt={rec.title} className='absolute inset-0 h-full w-full object-cover' />
-        ) : (
-          <Skeleton className='absolute inset-0 h-full w-full rounded-none' />
-        )}
-        <span className='absolute left-1.5 top-1.5 rounded-sm bg-foreground/75 px-1 py-0.5 font-mono text-[0.5625rem] font-bold text-background backdrop-blur-sm'>
-          {rec.channelId}
-        </span>
-        {durationLabel && (
-          <span className='absolute bottom-1.5 right-1.5 rounded-sm bg-foreground/80 px-1 py-0.5 font-mono text-[0.5625rem] font-bold text-background'>
-            {durationLabel}
+    <div className='group relative flex flex-col bg-card transition-colors hover:bg-muted/40'>
+      <Link
+        to='/recordings/$id'
+        params={{ id: rec.id }}
+        className='flex flex-col focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring'
+      >
+        <div className='relative w-full pt-[56.25%]'>
+          {rec.thumbnailUrl ? (
+            <img src={rec.thumbnailUrl} alt={rec.title} className='absolute inset-0 h-full w-full object-cover' />
+          ) : (
+            <Skeleton className='absolute inset-0 h-full w-full rounded-none' />
+          )}
+          <span className='absolute left-1.5 top-1.5 rounded-sm bg-foreground/75 px-1 py-0.5 font-mono text-[0.5625rem] font-bold text-background backdrop-blur-sm'>
+            {rec.channelId}
           </span>
-        )}
-      </div>
-      <div className='flex flex-col gap-1 px-2.5 py-2'>
-        <span className='truncate font-mono text-[0.75rem] font-semibold text-foreground'>{rec.title}</span>
-        <div className='flex items-center gap-1.5'>
-          <span className='font-mono text-[0.6875rem] text-muted-foreground'>{dateLabel}</span>
-          {sizeLabel && <span className='ml-auto font-mono text-[0.6875rem] text-muted-foreground'>{sizeLabel}</span>}
+          {durationLabel && (
+            <span className='absolute bottom-1.5 right-1.5 rounded-sm bg-foreground/80 px-1 py-0.5 font-mono text-[0.5625rem] font-bold text-background'>
+              {durationLabel}
+            </span>
+          )}
         </div>
-      </div>
-    </Link>
+        <div className='flex flex-col gap-1 px-2.5 py-2'>
+          <span className='truncate font-mono text-[0.75rem] font-semibold text-foreground'>{rec.title}</span>
+          <div className='flex items-center gap-1.5'>
+            <span className='font-mono text-[0.6875rem] text-muted-foreground'>{dateLabel}</span>
+            {sizeLabel && <span className='ml-auto font-mono text-[0.6875rem] text-muted-foreground'>{sizeLabel}</span>}
+          </div>
+        </div>
+      </Link>
+
+      {/* Kebab menu — overlaid on the thumbnail top-right */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant='ghost'
+            size='icon'
+            className='absolute right-1 top-1 size-7 rounded-sm bg-foreground/60 text-background backdrop-blur-sm hover:bg-foreground/80 hover:text-background focus-visible:ring-2 focus-visible:ring-ring'
+            aria-label='操作メニュー'
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreVertical className='size-4' />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align='end' className='font-mono text-[0.75rem]'>
+          <DropdownMenuItem asChild>
+            <Link to='/recordings/$id' params={{ id: rec.id }}>
+              再生
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => toast.info('変換機能は未実装')}>変換</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant='destructive'
+            onSelect={(e) => {
+              e.preventDefault()
+              setConfirmOpen(true)
+            }}
+          >
+            <Trash2 className='size-3.5' />
+            削除
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className='font-mono'>録画を削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>「{rec.title}」を削除します。この操作は元に戻せません。</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className='font-mono text-[0.75rem]'>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              className='bg-destructive font-mono text-[0.75rem] text-destructive-foreground hover:bg-destructive/90'
+              onClick={() => deleteRecording(rec.scheduleId)}
+            >
+              削除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   )
 }
 
