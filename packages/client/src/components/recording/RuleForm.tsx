@@ -286,9 +286,9 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                 )
               })}
             </div>
-            {genres.length === 0 && (
-              <p className='font-mono text-[0.5625rem] text-muted-foreground'>未選択 = 全ジャンル対象</p>
-            )}
+            <p className={cn('font-mono text-[0.5625rem] text-muted-foreground', genres.length > 0 && 'invisible')}>
+              未選択 = 全ジャンル対象
+            </p>
           </div>
 
           {/* ── 7. 曜日 */}
