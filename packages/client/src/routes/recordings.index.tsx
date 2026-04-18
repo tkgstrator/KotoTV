@@ -31,6 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRecordingRules } from '@/hooks/useRecordingRules'
 import { useDeleteRecording, useRecordingEvents, useRecordings } from '@/hooks/useRecordings'
+import { failureReasonLabel } from '@/lib/recording-labels'
 
 type TabValue = 'pending' | 'completed' | 'failed'
 
@@ -152,8 +153,8 @@ function ScheduleRowEnhanced({ schedule, ruleNameMap }: ScheduleRowEnhancedProps
             </StatusChip>
           )}
           {isFailed && (schedule as { failureReason?: string | null }).failureReason && (
-            <span className='font-mono text-[0.625rem] text-destructive'>
-              {(schedule as { failureReason?: string | null }).failureReason}
+            <span className='text-[0.6875rem] text-destructive'>
+              {failureReasonLabel((schedule as { failureReason?: string | null }).failureReason)}
             </span>
           )}
         </div>

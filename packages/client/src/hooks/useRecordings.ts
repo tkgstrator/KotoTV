@@ -1,4 +1,4 @@
-import type { CreateRecordingSchedule } from '@kototv/server/src/schemas/Recording.dto'
+import type { CreateRecordingSchedule, RecordingEvent } from '@kototv/server/src/schemas/Recording.dto'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { toast } from 'sonner'
@@ -86,16 +86,29 @@ export function useRecordingEvents() {
       es = new EventSource('/api/recordings/events')
 
       es.onmessage = (ev: MessageEvent) => {
-        queryClient.invalidateQueries({ queryKey: RECORDINGS_KEY })
-
+        let data: RecordingEvent
         try {
-          const data = JSON.parse(ev.data) as { type?: string; programTitle?: string }
-          if (data.type === 'rule-matched') {
-            toast.info(`新しいルール予約: ${data.programTitle ?? ''}`)
-            queryClient.invalidateQueries({ queryKey: ['rules'] })
-          }
+          data = JSON.parse(ev.data) as RecordingEvent
         } catch {
-          // non-JSON event data is fine — just invalidate recordings as above
+          return
+        }
+
+        switch (data.type) {
+          case 'status-changed':
+          case 'schedule-updated':
+          case 'thumbnail-ready':
+            queryClient.invalidateQueries({ queryKey: RECORDINGS_KEY })
+            break
+          case 'rule-matched':
+            queryClient.invalidateQueries({ queryKey: RECORDINGS_KEY })
+            queryClient.invalidateQueries({ queryKey: ['rules'] })
+            if (data.createdCount > 0) {
+              toast.info(`ルールで ${data.createdCount} 件の録画を予約しました`)
+            }
+            break
+          case 'epg-synced':
+            queryClient.invalidateQueries({ queryKey: ['programs'] })
+            break
         }
       }
 
