@@ -5,7 +5,6 @@
 ## 目次
 
 - [モチベーション](#モチベーション)
-- [スタック](#スタック)
 - [利用者向け](#利用者向け)
   - [機能](#機能)
     - [視聴](#視聴)
@@ -34,14 +33,6 @@ Netflix や AbemaTV であれば、アプリを開いた瞬間に映像が流れ
 - **将来のリモコン操作を最初から織り込むこと** ── いずれ tvOS や FireTV への移植が見据えられており、DOM の並び順と focus ring は今のうちから整えておく必要があります。リモコン対応を後から「貼り付ける」のはあまりにも高コストであり、現実的な選択肢にはなり得ません。
 
 技術選定もこの方針の裏返しになっていて、**TypeScript という 1 つの言語で、サーバからクライアントまでを一気通貫に書けること**を最優先に考えています。Hono RPC で型を共有し、Zod でスキーマを 1 箇所に集約し、Bun で開発・テスト・ランタイムを統一する。こうすることで、Python と Node と PHP を跨ぐようなブリッジ実装を挟まずに済むわけです。
-
-## スタック
-
-- **ランタイム**: Bun
-- **バックエンド**: Hono (`Bun.serve`) + Prisma + Postgres 17
-- **フロントエンド**: Vite + React 19 + TanStack Router + TanStack Query + Shadcn/ui + hls.js
-- **ストリーミング**: Mirakc → FFmpeg (HW accel) → HLS (tmpfs) → hls.js
-- **インフラ**: Docker Compose (mirakc + postgres + app)
 
 ---
 
