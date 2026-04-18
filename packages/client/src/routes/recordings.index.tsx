@@ -2,7 +2,7 @@ import type { Recording, RecordingSchedule } from '@kototv/server/src/schemas/Re
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { format, intervalToDuration } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { CalendarPlus, ListFilter, MoreVertical, Trash2 } from 'lucide-react'
+import { CalendarPlus, ListFilter, MoreVertical, Trash2, Wand2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { RecordingScheduleForm } from '@/components/recording/RecordingScheduleForm'
@@ -264,12 +264,10 @@ function DoneCardInner({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='font-mono text-[0.75rem]'>
-          <DropdownMenuItem asChild>
-            <Link to='/recordings/$id' params={{ id: rec.id }}>
-              再生
-            </Link>
+          <DropdownMenuItem onSelect={() => toast.info('変換機能は未実装')}>
+            <Wand2 className='size-3.5' />
+            変換
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => toast.info('変換機能は未実装')}>変換</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant='destructive'
