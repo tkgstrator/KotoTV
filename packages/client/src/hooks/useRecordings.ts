@@ -42,6 +42,7 @@ export function useCreateRecording() {
       }
       return res.json()
     },
+    meta: { skipGlobalError: true },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RECORDINGS_KEY })
       toast.success('録画を予約しました')
@@ -63,6 +64,7 @@ export function useDeleteRecording() {
         throw new Error(msg)
       }
     },
+    meta: { skipGlobalError: true },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RECORDINGS_KEY })
       toast.success('予約を削除しました')
