@@ -114,7 +114,7 @@ function StatusTab() {
 
   return (
     <div className='mx-auto max-w-[720px] px-5 pb-10 max-[480px]:px-2.5'>
-      <SectHead>Streaming</SectHead>
+      <SectHead>配信</SectHead>
       <div className='flex flex-col gap-2.5'>
         <DiagRow
           status={data.mirakc.status}
@@ -136,7 +136,7 @@ function StatusTab() {
         />
       </div>
 
-      <SectHead>Storage</SectHead>
+      <SectHead>ストレージ</SectHead>
       <DiagRow
         status={data.disk.status}
         name='DISK'
@@ -158,7 +158,7 @@ function StatusTab() {
         logTail={null}
       />
 
-      <SectHead>Runtime</SectHead>
+      <SectHead>ランタイム</SectHead>
       <DiagRow
         status={data.postgres.status}
         name='POSTGRES'
