@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { FfmpegArgsOptions } from './ffmpeg'
-import { buildFfmpegArgs } from './ffmpeg'
+import { buildConvertArgs, buildFfmpegArgs, buildRecordArgs, buildThumbnailArgs } from './ffmpeg'
 
 const BASE_OPTS = {
   outputDir: '/app/data/hls/test-session',
@@ -213,5 +213,212 @@ describe('input and stream mapping', () => {
 
   test('-y overwrite flag is present', () => {
     expect(contains(args, '-y')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Recording (TS copy)
+// ---------------------------------------------------------------------------
+
+describe('buildRecordArgs', () => {
+  const args = buildRecordArgs({ outputPath: '/rec/abc.ts' })
+
+  test('uses stdin input', () => {
+    expect(flagValue(args, '-i')).toBe('pipe:0')
+  })
+
+  test('copies streams (no re-encode)', () => {
+    expect(flagValue(args, '-c')).toBe('copy')
+  })
+
+  test('forces mpegts container', () => {
+    expect(flagValue(args, '-f')).toBe('mpegts')
+  })
+
+  test('maps all streams', () => {
+    expect(flagValue(args, '-map')).toBe('0')
+  })
+
+  test('emits to the configured path', () => {
+    expect(args[args.length - 1]).toBe('/rec/abc.ts')
+  })
+
+  test('does not include any encoder flags', () => {
+    expect(contains(args, '-c:v')).toBe(false)
+    expect(contains(args, '-c:a')).toBe(false)
+    expect(contains(args, '-b:v')).toBe(false)
+    expect(contains(args, '-hwaccel')).toBe(false)
+    expect(contains(args, '-preset')).toBe(false)
+  })
+
+  test('-y overwrite flag is present', () => {
+    expect(contains(args, '-y')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Conversion (.ts → .mp4 / .webm)
+// ---------------------------------------------------------------------------
+
+describe('buildConvertArgs avc + nvenc', () => {
+  const args = buildConvertArgs({
+    inputPath: '/rec/src.ts',
+    outputPath: '/rec/out.mp4',
+    hwAccel: 'nvenc',
+    codec: 'avc'
+  })
+
+  test('uses h264_nvenc', () => {
+    expect(flagValue(args, '-c:v')).toBe('h264_nvenc')
+  })
+
+  test('hw pre-input uses cuda', () => {
+    expect(flagValue(args, '-hwaccel')).toBe('cuda')
+  })
+
+  test('audio codec is aac', () => {
+    expect(flagValue(args, '-c:a')).toBe('aac')
+  })
+
+  test('container is mp4 with faststart', () => {
+    expect(flagValue(args, '-f')).toBe('mp4')
+    expect(flagValue(args, '-movflags')).toBe('+faststart')
+  })
+
+  test('preserves input path', () => {
+    expect(flagValue(args, '-i')).toBe('/rec/src.ts')
+  })
+
+  test('emits to output path', () => {
+    expect(args[args.length - 1]).toBe('/rec/out.mp4')
+  })
+})
+
+describe('buildConvertArgs hevc + vaapi', () => {
+  const args = buildConvertArgs({
+    inputPath: '/rec/src.ts',
+    outputPath: '/rec/out.mp4',
+    hwAccel: 'vaapi',
+    codec: 'hevc'
+  })
+
+  test('uses hevc_vaapi', () => {
+    expect(flagValue(args, '-c:v')).toBe('hevc_vaapi')
+  })
+
+  test('includes vaapi_device before input', () => {
+    const devIdx = args.indexOf('-vaapi_device')
+    const inputIdx = args.indexOf('-i')
+    expect(devIdx).toBeGreaterThan(-1)
+    expect(devIdx).toBeLessThan(inputIdx)
+  })
+
+  test('includes nv12 upload filter', () => {
+    expect(flagValue(args, '-vf')).toBe('format=nv12,hwupload')
+  })
+})
+
+describe('buildConvertArgs hevc + none (libx265)', () => {
+  const args = buildConvertArgs({
+    inputPath: '/rec/src.ts',
+    outputPath: '/rec/out.mp4',
+    hwAccel: 'none',
+    codec: 'hevc'
+  })
+
+  test('falls back to libx265', () => {
+    expect(flagValue(args, '-c:v')).toBe('libx265')
+  })
+})
+
+describe('buildConvertArgs vp9', () => {
+  const args = buildConvertArgs({
+    inputPath: '/rec/src.ts',
+    outputPath: '/rec/out.webm',
+    hwAccel: 'nvenc', // should be ignored — vp9 has no HW path
+    codec: 'vp9'
+  })
+
+  test('always uses libvpx-vp9 (ignores hwAccel)', () => {
+    expect(flagValue(args, '-c:v')).toBe('libvpx-vp9')
+  })
+
+  test('audio codec is opus', () => {
+    expect(flagValue(args, '-c:a')).toBe('libopus')
+  })
+
+  test('container is webm', () => {
+    expect(flagValue(args, '-f')).toBe('webm')
+  })
+
+  test('does not include -hwaccel flags', () => {
+    expect(contains(args, '-hwaccel')).toBe(false)
+    expect(contains(args, '-vaapi_device')).toBe(false)
+  })
+})
+
+describe('buildConvertArgs avc + none', () => {
+  const args = buildConvertArgs({
+    inputPath: '/rec/src.ts',
+    outputPath: '/rec/out.mp4',
+    hwAccel: 'none',
+    codec: 'avc',
+    videoBitrate: 3000,
+    audioBitrate: 192
+  })
+
+  test('uses libx264 at medium preset (not veryfast — this is batch, not live)', () => {
+    expect(flagValue(args, '-c:v')).toBe('libx264')
+    expect(flagValue(args, '-preset')).toBe('medium')
+  })
+
+  test('passes through custom bitrates', () => {
+    expect(flagValue(args, '-b:v')).toBe('3000k')
+    expect(flagValue(args, '-b:a')).toBe('192k')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Thumbnail
+// ---------------------------------------------------------------------------
+
+describe('buildThumbnailArgs', () => {
+  const args = buildThumbnailArgs({
+    inputPath: '/rec/abc.ts',
+    outputPath: '/thumbs/abc.jpg'
+  })
+
+  test('seeks to atSeconds before input (fast seek on keyframes)', () => {
+    const ssIdx = args.indexOf('-ss')
+    const inputIdx = args.indexOf('-i')
+    expect(ssIdx).toBeGreaterThan(-1)
+    expect(ssIdx).toBeLessThan(inputIdx)
+  })
+
+  test('defaults to 60 seconds', () => {
+    expect(flagValue(args, '-ss')).toBe('60')
+  })
+
+  test('extracts exactly one frame', () => {
+    expect(flagValue(args, '-vframes')).toBe('1')
+  })
+
+  test('scales to default width 480', () => {
+    expect(flagValue(args, '-vf')).toBe('scale=480:-1')
+  })
+
+  test('emits image2 format', () => {
+    expect(flagValue(args, '-f')).toBe('image2')
+  })
+
+  test('custom atSeconds + width flow through', () => {
+    const custom = buildThumbnailArgs({
+      inputPath: '/a.ts',
+      outputPath: '/b.jpg',
+      atSeconds: 30,
+      width: 320
+    })
+    expect(flagValue(custom, '-ss')).toBe('30')
+    expect(flagValue(custom, '-vf')).toBe('scale=320:-1')
   })
 })
