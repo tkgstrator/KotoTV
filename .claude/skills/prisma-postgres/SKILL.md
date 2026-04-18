@@ -69,6 +69,8 @@ bunx prisma migrate dev --name add_channels
 - CI / production: `bunx prisma migrate deploy` (no interactive prompts).
 - Reset dev DB: `bunx prisma migrate reset` (drops + re-applies + seeds).
 
+> **Any schema change requires all three: `migrate dev` + `prisma generate` + restart `bun dev`**. `bun --hot` does not reload the generated Prisma client cleanly, so a live dev server will keep using the stale client and 500 on new tables / columns until restarted. Always ask the user to Ctrl+C and `bun dev` again after a Prisma migration.
+
 ## Models for this project
 
 Initial models (grow during Phase 4):
