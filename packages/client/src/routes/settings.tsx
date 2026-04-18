@@ -391,9 +391,9 @@ const ABOUT_ROWS = [
 ]
 
 const LINK_ROWS = [
-  { key: 'repo', val: 'GitHub', href: 'https://github.com' },
-  { key: 'license', val: 'MIT License', href: '#' },
-  { key: 'desc', val: 'KonomiTV clone — 外出先ライブ視聴', href: null }
+  { key: 'repo', val: 'tkgstrator/KotoTV', href: 'https://github.com/tkgstrator/KotoTV' },
+  { key: 'license', val: 'MIT License', href: 'https://github.com/tkgstrator/KotoTV/blob/master/LICENSE' },
+  { key: 'desc', val: 'KotoTV — 外出先ライブ視聴クライアント', href: null }
 ]
 
 function AboutTab() {
