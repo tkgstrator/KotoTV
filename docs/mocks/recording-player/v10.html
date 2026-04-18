@@ -72,10 +72,7 @@
       font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", system-ui, -apple-system, "Hiragino Sans", sans-serif;
       font-size: 13px;
       line-height: 1.5;
-      overflow: hidden;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
+      min-height: 100dvh;
     }
 
     /* Focus ring */
@@ -477,7 +474,7 @@
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- STATE: PLAYING (desktop ~1440px)                                -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<div style="max-width:1440px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;border-left:1px solid hsl(var(--border));border-right:1px solid hsl(var(--border));">
+<div style="max-width:1440px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;border-left:1px solid hsl(var(--border));border-right:1px solid hsl(var(--border));">
 
   <!-- ── Identity strip (EPG NOW-strip analogue) ── -->
   <div class="identity-strip">
