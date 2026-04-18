@@ -2,6 +2,8 @@ import { mkdir } from 'node:fs/promises'
 import { app } from './app'
 import { env } from './lib/config'
 import { logger } from './lib/logger'
+import { startEpgSyncScheduler, stopEpgSyncScheduler } from './services/epg-sync'
+import { stopRuleMatcherScheduler } from './services/rule-matcher'
 
 try {
   await mkdir(env.HLS_DIR, { recursive: true })
@@ -21,7 +23,11 @@ const server = Bun.serve({
 
 logger.info({ port: server.port }, 'server listening')
 
+// Start EPG sync (initial run + 15-min scheduler); non-blocking
+startEpgSyncScheduler()
+
 process.on('SIGTERM', async () => {
+  await Promise.all([stopEpgSyncScheduler(), stopRuleMatcherScheduler()])
   await server.stop()
   process.exit(0)
 })
