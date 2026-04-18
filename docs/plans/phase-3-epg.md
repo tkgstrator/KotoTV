@@ -39,7 +39,7 @@
 - [ ] `EPGGrid` コンポーネントを `@tanstack/react-virtual` で実装 (縦横 2 軸の `useVirtualizer`) — `packages/client/src/components/epg/EPGGrid.tsx`
 - [ ] `ProgramCell` コンポーネントを作成 (番組名、時刻、ジャンル色分け、`date-fns` で時刻フォーマット) — `packages/client/src/components/epg/ProgramCell.tsx`
 - [ ] 現在時刻インジケータを `useEffect` + `setInterval(60_000)` で自動更新 — `packages/client/src/components/epg/EPGGrid.tsx`
-- [ ] NOW-strip (現在時刻 sticky 行) の sticky 位置は CSS 変数 `--shell-offset` を参照してハードコードしない (非プレイヤーモードで `72px`、player モードで `40px` を shell 側が設定) — `packages/client/src/components/epg/EPGGrid.tsx`
+- [ ] NOW-strip (現在時刻 sticky 行) の sticky 位置は CSS 変数 `--shell-offset` (または Tailwind alias `top-shell-offset`) を参照してハードコードしない。値はテーマファイル `packages/client/src/themes/tech.css` が提供。`/live/$id` など player route では shell が `<html data-mode="player">` を設定して自動で 40px に縮退する — `packages/client/src/components/epg/EPGGrid.tsx`
 - [ ] `ProgramCell` のジャンル / 録画予約状態バッジは Phase 2 で用意した `<StatusChip>` を再利用 (ローカル再実装禁止) — `packages/client/src/components/epg/ProgramCell.tsx`
 - [ ] EPG ページ、search params (`at`, `channel`) を Zod で validate — `packages/client/src/routes/epg.tsx`
 - [ ] 番組セル → `/live/$channelId` の `<Link>` — `packages/client/src/components/epg/ProgramCell.tsx`
@@ -51,7 +51,7 @@
 
 ## 共有コントラクト (参照)
 
-- **`--shell-offset` CSS 変数**: app-shell (Phase 6) が root に設定する。EPG は唯一フル viewport 高を占める画面なので、NOW-strip の sticky top はこの変数に従う。値は非プレイヤー時 `72px` (32px health bar + 40px nav bar)、プレイヤー時 `40px`。定義は [`docs/mocks/app-shell/README.md`](../mocks/app-shell/README.md)。
+- **`--shell-offset` / レイアウト変数**: テーマファイル (`packages/client/src/themes/tech.css`) が全てのレイアウト次元 (`--shell-offset`, `--now-strip-h`, `--diag-sidebar-w`, `--sidebar-w`, `--container-max` 等) を提供する。EPG は NOW-strip sticky top にこの変数を使うだけ。モード切替 (player ↔ 非 player) は shell が `<html data-mode>` を切り替え、値の分岐はテーマファイル側で完結する。
 - **`<StatusChip>`**: Phase 2 で frontend が先に実装する共有プリミティブ。EPG セル内のジャンル / 録画予約状態表示に利用する。
 
 ## 検証基準
