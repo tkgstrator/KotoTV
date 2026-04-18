@@ -1,0 +1,21 @@
+# ─── Intel QSV overlay ────────────────────────────────────────────────────────
+# Usage:
+#   docker compose -f docker-compose.yml -f compose.qsv.yaml up
+#
+# Host requirements:
+#   - /dev/dri present (renderD128 etc.)
+#   - intel-media-va-driver or intel-media-va-driver-non-free on the host
+#   - Kernel i915 module loaded
+#
+# Build the QSV image variant before composing:
+#   docker buildx build --build-arg HW_ACCEL=qsv -t app:qsv .
+services:
+  app:
+    build:
+      context: .
+      args:
+        HW_ACCEL: qsv
+    environment:
+      HW_ACCEL_TYPE: qsv
+    devices:
+      - /dev/dri:/dev/dri
