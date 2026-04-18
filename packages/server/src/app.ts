@@ -4,6 +4,7 @@ import { requestId } from 'hono/request-id'
 import { logger as pinoLogger } from './lib/logger'
 import channelsRoute from './routes/channels'
 import statusRoute from './routes/status'
+import streamsRoute from './routes/streams'
 
 const app = new Hono()
   .use('*', requestId())
@@ -28,6 +29,7 @@ const app = new Hono()
   })
   .route('/api/status', statusRoute)
   .route('/api/channels', channelsRoute)
+  .route('/api/streams', streamsRoute)
 
 export { app }
 export type AppType = typeof app
