@@ -1,6 +1,9 @@
+import { mkdir } from 'node:fs/promises'
 import { app } from './app'
 import { env } from './lib/config'
 import { logger } from './lib/logger'
+
+await mkdir(env.HLS_DIR, { recursive: true })
 
 const server = Bun.serve({
   fetch: app.fetch,
