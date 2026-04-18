@@ -38,13 +38,12 @@ test('layout vars (--shell-offset etc.) resolve from the active theme', async ({
   }
 })
 
-test('data-mode="player" collapses --shell-offset', async ({ page }) => {
+test('shell chrome is constant — --shell-offset does not react to data-mode', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('domcontentloaded')
 
-  // Set attribute AND read the computed var in the same evaluate so the shell's
-  // route-driven effect (which clears data-mode on non-player routes) cannot
-  // race with us between calls.
+  // Earlier drafts let /live/:id collapse --shell-offset to 40px, but that
+  // introduced jumps on navigation. Chrome stays 72px on every route.
   const { before, after } = await page.evaluate(() => {
     const root = document.documentElement
     const read = () => getComputedStyle(root).getPropertyValue('--shell-offset').trim()
@@ -54,10 +53,7 @@ test('data-mode="player" collapses --shell-offset', async ({ page }) => {
     root.removeAttribute('data-mode')
     return { before: b, after: a }
   })
-
-  const toPx = (v: string) => Number.parseFloat(v.replace('px', ''))
-  expect(toPx(after)).toBeLessThan(toPx(before))
-  expect(toPx(after)).toBe(40)
+  expect(before).toBe(after)
 })
 
 test('status chip renders with monospace font family', async ({ page }) => {
