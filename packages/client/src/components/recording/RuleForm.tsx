@@ -491,7 +491,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
               className='flex-1 font-mono text-[0.75rem] font-bold sm:flex-none'
               disabled={isPending || hasRegexError}
             >
-              {isPending ? 'SAVING...' : existing ? 'UPDATE' : 'CREATE'}
+              {isPending ? '保存中…' : existing ? '更新' : '作成'}
             </Button>
             <Button
               type='button'
@@ -513,7 +513,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     disabled={deleteMutation.isPending}
                   >
                     <Trash2 className='size-3' />
-                    DELETE
+                    削除
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className='border-destructive/40'>
