@@ -34,6 +34,8 @@ function serializeSchedule(row: {
   startAt: Date
   endAt: Date
   status: string
+  ruleId: string | null
+  failureReason: string | null
   createdAt: Date
   updatedAt: Date
 }): RecordingSchedule {
@@ -45,6 +47,8 @@ function serializeSchedule(row: {
     startAt: row.startAt.toISOString(),
     endAt: row.endAt.toISOString(),
     status: row.status,
+    ruleId: row.ruleId,
+    failureReason: row.failureReason,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
   })
