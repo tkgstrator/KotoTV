@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recordings v12 — Tab-filtered Feed: Large-thumb DONE hero + compact non-done rows + bottom-sheet form (mobile-first)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:               'hsl(var(--background))',
+            foreground:               'hsl(var(--foreground))',
+            card:                     'hsl(var(--card))',
+            'card-foreground':        'hsl(var(--card-foreground))',
+            muted:                    'hsl(var(--muted))',
+            'muted-foreground':       'hsl(var(--muted-foreground))',
+            border:                   'hsl(var(--border))',
+            primary:                  'hsl(var(--primary))',
+            'primary-foreground':     'hsl(var(--primary-foreground))',
+            destructive:              'hsl(var(--destructive))',
+            'destructive-foreground': 'hsl(var(--destructive-foreground))',
+            ring:                     'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:             220 16% 93%;
+      --foreground:             222 22% 16%;
+      --card:                   0 0% 99%;
+      --card-foreground:        222 22% 16%;
+      --muted:                  215 12% 87%;
+      --muted-foreground:       215 10% 44%;
+      --border:                 214 14% 82%;
+      --primary:                221 83% 53%;
+      --primary-foreground:     210 40% 98%;
+      --ring:                   221 83% 53%;
+      --destructive:            0 72% 52%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 38%;
+      --warning:                38 92% 46%;
+    }
+    .dark {
+      --background:             222 22% 8%;
+      --foreground:             210 18% 90%;
+      --card:                   222 20% 12%;
+      --card-foreground:        210 18% 90%;
+      --muted:                  222 18% 18%;
+      --muted-foreground:       215 12% 52%;
+      --border:                 222 18% 20%;
+      --primary:                221 83% 60%;
+      --primary-foreground:     222 20% 10%;
+      --ring:                   221 83% 60%;
+      --destructive:            0 72% 58%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 46%;
+      --warning:                38 92% 50%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", ui-monospace, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 3px;
+    }
+
+    /* App bar */
+    .app-bar {
+      position: sticky; top: 0; z-index: 40;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 16px; height: 48px;
+    }
+    .app-bar-title { font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; }
+
+    /* Tab bar */
+    .tab-bar {
+      position: sticky; top: 48px; z-index: 35;
+      background: hsl(var(--card));
+      border-bottom: 2px solid hsl(var(--border));
+      display: flex; overflow-x: auto; gap: 0;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 10px 16px;
+      font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer; border: none; background: transparent;
+      font-family: inherit; white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.1s;
+    }
+    .tab-btn:hover { color: hsl(var(--foreground)); }
+    .tab-btn.active { color: hsl(var(--foreground)); border-bottom-color: hsl(var(--primary)); }
+    .tab-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+
+    /* Badge on tab */
+    .tab-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.5rem; font-weight: 700;
+      min-width: 16px; height: 14px; padding: 0 3px;
+      border-radius: 3px;
+    }
+    .tb-all    { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+    .tb-rec    { background: hsl(var(--destructive)/0.15); color: hsl(var(--destructive)); }
+    .tb-sched  { background: hsl(var(--warning)/0.15); color: hsl(var(--warning)); }
+    .tb-done   { background: hsl(var(--success)/0.12); color: hsl(var(--success)); }
+    .tb-fail   { background: hsl(var(--destructive)/0.08); color: hsl(var(--destructive)/0.7); }
+
+    /* Chips */
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.625rem; font-weight: 700; letter-spacing: 0.08em;
+      padding: 2px 6px; border-radius: 3px; border: 1px solid transparent;
+      font-family: inherit; white-space: nowrap;
+    }
+    .chip-sched { background: hsl(var(--warning)/0.1);     border-color: hsl(var(--warning)/0.35);     color: hsl(var(--warning)); }
+    .chip-rec   { background: hsl(var(--destructive)/0.1); border-color: hsl(var(--destructive)/0.35); color: hsl(var(--destructive)); }
+    .chip-done  { background: hsl(var(--success)/0.1);     border-color: hsl(var(--success)/0.35);     color: hsl(var(--success)); }
+    .chip-fail  { background: hsl(var(--destructive)/0.06);border-color: hsl(var(--destructive)/0.2);  color: hsl(var(--destructive)/0.8); }
+
+    /* Rec dot */
+    .rec-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: hsl(var(--destructive));
+      animation: rec-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes rec-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+    @media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+
+    /* ── Non-completed compact rows ── */
+    .row-item {
+      display: flex; align-items: stretch;
+      border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      transition: background 0.1s;
+    }
+    .row-item:hover { background: hsl(var(--muted)/0.4); }
+    .row-accent { width: 3px; flex-shrink: 0; }
+    .ra-rec   { background: hsl(var(--destructive)); }
+    .ra-sched { background: hsl(var(--warning)); }
+    .ra-fail  { background: hsl(var(--destructive)/0.45); }
+
+    .row-body { flex: 1; padding: 10px 12px; min-width: 0; }
+    .row-title {
+      font-size: 0.8125rem; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .row-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .meta-text { font-size: 0.6875rem; color: hsl(var(--muted-foreground)); }
+
+    /* Log drawer */
+    .log-drawer {
+      background: hsl(var(--muted)/0.45);
+      border-top: 1px solid hsl(var(--border));
+      padding: 8px 12px 8px 15px;
+      font-size: 0.625rem;
+    }
+    .log-err  { color: hsl(var(--destructive)); }
+    .log-ts   { color: hsl(var(--muted-foreground)/0.65); margin-right: 5px; }
+    .log-warn { color: hsl(var(--warning)); }
+
+    /* ── Completed items: row with small thumb ── */
+    /* On "ALL" tab, completed items show as compact row with 4:3 mini-thumb on the right */
+    /* On "DONE" tab, they expand to full 3-col grid */
+
+    /* compact row with thumb */
+    .done-row {
+      display: flex; align-items: center; gap: 0;
+      border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      cursor: pointer; transition: background 0.1s;
+    }
+    .done-row:hover { background: hsl(var(--muted)/0.35); }
+    .done-row:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 0; z-index: 1; position: relative; }
+
+    .done-row-thumb {
+      position: relative;
+      width: 96px; /* 4:3-ish in the row context */
+      height: 54px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .done-row-thumb-bg {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.875rem; font-weight: 900;
+      color: hsl(var(--primary-foreground)/0.85);
+    }
+    .done-row-ch {
+      position: absolute; bottom: 3px; left: 3px;
+      font-size: 0.4375rem; font-weight: 700;
+      padding: 1px 3px; border-radius: 2px;
+      background: hsl(var(--foreground)/0.75); color: hsl(var(--background));
+    }
+    .done-row-dur {
+      position: absolute; bottom: 3px; right: 3px;
+      font-size: 0.4375rem; font-weight: 700;
+      padding: 1px 3px; border-radius: 2px;
+      background: hsl(var(--foreground)/0.8); color: hsl(var(--background));
+    }
+    .done-row-ribbon {
+      position: absolute; top: 0; right: 0;
+      width: 0; height: 0;
+      border-top: 18px solid hsl(var(--success)/0.85);
+      border-left: 18px solid transparent;
+    }
+    .done-row-ribbon::after {
+      content: '✓'; position: absolute; top: -16px; right: 2px;
+      font-size: 0.375rem; color: hsl(var(--primary-foreground)/0.9);
+    }
+    .done-row-prog {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 2px; background: hsl(var(--muted)/0.5);
+    }
+    .done-row-prog-fill { height: 100%; background: hsl(var(--primary)); }
+
+    .done-row-body { flex: 1; padding: 8px 12px; min-width: 0; }
+    .done-row-title {
+      font-size: 0.75rem; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .done-row-meta { display: flex; align-items: center; gap: 6px; font-size: 0.5625rem; color: hsl(var(--muted-foreground)); }
+
+    /* Full-page thumb grid (DONE tab) */
+    .thumb-grid-full {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1px;
+      background: hsl(var(--border));
+    }
+    .thumb-card {
+      background: hsl(var(--card));
+      display: flex; flex-direction: column;
+      cursor: pointer; transition: background 0.1s;
+    }
+    .thumb-card:hover { background: hsl(var(--muted)/0.4); }
+    .thumb-card:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 0; z-index: 1; position: relative; }
+    .thumb-frame {
+      position: relative; width: 100%; padding-top: 56.25%; overflow: hidden;
+    }
+    .thumb-bg {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; font-weight: 900;
+      color: hsl(var(--primary-foreground)/0.9);
+    }
+    .thumb-ch-bug {
+      position: absolute; top: 6px; left: 6px;
+      font-size: 0.5625rem; font-weight: 700; padding: 2px 5px;
+      border-radius: 2px; background: hsl(var(--foreground)/0.75); color: hsl(var(--background));
+    }
+    .thumb-duration {
+      position: absolute; bottom: 6px; right: 6px;
+      font-size: 0.5625rem; font-weight: 700; padding: 2px 5px;
+      border-radius: 2px; background: hsl(var(--foreground)/0.8); color: hsl(var(--background));
+    }
+    .thumb-ribbon {
+      position: absolute; top: 0; right: 0;
+      width: 0; height: 0;
+      border-top: 28px solid hsl(var(--success)/0.85);
+      border-left: 28px solid transparent;
+    }
+    .thumb-ribbon::after {
+      content: '✓'; position: absolute; top: -26px; right: 2px;
+      font-size: 0.5rem; color: hsl(var(--primary-foreground)/0.9);
+    }
+    .thumb-progress {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 3px; background: hsl(var(--muted)/0.5);
+    }
+    .thumb-progress-fill { height: 100%; background: hsl(var(--primary)); }
+    .thumb-info { padding: 9px 11px; display: flex; flex-direction: column; gap: 4px; }
+    .thumb-title {
+      font-size: 0.8125rem; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .thumb-sub { display: flex; align-items: center; gap: 6px; font-size: 0.5625rem; color: hsl(var(--muted-foreground)); }
+
+    /* Section header */
+    .sec-hdr {
+      font-size: 0.5625rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      padding: 16px 16px 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sec-hdr::after { content: ''; flex: 1; height: 1px; background: hsl(var(--border)); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 3px;
+      font-size: 0.6875rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; border: 1px solid transparent;
+      transition: opacity 0.1s, background 0.1s; letter-spacing: 0.02em;
+    }
+    .btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-ghost { background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border)); }
+    .btn-ghost:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .btn-destruct { background: transparent; color: hsl(var(--destructive)); border-color: hsl(var(--destructive)/0.4); }
+    .btn-destruct:hover { background: hsl(var(--destructive)/0.1); }
+
+    /* ── BOTTOM SHEET (mobile-first form) ── */
+    .sheet-overlay {
+      position: fixed; inset: 0;
+      background: hsl(var(--foreground)/0.18);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      display: flex; align-items: flex-end;
+    }
+    .sheet-overlay.hidden { display: none; }
+    .sheet-panel {
+      background: hsl(var(--card));
+      border-top: 1px solid hsl(var(--border));
+      border-radius: 6px 6px 0 0;
+      width: 100%;
+      max-height: 90vh;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .sheet-drag-handle {
+      width: 40px; height: 4px; border-radius: 2px;
+      background: hsl(var(--border)); margin: 10px auto 0;
+      flex-shrink: 0;
+    }
+    .sheet-header {
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sheet-title { font-size: 0.8125rem; font-weight: 700; flex: 1; }
+    .sheet-body { overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    .field-group { display: flex; flex-direction: column; gap: 3px; }
+    .field-label {
+      font-size: 0.5625rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+    }
+    .field-input {
+      background: hsl(var(--muted)/0.4);
+      border: 1px solid hsl(var(--border));
+      border-radius: 3px; padding: 8px 10px;
+      font-family: inherit; font-size: 0.8125rem;
+      color: hsl(var(--foreground)); outline: none; width: 100%;
+    }
+    .field-input:focus { border-color: hsl(var(--ring)); }
+    .field-input:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* Search results in bottom sheet */
+    .epg-result {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid hsl(var(--border)/0.5);
+      cursor: pointer; transition: background 0.1s;
+    }
+    .epg-result:hover { color: hsl(var(--primary)); }
+    .epg-result:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .epg-ch {
+      font-size: 0.5625rem; font-weight: 700; padding: 2px 5px;
+      background: hsl(var(--primary)/0.12); color: hsl(var(--primary));
+      border-radius: 2px; white-space: nowrap;
+    }
+    .epg-body { flex: 1; min-width: 0; }
+    .epg-title { font-size: 0.75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .epg-time { font-size: 0.5625rem; color: hsl(var(--muted-foreground)); }
+
+    .val-chip {
+      font-size: 0.5625rem; font-weight: 700; padding: 1px 5px;
+      border-radius: 3px; border: 1px solid;
+    }
+    .val-ok  { background: hsl(var(--success)/0.1); color: hsl(var(--success)); border-color: hsl(var(--success)/0.3); }
+    .val-err { background: hsl(var(--destructive)/0.1); color: hsl(var(--destructive)); border-color: hsl(var(--destructive)/0.3); }
+
+    .sheet-footer {
+      padding: 12px 16px; border-top: 1px solid hsl(var(--border));
+      display: flex; gap: 8px;
+    }
+
+    /* Tab panels (CSS-only switching using radio approach via class toggle) */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Empty state */
+    .empty-state { padding: 40px 16px; color: hsl(var(--muted-foreground)); }
+    .empty-cmd {
+      font-size: 0.6875rem; background: hsl(var(--muted)/0.5); border: 1px solid hsl(var(--border));
+      border-radius: 3px; padding: 8px 12px; display: inline-block; margin-top: 10px;
+    }
+
+    @media (min-width: 768px) {
+      .sheet-panel {
+        max-width: 560px; margin: 0 auto;
+        border-radius: 6px; margin-bottom: 40px;
+        border: 1px solid hsl(var(--border));
+      }
+      .sheet-overlay { align-items: center; }
+      .sheet-drag-handle { display: none; }
+      .thumb-grid-full { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <!-- App bar -->
+  <header class="app-bar">
+    <span class="app-bar-title">REC</span>
+    <div style="flex:1;"></div>
+    <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));padding-right:8px;">3 DONE · 1 REC · 2 SCHED · 1 FAIL</span>
+    <button class="btn btn-primary" onclick="document.getElementById('sheet-form').classList.remove('hidden')">+ RESERVE</button>
+    <button class="btn btn-ghost" style="padding:4px 7px;" onclick="document.documentElement.classList.toggle('dark')">☀</button>
+  </header>
+
+  <!-- Tab bar -->
+  <nav class="tab-bar" role="tablist" aria-label="録画フィルター">
+    <button class="tab-btn active" role="tab" aria-selected="true"  onclick="switchTab('all',this)">ALL <span class="tab-badge tb-all">7</span></button>
+    <button class="tab-btn"        role="tab" aria-selected="false" onclick="switchTab('rec',this)">REC <span class="tab-badge tb-rec">1</span></button>
+    <button class="tab-btn"        role="tab" aria-selected="false" onclick="switchTab('sched',this)">SCHED <span class="tab-badge tb-sched">2</span></button>
+    <button class="tab-btn"        role="tab" aria-selected="false" onclick="switchTab('done',this)">DONE <span class="tab-badge tb-done">3</span></button>
+    <button class="tab-btn"        role="tab" aria-selected="false" onclick="switchTab('fail',this)">FAIL <span class="tab-badge tb-fail">1</span></button>
+  </nav>
+
+  <!-- ─ TAB: ALL ─ -->
+  <div id="panel-all" class="tab-panel active" role="tabpanel">
+
+    <!-- REC NOW row -->
+    <div class="sec-hdr"><span class="rec-dot" style="width:5px;height:5px;margin-right:2px;"></span> REC NOW</div>
+    <div class="row-item">
+      <div class="row-accent ra-rec"></div>
+      <div class="row-body">
+        <div class="row-title">NHK スペシャル「激動の世界 2025」</div>
+        <div class="row-meta">
+          <span class="chip chip-rec"><span class="rec-dot" style="width:5px;height:5px;"></span> REC</span>
+          <span class="meta-text">NHK総合</span>
+          <span class="meta-text">22:00〜23:00</span>
+          <span class="meta-text" style="color:hsl(var(--destructive));">ELAPSED 00:23:14</span>
+        </div>
+        <div style="margin-top:5px;height:2px;background:hsl(var(--muted));border-radius:1px;overflow:hidden;">
+          <div style="width:38%;height:100%;background:hsl(var(--destructive));"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding:0 10px;">
+        <button class="btn btn-destruct" style="font-size:0.5625rem;padding:3px 8px;">■ STOP</button>
+      </div>
+    </div>
+
+    <!-- SCHED rows -->
+    <div class="sec-hdr">SCHED</div>
+    <div class="row-item">
+      <div class="row-accent ra-sched"></div>
+      <div class="row-body">
+        <div class="row-title">ブラタモリ 京都・祇園祭スペシャル</div>
+        <div class="row-meta">
+          <span class="chip chip-sched">SCHED</span>
+          <span class="meta-text">NHK総合</span>
+          <span class="meta-text">2026-04-18 19:30</span>
+          <span class="meta-text">45min</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding:0 10px;">
+        <button class="btn btn-ghost" style="font-size:0.5625rem;padding:3px 7px;">✕ CANCEL</button>
+      </div>
+    </div>
+    <div class="row-item">
+      <div class="row-accent ra-sched"></div>
+      <div class="row-body">
+        <div class="row-title">映像の世紀バタフライエフェクト</div>
+        <div class="row-meta">
+          <span class="chip chip-sched">SCHED</span>
+          <span class="meta-text">NHK BS</span>
+          <span class="meta-text">2026-04-20 21:00</span>
+          <span class="meta-text">60min</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding:0 10px;">
+        <button class="btn btn-ghost" style="font-size:0.5625rem;padding:3px 7px;">✕ CANCEL</button>
+      </div>
+    </div>
+
+    <!-- FAIL row -->
+    <div class="sec-hdr">FAIL</div>
+    <details style="border-bottom:1px solid hsl(var(--border));">
+      <summary style="list-style:none;cursor:pointer;">
+        <div class="row-item" style="border-bottom:none;">
+          <div class="row-accent ra-fail"></div>
+          <div class="row-body">
+            <div class="row-title">サッカー日本代表 国際親善試合</div>
+            <div class="row-meta">
+              <span class="chip chip-fail">FAIL</span>
+              <span class="meta-text">テレビ朝日</span>
+              <span class="meta-text">2026-04-16</span>
+              <span class="meta-text" style="color:hsl(var(--destructive));">▼ LOG</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;padding:0 10px;">
+            <button class="btn btn-destruct" style="font-size:0.5625rem;padding:3px 7px;" onclick="event.stopPropagation()">✕ DEL</button>
+          </div>
+        </div>
+      </summary>
+      <div class="log-drawer">
+        <div><span class="log-ts">2026-04-16T19:00:01.003Z</span><span class="log-err">ERR  ffmpeg exited with code 1</span></div>
+        <div><span class="log-ts">2026-04-16T19:00:01.001Z</span><span style="color:hsl(var(--muted-foreground));">INFO stream open → /data/hls/sess_a3f/</span></div>
+        <div><span class="log-ts">2026-04-16T19:00:00.441Z</span><span class="log-warn">WARN tuner lock timeout 5000ms — retry 1/3</span></div>
+        <div style="margin-top:5px;"><button class="btn btn-ghost" style="font-size:0.5rem;padding:2px 6px;">FULL LOG →</button></div>
+      </div>
+    </details>
+
+    <!-- DONE rows (compact with thumb) -->
+    <div class="sec-hdr">DONE</div>
+
+    <div class="done-row" tabindex="0" role="button" aria-label="NHKスペシャル 地球大進化を再生">
+      <div class="done-row-thumb">
+        <div class="done-row-thumb-bg" style="background:linear-gradient(135deg,hsl(221 83% 28%),hsl(260 55% 18%));">NHK</div>
+        <div class="done-row-ch">NHK総合</div>
+        <div class="done-row-dur">01:00:00</div>
+        <div class="done-row-ribbon"></div>
+        <div class="done-row-prog"><div class="done-row-prog-fill" style="width:100%;background:hsl(var(--success));"></div></div>
+      </div>
+      <div class="done-row-body">
+        <div class="done-row-title">NHKスペシャル 地球大進化</div>
+        <div class="done-row-meta">
+          <span class="chip chip-done" style="font-size:0.5rem;padding:1px 4px;">DONE</span>
+          <span>2026-04-15</span>
+          <span style="margin-left:auto;">2.4GB</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding:0 8px;">
+        <button class="btn btn-ghost" style="font-size:0.5625rem;padding:3px 6px;" onclick="event.stopPropagation()">▶ PLAY</button>
+      </div>
+    </div>
+
+    <div class="done-row" tabindex="0" role="button" aria-label="ドキュメント72時間を再生">
+      <div class="done-row-thumb">
+        <div class="done-row-thumb-bg" style="background:linear-gradient(135deg,hsl(142 45% 18%),hsl(200 55% 14%));">NHK</div>
+        <div class="done-row-ch">NHK BS</div>
+        <div class="done-row-dur">00:45:00</div>
+        <div class="done-row-prog"><div class="done-row-prog-fill" style="width:62%;"></div></div>
+      </div>
+      <div class="done-row-body">
+        <div class="done-row-title">ドキュメント72時間 東京・深夜</div>
+        <div class="done-row-meta">
+          <span class="chip chip-done" style="font-size:0.5rem;padding:1px 4px;">DONE</span>
+          <span>2026-04-14</span>
+          <span style="margin-left:auto;color:hsl(var(--primary));font-weight:700;">62%</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding:0 8px;">
+        <button class="btn btn-ghost" style="font-size:0.5625rem;padding:3px 6px;" onclick="event.stopPropagation()">▶ PLAY</button>
+      </div>
+    </div>
+
+    <div class="done-row" tabindex="0" role="button" aria-label="クローズアップ現代を再生">
+      <div class="done-row-thumb">
+        <div class="done-row-thumb-bg" style="background:linear-gradient(135deg,hsl(38 65% 22%),hsl(15 55% 16%));">NHK</div>
+        <div class="done-row-ch">NHK総合</div>
+        <div class="done-row-dur">00:28:00</div>
+        <div class="done-row-prog"><div class="done-row-prog-fill" style="width:0%;"></div></div>
+      </div>
+      <div class="done-row-body">
+        <div class="done-row-title">クローズアップ現代 AI時代</div>
+        <div class="done-row-meta">
+          <span class="chip chip-done" style="font-size:0.5rem;padding:1px 4px;">DONE</span>
+          <span>2026-04-13</span>
+          <span style="margin-left:auto;font-weight:700;color:hsl(var(--primary));">NEW</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding:0 8px;">
+        <button class="btn btn-ghost" style="font-size:0.5625rem;padding:3px 6px;" onclick="event.stopPropagation()">▶ PLAY</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─ TAB: REC ─ -->
+  <div id="panel-rec" class="tab-panel" role="tabpanel">
+    <div class="sec-hdr"><span class="rec-dot" style="width:5px;height:5px;margin-right:2px;"></span> REC NOW</div>
+    <div class="row-item">
+      <div class="row-accent ra-rec"></div>
+      <div class="row-body">
+        <div class="row-title">NHK スペシャル「激動の世界 2025」</div>
+        <div class="row-meta">
+          <span class="chip chip-rec"><span class="rec-dot" style="width:5px;height:5px;"></span> REC</span>
+          <span class="meta-text">NHK総合</span>
+          <span class="meta-text">22:00〜23:00</span>
+          <span class="meta-text" style="color:hsl(var(--destructive));">ELAPSED 00:23:14</span>
+        </div>
+        <div style="margin-top:5px;height:2px;background:hsl(var(--muted));border-radius:1px;overflow:hidden;">
+          <div style="width:38%;height:100%;background:hsl(var(--destructive));"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding:0 10px;">
+        <button class="btn btn-destruct" style="font-size:0.5625rem;padding:3px 8px;">■ STOP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─ TAB: SCHED ─ -->
+  <div id="panel-sched" class="tab-panel" role="tabpanel">
+    <div class="row-item">
+      <div class="row-accent ra-sched"></div>
+      <div class="row-body">
+        <div class="row-title">ブラタモリ 京都・祇園祭スペシャル</div>
+        <div class="row-meta">
+          <span class="chip chip-sched">SCHED</span>
+          <span class="meta-text">NHK総合</span>
+          <span class="meta-text">2026-04-18 19:30</span>
+          <span class="meta-text">45min</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding:0 10px;">
+        <button class="btn btn-ghost" style="font-size:0.5625rem;padding:3px 7px;">✕ CANCEL</button>
+      </div>
+    </div>
+    <div class="row-item">
+      <div class="row-accent ra-sched"></div>
+      <div class="row-body">
+        <div class="row-title">映像の世紀バタフライエフェクト</div>
+        <div class="row-meta">
+          <span class="chip chip-sched">SCHED</span>
+          <span class="meta-text">NHK BS</span>
+          <span class="meta-text">2026-04-20 21:00</span>
+          <span class="meta-text">60min</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding:0 10px;">
+        <button class="btn btn-ghost" style="font-size:0.5625rem;padding:3px 7px;">✕ CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─ TAB: DONE (full grid) ─ -->
+  <div id="panel-done" class="tab-panel" role="tabpanel">
+    <div class="thumb-grid-full">
+      <article class="thumb-card" tabindex="0" role="button">
+        <div class="thumb-frame">
+          <div class="thumb-bg" style="background:linear-gradient(135deg,hsl(221 83% 28%),hsl(260 55% 18%));">NHK</div>
+          <div class="thumb-ch-bug">NHK総合</div>
+          <div class="thumb-duration">01:00:00</div>
+          <div class="thumb-ribbon"></div>
+          <div class="thumb-progress"><div class="thumb-progress-fill" style="width:100%;background:hsl(var(--success));"></div></div>
+        </div>
+        <div class="thumb-info">
+          <div class="thumb-title">NHKスペシャル 地球大進化</div>
+          <div class="thumb-sub"><span class="chip chip-done" style="font-size:0.5rem;padding:1px 4px;">DONE</span> <span>2026-04-15</span> <span style="margin-left:auto;">2.4GB</span></div>
+        </div>
+      </article>
+      <article class="thumb-card" tabindex="0" role="button">
+        <div class="thumb-frame">
+          <div class="thumb-bg" style="background:linear-gradient(135deg,hsl(142 45% 18%),hsl(200 55% 14%));">NHK</div>
+          <div class="thumb-ch-bug">NHK BS</div>
+          <div class="thumb-duration">00:45:00</div>
+          <div class="thumb-progress"><div class="thumb-progress-fill" style="width:62%;"></div></div>
+        </div>
+        <div class="thumb-info">
+          <div class="thumb-title">ドキュメント72時間</div>
+          <div class="thumb-sub"><span class="chip chip-done" style="font-size:0.5rem;padding:1px 4px;">DONE</span> <span>2026-04-14</span> <span style="margin-left:auto;color:hsl(var(--primary));font-weight:700;">62%</span></div>
+        </div>
+      </article>
+      <article class="thumb-card" tabindex="0" role="button">
+        <div class="thumb-frame">
+          <div class="thumb-bg" style="background:linear-gradient(135deg,hsl(38 65% 22%),hsl(15 55% 16%));">NHK</div>
+          <div class="thumb-ch-bug">NHK総合</div>
+          <div class="thumb-duration">00:28:00</div>
+          <div class="thumb-progress"><div class="thumb-progress-fill" style="width:0%;"></div></div>
+        </div>
+        <div class="thumb-info">
+          <div class="thumb-title">クローズアップ現代 AI時代</div>
+          <div class="thumb-sub"><span class="chip chip-done" style="font-size:0.5rem;padding:1px 4px;">DONE</span> <span>2026-04-13</span> <span style="margin-left:auto;font-weight:700;color:hsl(var(--primary));">NEW</span></div>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <!-- ─ TAB: FAIL ─ -->
+  <div id="panel-fail" class="tab-panel" role="tabpanel">
+    <details style="border-bottom:1px solid hsl(var(--border));">
+      <summary style="list-style:none;cursor:pointer;">
+        <div class="row-item" style="border-bottom:none;">
+          <div class="row-accent ra-fail"></div>
+          <div class="row-body">
+            <div class="row-title">サッカー日本代表 国際親善試合</div>
+            <div class="row-meta">
+              <span class="chip chip-fail">FAIL</span>
+              <span class="meta-text">テレビ朝日</span>
+              <span class="meta-text">2026-04-16</span>
+              <span class="meta-text" style="color:hsl(var(--destructive));">▼ LOG</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;padding:0 10px;">
+            <button class="btn btn-destruct" style="font-size:0.5625rem;padding:3px 7px;" onclick="event.stopPropagation()">✕ DEL</button>
+          </div>
+        </div>
+      </summary>
+      <div class="log-drawer">
+        <div><span class="log-ts">2026-04-16T19:00:01.003Z</span><span class="log-err">ERR  ffmpeg exited with code 1</span></div>
+        <div><span class="log-ts">2026-04-16T19:00:01.001Z</span><span style="color:hsl(var(--muted-foreground));">INFO stream open → /data/hls/sess_a3f/</span></div>
+        <div><span class="log-ts">2026-04-16T19:00:00.441Z</span><span class="log-warn">WARN tuner lock timeout 5000ms — retry 1/3</span></div>
+        <div style="margin-top:5px;"><button class="btn btn-ghost" style="font-size:0.5rem;padding:2px 6px;">FULL LOG →</button></div>
+      </div>
+    </details>
+  </div>
+
+  <!-- ── BOTTOM SHEET: reservation form ── -->
+  <div id="sheet-form" class="sheet-overlay hidden" role="dialog" aria-modal="true" aria-label="新規録画予約">
+    <div class="sheet-panel">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <span class="sheet-title">NEW RESERVATION</span>
+        <button class="btn btn-ghost" style="padding:3px 7px;font-size:0.625rem;" onclick="document.getElementById('sheet-form').classList.add('hidden')">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="field-group">
+          <label class="field-label">SEARCH EPG</label>
+          <input class="field-input" type="text" placeholder="番組名を入力..." />
+        </div>
+
+        <div style="border:1px solid hsl(var(--border));border-radius:3px;overflow:hidden;">
+          <div style="padding:5px 9px;font-size:0.5rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:hsl(var(--muted-foreground));border-bottom:1px solid hsl(var(--border));">EPG RESULTS</div>
+          <div class="epg-result" tabindex="0" style="padding:8px 9px;">
+            <span class="epg-ch">NHK総合</span>
+            <div class="epg-body">
+              <div class="epg-title">NHKスペシャル「気候変動と日本」</div>
+              <div class="epg-time">2026-04-17 22:00〜23:00 · 60min</div>
+            </div>
+            <button class="btn btn-primary" style="font-size:0.5rem;padding:3px 7px;">SELECT</button>
+          </div>
+          <div class="epg-result" tabindex="0" style="padding:8px 9px;">
+            <span class="epg-ch">NHK BS</span>
+            <div class="epg-body">
+              <div class="epg-title">NHKスペシャル アーカイブス</div>
+              <div class="epg-time">2026-04-18 21:00〜22:00 · 60min</div>
+            </div>
+            <button class="btn btn-primary" style="font-size:0.5rem;padding:3px 7px;">SELECT</button>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;height:1px;background:hsl(var(--border));"></div>
+          <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));">MANUAL</span>
+          <div style="flex:1;height:1px;background:hsl(var(--border));"></div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">CHANNEL</label>
+          <select class="field-input">
+            <option>NHK総合 (GR)</option>
+            <option>NHK BS</option>
+            <option>テレビ朝日</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="field-group">
+            <label class="field-label">START <span class="val-chip val-ok">OK</span></label>
+            <input class="field-input" type="datetime-local" value="2026-04-18T21:00" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">END <span class="val-chip val-ok">OK</span></label>
+            <input class="field-input" type="datetime-local" value="2026-04-18T22:00" />
+          </div>
+        </div>
+
+        <div style="font-size:0.5625rem;padding:6px 8px;border-radius:3px;background:hsl(var(--success)/0.08);border:1px solid hsl(var(--success)/0.25);color:hsl(var(--success));">
+          ✓ NO CONFLICT — slot is free
+        </div>
+      </div>
+
+      <div class="sheet-footer">
+        <button class="btn btn-primary" style="flex:1;justify-content:center;">SCHEDULE</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('sheet-form').classList.add('hidden')">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(id, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected','true');
+      document.getElementById('panel-' + id).classList.add('active');
+    }
+    document.getElementById('sheet-form').addEventListener('click', function(e) {
+      if (e.target === this) this.classList.add('hidden');
+    });
+  </script>
+</body>
+</html>

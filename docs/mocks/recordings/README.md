@@ -12,104 +12,161 @@ The user wants to quickly schedule a new recording (a few taps / clicks) and occ
 - Remote-control / focus: every interactive element has `:focus-visible` ring; DOM order = visual order = tab order
 - No pure black/white; Shadcn CSS-var tokens throughout
 - Disk usage metadata available on completed items: `filePath`, `sizeBytes`, `durationSec`
+- Completed items have `thumbnailUrl` (served at `GET /api/recordings/:id`, backend extracts a frame at recording end into `data/thumbnails/<recordingId>.jpg`)
 
-## Variants
+---
+
+## Legacy direction (v1–v6) — deprecated 2026-04-17
+
+These variants established the core status-colour and tab-filter vocabulary but predated the thumbnail model. They treated all recording states visually equally (text-only cards) and did not account for the diagnostic-dense register from `states/v3`.
 
 ### v1 — Grouped-section flat list + Modal form
-- Layout: vertical list sectioned by status (録画中 / 予約済み / 完了 / 失敗); left-edge stripe for colour coding
-- Form: centred `Dialog` overlay (channel → program search → start/end datetime)
-- Trade-off: most familiar pattern, easy to scan mixed states; modal requires focus trap management; modal blocks the list context
+- Trade-off: most familiar; no thumbnail surface; modal blocks list context
 
 ### v2 — Monthly Calendar view + Side Drawer form
-- Layout: calendar grid (month view) with colour-coded event chips per day; clicking a day shows detail strip below calendar; toggle to list view
-- Form: right-side `Sheet` (280px) with EPG autocomplete dropdown + conflict warning
-- Trade-off: best "when is what scheduled" spatial overview; terrible for >3 items per day; mobile calendar cells shrink too small without special layout (uses mini dot-per-day fallback); drawer form has good context preservation
+- Trade-off: best temporal overview; terrible on mobile; no thumbnail surface
 
 ### v3 — Filtered Tabs list + Bottom Sheet form (mobile-first)
-- Layout: underline tab bar (すべて / 予約済み / 録画中 / 完了 / 失敗) with live badge counts; dense 1-line rows with left stripe; tab count badges are colour-coded by status
-- Form: bottom `Sheet` that slides up; full-width footer buttons; same component on desktop at wider max-width
-- Trade-off: best mobile ergonomics; tab counts give quick overall status; bottom sheet maps well to touch; desktop users lose spatial separation of pending/done because everything is in one scrollable list under a tab; "all" tab shows all four statuses at once (requirement met)
+- Trade-off: best mobile ergonomics; no thumbnail differentiation between states
 
 ### v4 — Card Grid list + Full-page Stepper form
-- Layout: active recording shown as full-width strip; pending/completed/failed shown as thumbnail cards in a 3-col (desktop) / 2-col (mobile) grid; section headers per status group
-- Form: navigates to a dedicated full-page 3-step form (channel → time/EPG → confirm); stepper component with "back" navigation
-- Trade-off: visually richest, good for "media library" feel; card grid wastes space when titles are long; stepper requires 3 interactions before saving (highest friction); best for complex reservations (e.g. recurring); stepper is poor for quick scheduling
+- Trade-off: visually richest; stepper too high friction for quick reservations; all cards treated identically
 
 ### v5 — Date-grouped Timeline list + Inline Expanding form
-- Layout: vertical timeline grouped by calendar day (日 pill headers); each item has a time axis on the left and a mini card on the right; "add" trigger card at the bottom of any day group expands inline
-- Form: inline expand within the list — channel/program/time inputs appear inside a dashed card without leaving the list; "add globally" dashed card at bottom
-- Trade-off: best temporal narrative — you see past + present + future in one scroll; inline form means zero navigation cost for adding; risk: long list + open form pushes content far down; on mobile the time labels compress nicely; unique trade-off not covered by other variants
+- Trade-off: best temporal narrative; inline form causes scroll-jump on open
 
-### v6 — Two-column Sidebar layout + EPG Search Command-Palette Modal
-- Layout (desktop): left column = active recording strip + completed + failed; right sidebar = upcoming reservations list + disk usage widget; left is the "archive", right is the "queue"
-- Form: command-palette style `Dialog` (full-width search input at top, scrollable EPG results by date group, channel quick-filter chips, single-click-to-reserve for EPG result, manual datetime entry option at bottom)
-- Trade-off: most information-dense desktop layout; sidebar with queue vs archive split matches mental model of "I want to check what's coming up" vs "I want to find a recording to play back"; EPG search modal is the fastest reservation flow (1 search + 1 click); mobile collapses to single column with tabs; disk usage widget fits naturally in sidebar
+### v6 — Two-column Sidebar + EPG Search Command-Palette Modal
+- Trade-off: most information-dense desktop; no visual distinction completed vs non-completed; modal form fastest reservation flow
+
+**Prior recommendation:** v3 list + v6 modal form — superseded by current direction below.
+
+---
+
+## Current direction (v10+) — 2026-04-17
+
+New family adopts the diagnostic-dense register from `docs/mocks/states/v3.html`:
+- Monospace font stack throughout
+- Status chip grammar: `SCHED` / `REC` / `DONE` / `FAIL` — square corners, color-coded border+fill
+- Completed items use real 16:9 thumbnail frames; all other states are text-dense rows with accent bars
+- Log-tail drawer on FAIL items (`<details>` in mocks, expand/collapse in production)
+- Pulsing `REC` dot for recording-now items
+- No pure `#000` / `#fff`; all Shadcn HSL tokens
+
+### v10 — Sectioned single-column feed + Command-palette modal
+
+- List layout: one vertical feed, section headers (REC NOW / SCHED / FAIL / DONE), completed items rendered as a `auto-fill` thumb grid below the text-dense non-completed rows. All four statuses visible simultaneously without a tab switch.
+- Form: centred command-palette `Dialog` — search input at top, EPG results in date-grouped list (one click to reserve), manual entry section at bottom with inline `OK`/`ERR` validation chips.
+- Trade-off: best "see everything at once" scanning; completed section pushes down if there are many SCHED/FAIL rows; command-palette form is fastest reservation (2 keystrokes + 1 click); desktop-native feel; mobile scrolls naturally but completed grid becomes 2-col.
+
+### v11 — Two-column split: Thumb Archive left + Status Queue right + Side Sheet form
+
+- List layout: left column = completed thumb grid (the "archive"); right fixed panel = recording-now + scheduled + failed as text-dense rows (the "queue"); permanent two-pane at 1fr / 300px on desktop; collapses to single column (queue hidden) on mobile.
+- Form: right-side `Sheet` drawer — EPG search, filterable results, manual date/time inputs with inline validation, conflict status chip at the bottom.
+- Trade-off: clearest archive/queue mental model; the two item types never compete for visual space; disk usage widget fits naturally at the bottom of the archive column; mobile loses queue visibility (users need the tab bar workaround); the side sheet keeps list context visible; total information density is highest of the three variants.
+
+### v12 — Tab-filtered feed: compact thumb rows on ALL tab + full grid on DONE tab + bottom-sheet form
+
+- List layout: tab bar (ALL / REC / SCHED / DONE / FAIL) with monospace count badges. On ALL tab, completed items show as compact rows with a 96×54px mini-thumb inlined left (16:9, channel bug, duration chip, progress bar, watched ribbon). On DONE tab, same items expand to a full auto-fill `260px` card grid. Non-completed items always appear as text-dense accent-bar rows. Four statuses coexist on ALL tab in sections.
+- Form: bottom `Sheet` — mobile-first, drag handle, EPG search + results, manual inputs, conflict chip; adapts to centered dialog on desktop via media query.
+- Trade-off: best mobile ergonomics (thumb-friendly tab switching, bottom sheet reachable with one hand); the dual-density trick (compact row on ALL, full grid on DONE) avoids committing to one representation; tab switching is one extra step vs v10's always-visible sections; the bottom sheet is the most thumb-accessible form surface on phones.
+
+---
 
 ## Recommendation
 
-**List: v3 (Filtered Tabs)**  
-**Form: v6 (EPG Search Modal / command-palette)**
+**List: v12** (tab-filtered feed with dual-density completed items)
+**Form: v12 bottom sheet** (or swap in v10's command-palette for desktop-only contexts)
 
-Combined justification: v3's tab bar is the most intuitive pattern on both mobile and desktop — users can instantly filter to "予約済み" or "録画中" without the cognitive overhead of a calendar (v2) or scrolling a combined timeline (v5). The left stripe + pill badge system satisfies the "status at a glance" requirement at minimal visual cost. The tab approach also maps directly to Shadcn `Tabs` primitive.
+Combined justification:
+- v12's ALL tab satisfies the "see all four statuses simultaneously" requirement while the DONE tab gives the clean thumb grid when the user wants to browse the archive.
+- The compact mini-thumb row on the ALL tab is the best compromise between scan speed and thumbnail recognition — the 16:9 frame + channel bug + duration chip + progress bar conveys everything a user needs without the SCHED rows drowning in a tiny column.
+- v10 is the runner-up for desktop-centric deployments where the command-palette form is preferred (it exposes all statuses without a tab switch). v11 is best if the team decides the archive/queue split is a first-class mental model worth encoding in a permanent layout.
+- Bottom sheet form (v12) + command-palette modal (v10) are not mutually exclusive — the production implementation can use the sheet on narrow viewports and the modal on wide.
 
-For the form, v6's command-palette approach is the fastest path from intent to saved reservation: type a few characters, see EPG matches grouped by date, click once to reserve. This aligns with "パッと入力、たまに見返す" — the reservation flow should take under 5 seconds for a program the user has already identified. The centred modal doesn't require extra navigation state (unlike the stepper in v4) and doesn't hide the list context for a full page (unlike v4's full-page form).
-
-The drawer from v2 is the second choice for the form if EPG search query latency is a concern — it keeps the list visible for orientation.
+---
 
 ## Handoff notes for `frontend`
 
+### Thumbnail data source
+
+- Backend extracts a frame at recording end: `data/thumbnails/<recordingId>.jpg`
+- Surface via `GET /api/recordings/:id` response field `thumbnailUrl: string | null`
+- `thumbnailUrl` is `null` while status is `recording`, `pending`, or `failed`
+- Frontend: render the `<img src={thumbnailUrl}>` only when non-null; fall back to the gradient placeholder div (channel callsign + gradient) if null or 404
+- Implication: the recording status state machine needs a `thumbnail-ready` sub-state (or the frontend polls until `thumbnailUrl` is non-null after transition to `completed`). Backend may want to emit a `thumbnail` background job on the `completed` transition and set `thumbnailUrl` once the job finishes — this means completed items can briefly appear without a thumbnail. The mock uses the placeholder for this gap.
+
+### Monospace font stack
+
+```css
+font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", ui-monospace, monospace;
+```
+
+Apply at the root. Japanese characters fall back to system UI since the mono stack does not include CJK glyphs — acceptable at small sizes.
+
+### Status chip grammar
+
+| Code   | CSS class     | Color var         | Use on                        |
+|--------|---------------|-------------------|-------------------------------|
+| `SCHED`| `.chip-sched` | `--warning`       | pending reservations          |
+| `REC`  | `.chip-rec`   | `--destructive`   | recording-now + pulsing dot   |
+| `DONE` | `.chip-done`  | `--success`       | completed with thumbnail      |
+| `FAIL` | `.chip-fail`  | `--destructive/0.8`| failed + log-tail drawer      |
+
+All chips: `border-radius: 3px` (square), `font-size: 0.625rem`, `font-weight: 700`, border on all sides.
+
 ### Shadcn primitives
 
-| UI element | Shadcn primitive |
-|---|---|
-| Filter bar | `Tabs` (with `TabsList` + `TabsTrigger`) |
-| Status badges | `Badge` (variant + custom colour class) |
-| Reservation modal | `Dialog` (with `DialogContent`, `DialogHeader`, `DialogFooter`) |
-| Delete confirmation | `AlertDialog` |
-| Channel/time inputs | `Input`, `Select` |
-| Form validation | `Form` (react-hook-form wrapper) |
-| Toast on success/failure | `sonner` |
-| Disk usage (v6) | `Progress` |
-| Drawer variant (v2 alt) | `Sheet` (side=right) |
-| Bottom sheet variant (v3) | `Sheet` (side=bottom) |
+| UI element               | Shadcn primitive                          |
+|--------------------------|-------------------------------------------|
+| Tab bar                  | `Tabs` (`TabsList` + `TabsTrigger`)       |
+| Status chips             | `Badge` (custom variant per status code)  |
+| Completed thumb card     | `Card` (`CardContent`)                    |
+| Reservation form (mobile)| `Sheet` (side=bottom)                     |
+| Reservation form (desktop)| `Dialog` (command-palette layout)        |
+| Delete confirmation      | `AlertDialog`                             |
+| Channel / time inputs    | `Input`, `Select`                         |
+| Form validation          | `Form` (react-hook-form)                  |
+| Toast on success/failure | `sonner`                                  |
+| Disk usage               | `Progress`                                |
+| Log-tail drawer          | `Collapsible` (`CollapsibleTrigger` + `CollapsibleContent`) |
+| Scroll areas             | `ScrollArea`                              |
 
-### Tailwind tokens to carry forward
+### Tailwind tokens
 
 - `bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`
-- `border-border`, `ring` (focus ring: `ring-2 ring-ring ring-offset-2`)
-- Status colour pattern (not Shadcn tokens, custom): keep the HSL values defined in CSS vars for pending/recording/completed/failed — do not use raw Tailwind amber/green/red because they won't track the dark mode shift
+- `border-border`, `ring-ring` (focus: `ring-2 ring-ring ring-offset-2`)
+- Custom CSS vars (add to theme extension, do NOT use raw Tailwind color names):
+  ```
+  --success:  142 70% 46%  (dark) / 142 70% 38%  (light)
+  --warning:  38  92% 50%  (dark) / 38  92% 46%  (light)
+  ```
 
-### Status colour system (carry into Tailwind theme extension)
+### Interactive states
 
-```
---status-pending:   38 92% 52%     (amber)
---status-recording: 0  72% 58%     (red, pulsing dot)
---status-completed: 142 70% 40%    (green)
---status-failed:    0  50% 40%     (muted red)
-```
+- Row hover: `bg-muted/40`
+- Card hover: `bg-muted/35`
+- Focus-visible: `outline-2 outline-ring outline-offset-3 rounded-sm` on every button / card / tab
+- REC dot: CSS keyframe `opacity 1→0.35→1` at 1.4s, `prefers-reduced-motion` disables
+- Recording progress bar: `bg-destructive` fill, same animation
+- Tab count badge: TanStack Query invalidation on any recording mutation
+- Thumb progress bar: `bg-primary` fill, static (pulled from `watchedSec / durationSec`)
+- Watched ribbon: absolute positioned corner triangle, `bg-success/0.85`
 
-### Interactive states to implement
+### Form behaviour
 
-- Hover: `bg-muted/40` on list rows
-- Focus-visible: `outline-2 outline-ring outline-offset-2 rounded` on every button/link/tab
-- Active recording dot: CSS `animation: pulse` (keyframe opacity 1→0.5→1, 1.5s)
-- Progress bar (recording): red fill, same pulse animation
-- Tab count badge: updates live via TanStack Query invalidation
-
-### Form behaviour notes
-
-- EPG search: debounced query to `GET /api/programs?q=...&serviceId=...`; results grouped by date; selecting a result auto-fills `startAt` + `endAt`
-- Conflict warning: check existing `pending`/`recording` schedules for time overlap client-side before submit (server also validates)
-- Validation: `startAt` must be in the future; `endAt` > `startAt`; channel required
-- On success: invalidate `['recordings']` query, close modal, toast "予約しました"
+- EPG search: debounced `GET /api/programs?q=&serviceId=`; results grouped by date; selecting auto-fills `startAt` / `endAt`
+- Conflict check: client-side overlap against `pending` + `recording` schedules before submit; server also validates
+- Validation chips: inline `OK` / `ERR` per field, not below — reduces layout shift
+- On success: invalidate `['recordings']` query, close sheet/modal, `sonner` toast "予約しました"
 - On delete: `AlertDialog` confirm → `DELETE /api/recordings/:id` → invalidate → toast
 
 ### Open questions
 
-- Should the "completed" recordings link directly to a playback route (`/recordings/:id`) or open an inline player (like the live player)? This affects whether `Card` items have a play button or are fully clickable.
-- Recurring reservations (e.g. every week) are not in Phase 4 scope — but the form should have space for a "毎週" toggle without a full redesign.
-- The disk usage widget in v6's sidebar — Phase 4 does not have a storage health endpoint yet (Phase 6). The widget can render as static/placeholder until then.
+- Thumbnail polling vs server-sent event: should frontend poll `GET /api/recordings/:id` until `thumbnailUrl` is non-null after `completed`, or does the backend push a WS/SSE event when the thumbnail job finishes? SSE preferred to avoid polling.
+- Playback route: does clicking a completed card navigate to `/recordings/:id` (full page) or open an inline overlay player? Affects Card semantics (`<a>` vs `<button>`).
+- Recurring reservations (`毎週` toggle): not in Phase 4 scope but the form field-group layout has room for it without redesign.
+- Disk usage endpoint (`GET /api/storage/stats`) is Phase 6 — the v11 disk bar and the storage figure in v10/v12 render as placeholder until then.
 
 ## Chosen variant
 
-_(Pending user selection — v3 list + v6 modal form is the designer recommendation)_
+_(Pending user selection — v12 list + v12 bottom-sheet form is the designer recommendation; v10 command-palette form is the desktop-preferred alternative)_

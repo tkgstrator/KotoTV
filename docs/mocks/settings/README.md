@@ -2,145 +2,224 @@
 
 ## Goal
 
-Let the user glance at their current preferences and change a small number of
-values (theme, live quality) in one brief visit.  Diagnostic info (HW accel,
-storage, server health) must be immediately readable without any interaction.
+Let the user glance at server health and change a small number of preferences
+(theme, live quality) in one brief visit.  Diagnostic data (mirakc, ffmpeg,
+postgres, disk) must be immediately scannable without interaction.  Interactive
+settings must be visually distinct from read-only diagnostic surfaces.
+
+---
+
+## Legacy direction (v1–v5)
+
+Deprecated 2026-04-17.  Designer-recommended variant was v4 (Card Grid) but it
+was never adopted by the frontend team.  The v1–v5 files are preserved for
+reference; do not delete them.
+
+Key difference from the current direction: v1–v5 used a conventional settings
+aesthetic (icons, rounded pills, "読み取り専用" badge stamps).  They did not
+differentiate diagnostic surfaces typographically — everything used the same
+system font.
+
+---
+
+## Current direction (v10+)
+
+**Philosophy**: settings in this app is majority diagnostic (HW accel, server
+health, disk, versions) and minority interactive (theme, quality).  The new
+family adopts a "status console" register for diagnostic surfaces — monospace
+key-value pairs, square status chips, inline log tails — and reserves a
+non-monospace, action-oriented register exclusively for the two interactive rows.
+The contrast is the primary UI signal: *glanceable what is tunable vs what is
+information-only*.
+
+### Chip vocabulary (all square corners, `border-radius: 2px`)
+
+| Code | Color | Use |
+|---|---|---|
+| `OK` | success green | subsystem healthy |
+| `WARN` | amber | degraded / threshold crossed |
+| `ERR` | destructive red | connection error / subsystem down |
+| `FATAL` | destructive red, bold | process crash |
+| `BOOTING` | primary blue | subsystem initializing |
+
+---
 
 ## Constraints / inputs
 
-- Route: `/settings` (tentative, TanStack Router file-based route)
+- Route: `/settings` (TanStack Router file-based)
 - User-tunable settings:
-  - Theme: light / dark / system (`RadioGroup` or segmented control)
-  - Live quality preset: auto / high / medium / low (`Select`)
-- Read-only diagnostic items (never interactive):
-  - HW accel type — sourced from `GET /api/health` response field
-    `hwAccel: "nvenc" | "qsv" | "vaapi" | "none"`
-  - Recording storage — `GET /api/health` → `storage: { used, total, path }`
-  - Server health — `GET /api/health` → `services: { mirakc, postgres }` each
-    `"up" | "down"`
-- About: version string (build-time constant), GitHub link, license
-- App philosophy: "パッと入力、たまに見返す" — rare visit, one-glance scannable
-- tvOS/FireTV compatibility: all interactive elements must be keyboard/D-pad
-  reachable with visible `focus-visible` rings; no hover-only affordances
+  - Theme: `light` / `dark` / `system` — square segmented control (NOT `Switch`)
+  - Live quality preset: `auto` / `high` / `medium` / `low` — square segmented control
+- Read-only diagnostic (never interactive):
+  - `mirakc` — version, last poll time, tuner availability
+  - `ffmpeg` — version, hw_accel type, active sessions
+  - `postgres` — version, connection count, latency
+  - `disk` — free/total, usage %, paths, progress bar (square)
+  - `server` — bun/hono versions, uptime, rss memory
+- About: version, git sha, built timestamp, license link
+- App philosophy: "パッと入力、たまに見返す" — one-glance scannable, no engagement loops
+- tvOS/FireTV: every interactive element reachable by D-pad; diagnostic rows
+  NOT focusable unless they carry a log-tail toggle
+
+---
 
 ## Variants
 
-### v1 — Single-column scroll
+### v10 — Status Console Scroll
 
-- Layout idea: iOS-style grouped sections stacked vertically, anchored
-  section headings with uppercase labels. Diagnostic section is visually
-  separated by a dashed border + muted background.
-- Trade-off: dead-simple on mobile, zero JavaScript for navigation. Desktop
-  feels slightly narrow and wastes horizontal space.
+Single-page scroll.  Diagnostic rows are flat lists grouped into three section
+blocks (STREAMING / STORAGE / RUNTIME).  Interactive settings follow below as a
+distinct card using `font-family: system-ui` — the font-family contrast is
+immediately apparent.  WARN state (disk) auto-expands its log tail via
+`<details open>`.
 
-### v2 — Tabbed / Segmented (desktop-friendly)
+- Layout: single column, max-width 760 px, works naturally on 390 px mobile.
+- Trade-off: simplest navigation (no tabs, no sidebar); all diagnostic data
+  visible on first scroll.  Desktop wastes some horizontal space.  Interleaving
+  diagnostic and interactive sections in one linear flow risks visual confusion
+  if more interactive settings are added later.
 
-- Layout idea: horizontal tab bar (テーマ / 画質 / 診断 / About) above a
-  single content pane. Each tab reveals exactly one category.
-- Trade-off: clean desktop layout, hides diagnostic info behind a tap. Users
-  who just want server health have to switch tabs — one extra action. Good
-  focus-order (tab bar → panel).
+### v11 — Two-Column Split (Left Nav + Right Pane)
 
-### v3 — Left-nav + Content Pane (macOS/desktop split)
+Fixed 200 px left sidebar with per-subsystem nav items, each showing its own
+status chip.  Right pane scrolls independently.  Each subsystem gets its own
+`Card` with a KV table and collapsible log tail.  Non-OK subsystem
+(mirakc ERR + disk WARN) visible at a glance in the nav.
 
-- Layout idea: persistent 220 px left sidebar with nav items grouped into
-  sections; right content pane scrolls independently. On narrow viewports
-  the sidebar collapses to a horizontal scrollable strip.
-- Trade-off: familiar desktop pattern, expands well to 1440 px. Overkill for
-  a ~6-item settings screen; adds structural complexity with little gain.
+- Layout: two-column on desktop, collapses to horizontal scrollable strip on
+  mobile ≤ 600 px.
+- Trade-off: best for navigating directly to a failing subsystem.  Clearest
+  separation: left nav = diagnostic health summary, right pane = detail.  More
+  structural complexity; overkill if the settings screen stays small.
 
-### v4 — Card Grid
+### v12 — Tabbed + Pinned Health Strip  ← RECOMMENDED
 
-- Layout idea: every setting group is its own `Card`. User-tunable cards use
-  full-color icon; diagnostic cards use muted icon + dashed border + a
-  "読み取り専用" badge stamped in the top-right corner. Responsive 1→2→3
-  column grid.
-- Trade-off: highest at-a-glance density — you see all settings simultaneously
-  without any navigation. The `::before` "read-only" stamp is the clearest
-  diagnostic-vs-editable distinction of all variants. On narrow mobile
-  (1-column) it degrades to a scroll like v1 but with larger cards.
+Three tabs: `ステータス` / `表示設定` / `About`.  A slim health strip is
+pinned below the global header and above the tab bar — always visible regardless
+of which tab is active.  Health strip shows one chip + one key reading per
+subsystem in a horizontal scrollable row.  Inside the `ステータス` tab, the
+diagnostic layout uses the chip-in-left-column pattern (chip column / KV content
+column).  Non-OK state (disk WARN) auto-expands log tail.  `表示設定` tab is
+entirely non-monospace, making the contrast unambiguous.
 
-### v5 — Mobile-native Sub-pages (iOS-ish)
+- Layout: full-height app shell; health strip + tab bar sticky; content pane
+  scrolls.  Works at 390 px and 1440 px.
+- Trade-off: pinned health strip gives ambient awareness of system status without
+  cluttering the settings content.  Tabs allow the interactive settings to live
+  in a completely separate visual context.  Requires tab switching to reach
+  settings from status, but the health strip mitigates the "blind spot" problem.
 
-- Layout idea: a root list with row-level chevrons navigates into full-screen
-  sub-pages via CSS transform slide animation. Diagnostic rows have no
-  chevron and `pointer-events:none`, making them visually and operationally
-  inert.
-- Trade-off: best mobile ergonomics and the sharpest diagnostic-vs-interactive
-  distinction (no chevron = not tappable — universally understood). Extra
-  navigation cost for desktop users; sub-page model is awkward when there
-  are only 2 editable settings.
+---
 
 ## Recommendation
 
-**v4 — Card Grid**
+**v12** — Pinned health strip solves the core tension: the user can see all
+subsystem statuses at a glance (the strip), then act on interactive settings (the
+`表示設定` tab) without the two surfaces fighting for space.  The tab separation
+also gives a clean extension point for future settings without making the
+diagnostic view noisier.  The font-family contrast (monospace in `ステータス`,
+`font-family: system-ui` in `表示設定`) is the most legible signal in the entire
+family for "this is diagnostic / this is tunable."
 
-Reasons:
-
-1. "One-glance scannable" aligns directly with the card grid — every setting
-   group is visible on the initial render, no tab-switching or scrolling needed
-   on a typical desktop viewport.
-2. The `::before` "読み取り専用" badge on diagnostic cards is the most explicit
-   diagnostic-vs-editable signal across all variants.  There is zero ambiguity:
-   muted icon + dashed border + badge = "look, don't touch".
-3. Responsive grid degrades cleanly to mobile without a layout mode switch.
-4. tvOS/FireTV spatial nav is straightforward: D-pad moves focus across cards
-   in a predictable grid order.
-
-Concern addressed: on v4 the diagnostic cards still contain interactive-looking
-elements (progress bars, status rows).  The dashed border + muted icon colour +
-`::before` stamp together handle this, but the frontend implementer should also
-set `tabIndex={-1}` and `aria-disabled` on the diagnostic card containers so
-screen-readers and keyboard users never land focus inside them.
+---
 
 ## Handoff notes for `frontend`
 
+### Data sources
+
+All diagnostic data comes from a single `GET /api/health` endpoint (Phase 6
+plan).  Shape agreed:
+
+```ts
+interface HealthResponse {
+  mirakc:   { status: 'ok' | 'err'; version: string; lastPoll: string; tunersAvailable: number; tunersTotal: number; };
+  ffmpeg:   { status: 'ok' | 'err'; version: string; hwAccel: 'nvenc' | 'qsv' | 'vaapi' | 'none'; activeSessions: number; maxSessions: number; };
+  postgres: { status: 'ok' | 'err'; version: string; connections: number; maxConnections: number; latencyMs: number; };
+  disk:     { status: 'ok' | 'warn' | 'err'; freeBytes: number; totalBytes: number; recordingBytes: number; hlsTmpBytes: number; path: string; };
+  server:   { uptimeSeconds: number; memRssBytes: number; bunVersion: string; honoVersion: string; };
+}
+```
+
+**Disk breakdown** (`recordingBytes` vs `hlsTmpBytes`) requires the backend to
+run `du` on the recordings directory and the HLS tmpfs mount.  This is work the
+backend has not scoped yet — flag it before Phase 6 implementation starts.  As a
+fallback, `disk.freeBytes` / `disk.totalBytes` are obtainable via `statvfs`
+without `du`, so the progress bar and WARN threshold can ship first.
+
+Each subsystem also needs recent log lines exposed: suggest
+`GET /api/health/logs?subsystem=disk&limit=5` returning `{ ts: string; level:
+'info'|'warn'|'err'; msg: string }[]` for the inline log tail.  This is a
+separate endpoint — not in `GET /api/health` itself.
+
+### TanStack Query wiring
+
+```ts
+useQuery({
+  queryKey: ['health'],
+  queryFn: () => hc.health.$get().json(),
+  refetchInterval: 30_000,
+  refetchIntervalInBackground: false,   // pause when tab hidden
+})
+```
+
+Log tails: separate query, `enabled: subsystem.status !== 'ok'` — only fetch
+when non-OK to avoid unnecessary polling.
+
 ### Shadcn primitives
 
-| UI element | Shadcn primitive |
+| Surface | Primitive |
 |---|---|
-| Theme selector | `RadioGroup` + `RadioGroupItem` inside `Card` |
-| Quality picker | `Select` + `SelectTrigger` / `SelectContent` / `SelectItem` |
-| Diagnostic cards | `Card` (`variant="outline"`) — no Shadcn interaction |
-| Storage bar | Plain `div` with Tailwind; Shadcn `Progress` is an option |
-| Health badges | `Badge` (`variant="outline"`) — green/red via custom `className` |
-| HW accel tag | `Badge` (`variant="secondary"`) with `font-mono` |
-| About phase tag | `Badge` (`variant="outline"`) |
-| Section headers | Typography only — no primitive needed |
+| Diagnostic card per subsystem | `Card` — no interaction |
+| Status chip | `Badge` with custom monospace className; square via `rounded-[2px]` |
+| Progress bar | plain `div` with `rounded-none`; Shadcn `Progress` sets `rounded-full` by default — override required |
+| Theme segmented control | `ToggleGroup` / `RadioGroup` wrapped in `div` with square border |
+| Quality segmented control | same as theme |
+| Log tail toggle | Shadcn `Collapsible` + `CollapsibleTrigger` |
+| Tab bar | Shadcn `Tabs` + `TabsList` / `TabsTrigger` / `TabsContent` |
+| Health strip | custom — sticky `div` with flex row, Shadcn `Badge` per subsystem |
+| About links | `a` with standard Shadcn link style |
 
-### Tailwind tokens to use
+### Monospace font stack
+
+```css
+font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", ui-monospace,
+             system-ui, -apple-system, "Hiragino Sans", sans-serif;
+```
+
+Apply on `.dark body` for diagnostic panels.  Override to
+`font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif;` on the
+interactive section container.
+
+### Tailwind tokens
 
 ```
-bg-card          border-border      text-card-foreground
+bg-card          text-card-foreground
 bg-muted         text-muted-foreground
-text-primary     ring                bg-primary
+border-border    ring
+bg-primary       text-primary-foreground
 ```
 
-For diagnostic cards add a custom class that composes:
-`bg-muted/30 border border-dashed border-border rounded-xl`
+Custom CSS vars to add (already in the mocks):
+- `--success: 142 70% 46%` (dark) / `142 70% 38%` (light)
+- `--warning: 38 92% 50%` (dark) / `38 92% 46%` (light)
 
 ### Focus / interactive states
 
-- Theme `RadioGroupItem`: `focus-visible:ring-2 ring-ring ring-offset-2`
-- Quality `SelectTrigger`: standard Shadcn focus ring
-- Diagnostic `Card`: `tabIndex={-1}` — must NOT receive focus
-- GitHub link in About: standard link `focus-visible` ring
-
-### Data sources (Phase 6 plan)
-
-| Field | Endpoint | Shape |
-|---|---|---|
-| `hwAccel` | `GET /api/health` | `"nvenc" \| "qsv" \| "vaapi" \| "none"` |
-| `storage.used`, `storage.total`, `storage.path` | `GET /api/health` | bytes |
-| `services.mirakc`, `services.postgres` | `GET /api/health` | `"up" \| "down"` |
-| Version string | build-time constant / `import.meta.env.VITE_APP_VERSION` | string |
-
-Health data should be fetched with TanStack Query, key `["health"]`,
-`refetchInterval: 30_000`.
+- Segmented control buttons: `focus-visible:outline-2 outline-ring outline-offset-[-2px] rounded-[1px]`
+- Tab triggers: same pattern
+- Log tail `CollapsibleTrigger`: standard `focus-visible` ring
+- Diagnostic rows: `tabIndex={-1}` on the row container; only the
+  `CollapsibleTrigger` inside a WARN/ERR row is focusable
+- About links: standard Shadcn link focus ring
 
 ### Open questions
 
-- Should theme preference be persisted to the server (user preference table) or
-  stay in `localStorage` only?
-- Should the quality preset be per-user or per-device?
-- Is there a "reset to defaults" action needed in Phase 6 scope?
+1. Should theme preference persist to server (user preference table) or stay in
+   `localStorage` only?
+2. Should quality preset be per-user or per-device?
+3. Disk `du` for recordings breakdown — backend scope not confirmed for Phase 6.
+4. Log tail endpoint (`GET /api/health/logs`) — not in Phase 6 plan; may need
+   to be added or deferred.
+5. Should the health strip refresh independently (30 s) even when the user is on
+   the `表示設定` tab?  Current recommendation: yes, but pause when the entire
+   settings route is unmounted.

@@ -1,117 +1,168 @@
 # Mock: Live TV Player Screen
 
-## Goal
+---
 
-User taps a channel row in the channel list (`/`) and immediately sees live TV playing at `/live/$channelId`. The screen exists to get video playing as fast as possible and then stay out of the way. Controls are present for essential operations (mute, fullscreen, quality) but the design never competes with the video content for attention.
+## Legacy direction (v1–v3)
 
-## Constraints / inputs
+Deprecated 2026-04-17, kept for reference only. These predate the `epg/v4` + `states/v3` design vocabulary. They use soft decorative chrome and lack monospace status chips and inline log surfaces.
 
-- Route: `/live/$channelId` (TanStack Router file-based route)
-- Data available at render time: `channelId` from route params; `ServiceSchema` (channel name, type GR/BS/CS, serviceId); `ProgramSchema` (title, startAt, endAt, description) from current + next programs
-- Stream lifecycle: `POST /api/streams/live/:channelId` → `{ sessionId, playlistUrl }` — can take up to 10s until `playlist.m3u8` is ready
-- Must-have controls: back to channel list, mute/unmute, play/pause, fullscreen, quality picker stub (UI only — backend integration is Phase 2)
-- Metadata to show: channel badge (GR/BS/CS), channel name, current program title + time range + description, progress through current program, next program(s)
-- States required: loading (spinner + skeleton), error (mirakc down / transcoder failure), playing
-- Remote-control / focus: every interactive element must be `:focus-visible` reachable with a visible ring; DOM order = visual order = tab order; no hover-only affordances; controls must remain accessible without a mouse
+- **v1** — Overlay controls (immersive, gradient bars)
+- **v2** — Persistent controls bar (tvOS-friendly shell — viable structure, wrong register)
+- **v3** — Mobile-first minimal split
+
+---
+
+## Current direction (v10+)
+
+Design vocabulary: `epg/v4` NOW-strip idiom + `states/v3` diagnostic dense chips + `channel-list/v6-tvguide` app-bar chrome.
+
+### Core vocabulary rules shared by all v10+ variants
+
+- Status chips: `.chip` with `.chip-live / .chip-ok / .chip-buf / .chip-err / .chip-fatal / .chip-info` — monospace, `border-radius: 3px`, square-adjacent (never `rounded-full` on status surfaces).
+- `border-radius: 5–6px` max on action buttons. `rounded-md` equivalent.
+- Elapsed bar = the "seek bar" equivalent for live. Always visible, prominent, not decorative.
+- Log tail: real-looking lines (`[qsv]`, `[mirakc]`, `[hls]`, `[player]` prefixes). Inline on fatal, sidebar/drawer/bottom in normal operation.
+- Monospace font stack: `"JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace` — used for all chips, log lines, stat values, times.
+- No `#000` / `#fff`. CSS custom properties (`hsl(var(--*))`) throughout.
+- All interactive elements have visible `:focus-visible` ring (`2px solid hsl(var(--ring))`). DOM order = visual order = tab order.
+- Dark and light themes demonstrated via `html.dark` class toggle button in each mock.
+
+---
 
 ## Variants
 
-### v1 — Overlay Controls (Immersive)
+### v10 — NOW-strip above video + right stats sidebar (always-on diagnostics)
 
-- Layout idea: Full-bleed video. Top and bottom gradient bars with controls that overlay the video. Controls could auto-hide in production (this mock keeps them visible). Desktop: video occupies left ~75%, side panel shows program info persistently at right.
-- Trade-off: Maximum video real estate, cinematic feel. Auto-hide is great for mouse/touch but makes focus navigation fragile — a keyboard/remote user can lose the control bar. Mitigated in production by showing controls when any interactive element is focused. Gradient readability depends on video content (text-heavy content can fight the overlay text).
+- Prominent NOW-strip pinned above the main area: shows program title, elapsed/remaining bar, and time range — mirrors `epg/v4` NOW card vocabulary in a horizontal bar.
+- Right 240px sidebar is always open: STREAM / HLS / SESSION / NEXT / LOG sections. All monospace stat rows. Log tail always visible.
+- Controls bar: muted below video, quality chip, fullscreen. Seek bar stub greyed-out (live).
+- Trade-off: densest information surface; sidebar competes for horizontal space on smaller desktops. Excellent for power users. The constant sidebar may feel heavy for "quick watch" sessions.
 
-### v2 — Persistent Controls Bar (tvOS-friendly)
+### v11 — Full-bleed video + NOW-bar pinned at bottom + collapsible diagnostic drawer
 
-- Layout idea: App chrome is always visible. An explicit `<header>` bar (back + channel name + LIVE badge) stays at top. Video fills the center. A dedicated controls toolbar is permanently docked below the video — never overlapping it. Desktop: 320px side panel for program info. Mobile: controls appear between video and metadata as a separate bar.
-- Trade-off: Zero reliance on hover or auto-show triggers. Tab order is completely predictable: header → video (tabIndex=0) → controls toolbar → side panel. Perfect for tvOS/FireTV D-pad navigation. Video loses a few rows of height on desktop compared to v1 — the chrome is always consuming space. This is the recommended trade-off for this app because reliability beats immersion.
+- Video fills the full-height space between app-bar and NOW-bar.
+- NOW-bar is a compact persistent strip pinned below the video (not overlay): program title + elapsed bar + remaining time + status chips. Never hides.
+- Controls overlay at the bottom of the video (gradient), always visible in mock.
+- Diagnostic drawer: toggled via keyboard `D` or button — slides up from bottom, 2-col layout (stats + log). Fault states auto-open it.
+- Trade-off: maximum video real estate on desktop; the NOW-bar stays visible but doesn't consume a full sidebar column. Drawer means diagnostics require a deliberate open action — acceptable for normal operation, auto-opens on fault. The overlay controls add a `z-index` management burden in React.
 
-### v3 — Mobile-First Minimal Split
+### v12 — Left NOW-panel (vertical) + full control stack + always-on inline log
 
-- Layout idea: Designed for portrait phone first. Video takes full width (16:9). Below it: a single compact controls row (mute + play/pause + progress inline + quality + fullscreen), then a program info card, then a prominent "next program" card with a time-block icon. On desktop/landscape, the layout pivots to a side-by-side: video left (flex:3) + info column right (flex:2), controls bar docked below video.
-- Trade-off: Cleanest portrait experience — no overlays, no gradient hackery. The "next program" card is visually prominent (time-block icon). However, the desktop version feels less dense than v1/v2 and the info column is relatively wide, shrinking the video. The flex-based responsive pivot works but requires two separate DOM subtrees for portrait/landscape hints, which the `frontend` agent needs to replace with proper responsive CSS.
+- Program info sidebar is on the left (260px): large NOW title, 5px elapsed bar, programme description, scrollable next-programmes list. Mirrors `epg/v4` NOW card turned vertical.
+- Video column is center-right. Control bar below video: full parity with recording player — skip ±10s buttons present but `aria-disabled` on live, quality, PiP, fullscreen, keyboard-hint strip.
+- Inline 80px log tail always visible below controls — not fault-only. Header shows streaming/stalling/terminated chip.
+- Trade-off: clearest program-context affordance (description visible without tapping); layout matches the recording-player shell closely (good cross-screen consistency). The left sidebar shrinks available video width more than v11. Inline log is always rendering even when healthy, which is intentional (makes the user feel in control) but adds vertical height.
+
+---
 
 ## Recommendation
 
-**v2** — Persistent Controls Bar.
+**v11** — Full-bleed video + NOW-bar + collapsible diagnostic drawer.
 
 Reasoning:
 
-- "パッと入力、たまに見返す" philosophy means the user wants to *reliably* play and exit. Overlay controls that auto-hide create uncertainty — "are my controls still there?" Persistent chrome removes that anxiety.
-- The tvOS/FireTV port constraint is real and non-trivial. A persistent toolbar with stable tab order is mechanical to map to a D-pad focus section. An overlay that must be "woken up" first adds a layer of state to the spatial-nav library.
-- The side panel (current + next programs) being always visible means the user sees what's on next without any tap — reducing interaction to zero. That aligns with the "get out of the way" philosophy.
-- v1 is more beautiful but is a worse UX for the actual usage pattern (commuting, quick check). v3's portrait layout is great but the desktop version is weaker.
+- Video-first is correct for a player. v10's permanent right sidebar and v12's left sidebar both shrink the video unnecessarily on typical 1280–1440px desktops.
+- The NOW-bar (persistent, below video, never hidden) satisfies the "strongest NOW affordance" requirement without sacrificing video space. It is the epg/v4 NOW-strip concept applied horizontally at the bottom of the player.
+- The collapsible drawer handles the "diagnostic dense, but minimal while playing" tension: diagnostics are one keypress away (`D`), auto-reveal on fault, invisible during healthy playback. This matches "パッと入力、たまに見返す" — the user isn't monitoring a server dashboard, they're watching TV.
+- Overlay controls are a risk for spatial-nav, but v11 keeps them always-visible in this mock (production would add a `controls-visible` state). The NOW-bar is never hidden, so the essential program context is always reachable.
+- v12's full control stack (disabled skip buttons for live) is a good pattern for recording-player parity — recommend adopting it in v11 as well (see handoff notes below).
 
-## Chosen variant
+**Chosen variant:** v11
 
-_(To be filled after user selects — update this line and remove the other v*.html files if requested)_
+---
 
 ## Handoff notes for `frontend`
 
-### Shadcn primitives to use
+### Where status data comes from
+
+| Field shown in UI | Source |
+|---|---|
+| `LIVE` / `OK` / `BUF` / `FATAL` chips | Client-side: derived from `hls.js` events (`FRAG_LOADED`, `BUFFER_STALLED_ERROR`, `ERROR`) and stream POST response |
+| `HEVC 1080p60` codec chip | `GET /api/streams/:id` response — encoder profile field |
+| `FFmpeg → qsv` hw_accel | `GET /api/streams/:id` response — `hwAccel` field |
+| `BUF 3.4s` buffer health | `hls.js` `Hls.Events.BUFFER_APPENDED` → `data.stats.buffered` |
+| `latency` | Estimated: playlist segment duration × segment count behind live edge |
+| `viewers 2` | `streamManager.viewerCount` (server-side, exposed via stream session endpoint) |
+| `segment #N` | `hls.js` `FRAG_LOADED` event → `data.frag.sn` |
+| Log lines | Server-sent events on `GET /api/streams/:id/log` or piped through WebSocket; client buffers last-N lines in a `useRef` ring buffer |
+| `startAt`, `endAt`, elapsed % | `ProgramSummarySchema` from channel data; compute elapsed client-side from `Date.now()` |
+
+### Shadcn primitives
 
 | Mock element | Shadcn primitive |
 |---|---|
-| Back button, mute, play/pause, fullscreen | `Button` with `variant="ghost"` and `size="icon"` |
-| Quality picker trigger | `Button` with `variant="outline"` + `DropdownMenu` |
-| GR / BS / CS type label | `Badge` with custom color class |
-| LIVE indicator | `Badge` with destructive-adjacent color |
-| "まもなく終了" warning | `Badge` with `variant="outline"` in amber tone |
-| Program progress bar | `Progress` (value as percentage of elapsed / total duration) |
-| Loading skeletons | `Skeleton` for text lines, program titles, progress bar |
-| Next programs list | `ScrollArea` wrapping a `<ul>` of program rows |
-| Current program info block | `Card` / `CardHeader` / `CardContent` |
-| Side panel (desktop) | `Card` with `overflow-y: auto` or `ScrollArea` |
+| Back button, mute, fullscreen, PiP, skip (disabled) | `Button variant="ghost" size="icon"` |
+| Quality picker trigger | `Button variant="outline"` + `DropdownMenu` |
+| Status chips (LIVE, OK, BUF, FATAL, HEVC 1080p60, etc.) | `Badge` with custom `.chip-*` class — do NOT use `Badge` default variants, override with the chip classes |
+| Elapsed / progress bar | `Progress` (Shadcn) with `value` = elapsed % of program duration |
+| Seek bar stub (disabled on live) | `Slider` with `disabled` prop — keep in DOM for recording-player parity |
+| Loading skeletons | `Skeleton` |
+| Log tail scrollable area | `ScrollArea` wrapping `<ul>` of log lines |
+| Diagnostic drawer | `Collapsible` (`CollapsibleTrigger` / `CollapsibleContent`) from Shadcn |
+| Error card with log | `Card` with `border-l-4 border-destructive` — not `Alert` (too soft, wrong register) |
+| Next programs list | `ScrollArea` > `<ul>` |
+| Tooltip on disabled skip buttons | `Tooltip` → "ライブ配信ではスキップできません" |
+| Separator between control groups | `Separator` with `orientation="vertical"` |
 
-### Tailwind tokens to use
+### Monospace font stack
 
-- Video bg: `bg-zinc-950` or inline `hsl(222 30% 6%)` — always dark regardless of page theme
-- App chrome / sidebar: `bg-card`, `text-card-foreground`, `border-border`
-- Controls bar bg: `bg-card`
-- Muted text (times, durations): `text-muted-foreground`
-- Primary (progress fill, focused ring): `text-primary`, `bg-primary`, `ring-ring`
-- Error state icon bg: `bg-destructive/10`, `text-destructive`
-- Focus ring: `focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`
+```css
+font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+```
 
-### Interactive states to implement
+Apply via a `mono` utility class or Tailwind `font-mono`. Use for: all chip text, all log lines, all stat keys/values, all time labels, clock in app-bar, segment numbers.
 
-- Every `Button` (ghost / icon): `hover:bg-muted`, `focus-visible:ring-2 focus-visible:ring-ring`, `active:opacity-75`
-- Back link (`<Link>` wrapping an icon button): same ring rules
-- Quality picker: `DropdownMenu` with `DropdownMenuTrigger` as a `Button variant="outline"` — Shadcn handles focus trap inside the menu
-- Video `<video>` element: `tabIndex={0}`, Space = toggle play, M = toggle mute (keyboard shortcut wiring goes in `PlayerControls.tsx`)
+### Tailwind tokens
 
-### Component structure
+- Video background (always dark regardless of theme): `bg-[hsl(222_30%_5%)]` or a CSS var
+- App chrome / NOW-bar: `bg-card text-card-foreground border-border`
+- Chip backgrounds: `bg-destructive/15`, `bg-primary/10`, `bg-success/12` etc. (custom CSS vars)
+- Primary elapsed fill: `bg-primary`
+- Muted track: `bg-muted`
+- Focus ring: `focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2`
+- Error accent: `border-l-[3px] border-destructive`
+- Log timestamp dimming: `text-muted-foreground/50`
+
+### Interactive states
+
+- All `Button` (ghost/icon): `hover:bg-muted`, `focus-visible:ring-2 focus-visible:ring-ring`, `active:opacity-75`
+- Disabled skip buttons: `aria-disabled="true"` + `tabIndex={-1}` + `cursor-not-allowed opacity-35`; they must remain in the DOM for recording-player layout parity
+- Diagnostic drawer toggle: `aria-expanded` attribute toggled; `Collapsible` handles focus trap
+- `<video>` element: `tabIndex={0}`, `Space` = toggle play, `M` = mute, `F` = fullscreen, `D` = toggle diagnostic drawer
+- Keyboard hint strip (`kbd-row`): `aria-hidden="true"` — decorative only
+
+### Component structure (v11)
 
 ```
 /live/$channelId.tsx
   └── <LivePage>
-        ├── <header> — app bar (back + channel badge + name + LIVE badge + clock)
-        ├── <main style="flex:1;display:flex">
-        │     ├── <section class="video-col"> — flex:1
-        │     │     ├── <HlsPlayer />          — fills remaining height
-        │     │     └── <PlayerControls />     — docked below video, always visible
-        │     └── <aside class="side-panel">  — 320px, ScrollArea
-        │           ├── <CurrentProgramCard /> — Card with Progress
-        │           └── <NextProgramsList />  — ScrollArea > ul
-        └── (loading overlay via conditional render, not a sibling DOM node)
+        ├── <StateTabsDemo />    (remove in production)
+        ├── <AppBar>             — back + GR chip + channel name + status chips + clock
+        └── <PlayerWrapper>      — flex-col, flex:1
+              ├── <VideoFill>        — flex:1, bg dark, tabIndex=0
+              │     └── <ControlsOverlay>  — absolute bottom gradient + control buttons
+              ├── <NowBar>           — persistent, below video, never hidden
+              │     ├── NOW label + dot
+              │     ├── <NowBarCenter>  — title + <Progress> elapsed
+              │     └── <NowBarChips>  — OK/BUF/FATAL + codec + latency/buf micro-chips
+              ├── <DiagToggleButton>  — CollapsibleTrigger
+              └── <DiagDrawer>        — CollapsibleContent, max-height animated
+                    ├── <DiagStats>   — stat-row grid (codec, hw_accel, bitrate…)
+                    └── <DiagLog>     — ScrollArea > log lines
 ```
 
-### Responsive breakpoints
+### Recording-player cross-screen notes
 
-- `< 768px` (portrait phone): `flex-direction: column`, side panel becomes a stacked section below controls
-- `>= 768px` (landscape / tablet / desktop): `flex-direction: row`, side panel at 320px fixed width
-
-### `useStream` hook integration
-
-- On mount: call `POST /api/streams/live/:channelId` → set `sessionId` in `useRef`
-- While waiting for playlist: show `<LoadingState />` (spinner + skeleton side panel)
-- On error (non-2xx or timeout > 10s): show `<ErrorState />` with retry button (calls the mutation again)
-- On unmount: call `DELETE /api/streams/:sessionId` — use `useEffect` cleanup, not `onBeforeUnload`
-- StrictMode guard: if `sessionId` ref is already set, skip the POST (idempotency)
+- The skip ±10s buttons (present in v12, absent in v11) should be added to the recording player with `aria-disabled={false}`. The live player shows them disabled for UI parity. Implement both players with the same `<PlayerControls>` component, passing `isLive: boolean`.
+- `isLive=true`: seek bar disabled (`Slider disabled`), skip buttons `aria-disabled`, live edge chip visible.
+- `isLive=false`: seek bar active, skip functional, `LIVE` chip replaced by elapsed time `HH:MM:SS / HH:MM:SS`.
+- The `DiagDrawer` component is identical for both. Status data sources differ (`hls.js` events are the same; codec/hw_accel come from the same `GET /api/streams/:id` endpoint).
+- Keyboard shortcut `D` to toggle diagnostics should be consistent across both players.
 
 ### Open questions
 
-- Should the quality picker show actual available qualities from the HLS manifest (`.m3u8` `#EXT-X-STREAM-INF` entries), or is it a fixed set (1080p / 720p / 480p) configured server-side? Currently stubbed as a static label.
-- Auto-hide for overlay variant: if v1 is chosen later for a "theater mode" fullscreen, define the hide delay (suggested 3s) and the trigger conditions (any pointer/keyboard event resets the timer).
-- Does the `<video>` element show native browser controls as a fallback (e.g. iOS Safari with `playsinline`)? Recommend `controls={false}` with custom `PlayerControls` unless `isIOS && isNativeHls` path.
-- Clock in the app bar: should it tick live (`setInterval`) or be static? Probably worth animating — one `setInterval(fn, 1000)` with `useEffect` cleanup.
+- Auto-hide for the overlay controls in v11: production should show controls for 3s after any pointer/keyboard event, then fade. The NOW-bar must never hide. Suggested: `useIdleTimeout(3000)` hook controlling a `controlsVisible` state.
+- Does the `DiagDrawer` auto-open on `FATAL`? Recommended yes — trigger `setOpen(true)` in the `hls.js` error event handler.
+- Log streaming: SSE vs WebSocket? SSE is simpler (one-way). Suggest `EventSource` on `GET /api/streams/:id/events`, with `type: 'log'` events. Client buffers last 50 lines in `useRef`.
+- Viewer count: polling `GET /api/streams/:id` every 10s, or pushed via SSE? SSE preferred if already open.
+- `hls.js` version to target for buffer health events: confirm `Hls.Events.BUFFER_APPENDED` data shape before implementing `useLiveStream` hook.

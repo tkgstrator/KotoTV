@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recordings v10 — Sectioned Feed: Thumb-Hero Completed + Text-Dense Non-Completed + Command-Palette Form</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:               'hsl(var(--background))',
+            foreground:               'hsl(var(--foreground))',
+            card:                     'hsl(var(--card))',
+            'card-foreground':        'hsl(var(--card-foreground))',
+            muted:                    'hsl(var(--muted))',
+            'muted-foreground':       'hsl(var(--muted-foreground))',
+            border:                   'hsl(var(--border))',
+            primary:                  'hsl(var(--primary))',
+            'primary-foreground':     'hsl(var(--primary-foreground))',
+            destructive:              'hsl(var(--destructive))',
+            'destructive-foreground': 'hsl(var(--destructive-foreground))',
+            ring:                     'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:             220 16% 93%;
+      --foreground:             222 22% 16%;
+      --card:                   0 0% 99%;
+      --card-foreground:        222 22% 16%;
+      --muted:                  215 12% 87%;
+      --muted-foreground:       215 10% 44%;
+      --border:                 214 14% 82%;
+      --primary:                221 83% 53%;
+      --primary-foreground:     210 40% 98%;
+      --ring:                   221 83% 53%;
+      --destructive:            0 72% 52%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 38%;
+      --warning:                38 92% 46%;
+    }
+    .dark {
+      --background:             222 22% 8%;
+      --foreground:             210 18% 90%;
+      --card:                   222 20% 12%;
+      --card-foreground:        210 18% 90%;
+      --muted:                  222 18% 18%;
+      --muted-foreground:       215 12% 52%;
+      --border:                 222 18% 20%;
+      --primary:                221 83% 60%;
+      --primary-foreground:     222 20% 10%;
+      --ring:                   221 83% 60%;
+      --destructive:            0 72% 58%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 46%;
+      --warning:                38 92% 50%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", ui-monospace, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 3px;
+    }
+
+    /* ── App bar ── */
+    .app-bar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      height: 48px;
+    }
+    .app-bar-title {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: hsl(var(--foreground));
+    }
+    .app-bar-spacer { flex: 1; }
+
+    /* ── Status chips ── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .chip-sched   { background: hsl(var(--warning)/0.1);     border-color: hsl(var(--warning)/0.35);     color: hsl(var(--warning)); }
+    .chip-rec     { background: hsl(var(--destructive)/0.1); border-color: hsl(var(--destructive)/0.35); color: hsl(var(--destructive)); }
+    .chip-done    { background: hsl(var(--success)/0.1);     border-color: hsl(var(--success)/0.35);     color: hsl(var(--success)); }
+    .chip-fail    { background: hsl(var(--destructive)/0.08);border-color: hsl(var(--destructive)/0.25); color: hsl(var(--destructive)); }
+    .chip-neutral { background: hsl(var(--muted));            border-color: hsl(var(--border));            color: hsl(var(--muted-foreground)); }
+
+    /* Pulsing dot for REC */
+    .rec-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: hsl(var(--destructive));
+      flex-shrink: 0;
+      animation: rec-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes rec-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+    @media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      position: sticky;
+      top: 48px;
+      z-index: 35;
+      background: hsl(var(--background));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      overflow-x: auto;
+    }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 3px;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      color: hsl(var(--muted-foreground));
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+      transition: background 0.1s, color 0.1s;
+    }
+    .filter-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .filter-btn.active { background: hsl(var(--foreground)/0.08); border-color: hsl(var(--foreground)/0.3); color: hsl(var(--foreground)); }
+    .filter-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* ── Section header ── */
+    .section-hdr {
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      padding: 20px 16px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-hdr::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: hsl(var(--border));
+    }
+
+    /* ── Non-completed row (text-dense) ── */
+    .row-item {
+      display: flex;
+      align-items: stretch;
+      border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      transition: background 0.1s;
+    }
+    .row-item:hover { background: hsl(var(--muted)/0.5); }
+    .row-accent {
+      width: 3px;
+      flex-shrink: 0;
+    }
+    .row-accent-sched  { background: hsl(var(--warning)); }
+    .row-accent-rec    { background: hsl(var(--destructive)); }
+    .row-accent-fail   { background: hsl(var(--destructive)/0.5); }
+
+    .row-body {
+      flex: 1;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .row-title {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: hsl(var(--foreground));
+    }
+    .row-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .meta-text {
+      font-size: 0.6875rem;
+      color: hsl(var(--muted-foreground));
+    }
+    .row-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 8px;
+      flex-shrink: 0;
+    }
+
+    /* Log tail (collapsible) */
+    .log-drawer {
+      background: hsl(var(--muted)/0.5);
+      border-top: 1px solid hsl(var(--border));
+      padding: 8px 12px 8px 15px;
+      font-size: 0.625rem;
+      font-family: inherit;
+    }
+    .log-line-err { color: hsl(var(--destructive)); }
+    .log-line-ts  { color: hsl(var(--muted-foreground)/0.7); margin-right: 6px; }
+
+    /* ── Completed thumb card ── */
+    .thumb-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1px;
+      background: hsl(var(--border));
+    }
+    .thumb-card {
+      background: hsl(var(--card));
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .thumb-card:hover { background: hsl(var(--muted)/0.4); }
+    .thumb-card:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 0; z-index: 1; position: relative; }
+
+    .thumb-frame {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 */
+      overflow: hidden;
+    }
+    .thumb-bg {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      color: hsl(var(--primary-foreground)/0.9);
+    }
+    .thumb-ch-bug {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 2px;
+      background: hsl(var(--foreground)/0.75);
+      color: hsl(var(--background));
+      letter-spacing: 0.04em;
+      backdrop-filter: blur(2px);
+    }
+    .thumb-duration {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 2px;
+      background: hsl(var(--foreground)/0.8);
+      color: hsl(var(--background));
+      letter-spacing: 0.04em;
+    }
+    /* Watched ribbon */
+    .thumb-watched-ribbon {
+      position: absolute;
+      top: 0; right: 0;
+      width: 0; height: 0;
+      border-top: 28px solid hsl(var(--success)/0.8);
+      border-left: 28px solid transparent;
+    }
+    .thumb-watched-ribbon::after {
+      content: '✓';
+      position: absolute;
+      top: -26px;
+      right: 2px;
+      font-size: 0.5rem;
+      color: hsl(var(--primary-foreground));
+    }
+    /* Progress bar overlay (partial watch) */
+    .thumb-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: hsl(var(--muted)/0.5);
+    }
+    .thumb-progress-fill {
+      height: 100%;
+      background: hsl(var(--primary));
+    }
+
+    .thumb-info {
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .thumb-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: hsl(var(--foreground));
+    }
+    .thumb-sub {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 3px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: opacity 0.1s, background 0.1s;
+      letter-spacing: 0.02em;
+    }
+    .btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .btn-primary  { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary)); }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-ghost    { background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border)); }
+    .btn-ghost:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .btn-destruct { background: transparent; color: hsl(var(--destructive)); border-color: hsl(var(--destructive)/0.4); }
+    .btn-destruct:hover { background: hsl(var(--destructive)/0.1); }
+    .btn-icon { padding: 4px 6px; }
+
+    /* ── Modal overlay (command-palette) ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: hsl(var(--foreground)/0.15);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 80px;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-panel {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 6px;
+      width: min(640px, calc(100vw - 32px));
+      max-height: calc(100vh - 120px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 32px hsl(var(--foreground)/0.12);
+    }
+    .modal-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .modal-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: hsl(var(--foreground));
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    .modal-input::placeholder { color: hsl(var(--muted-foreground)); font-weight: 400; }
+    .modal-body { overflow-y: auto; }
+    .modal-section-label {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      padding: 10px 14px 4px;
+    }
+    .modal-result {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid hsl(var(--border)/0.5);
+      transition: background 0.1s;
+    }
+    .modal-result:hover, .modal-result:focus-visible { background: hsl(var(--muted)/0.6); outline: none; }
+    .modal-result-ch {
+      font-size: 0.625rem;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 2px;
+      background: hsl(var(--primary)/0.15);
+      color: hsl(var(--primary));
+      flex-shrink: 0;
+    }
+    .modal-result-body { flex: 1; min-width: 0; }
+    .modal-result-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .modal-result-meta { font-size: 0.625rem; color: hsl(var(--muted-foreground)); margin-top: 1px; }
+    .modal-result-action { flex-shrink: 0; }
+    .modal-manual {
+      padding: 12px 14px;
+      border-top: 1px solid hsl(var(--border));
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .modal-manual-label {
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+    }
+    .manual-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .manual-input {
+      background: hsl(var(--muted)/0.5);
+      border: 1px solid hsl(var(--border));
+      border-radius: 3px;
+      padding: 5px 8px;
+      font-family: inherit;
+      font-size: 0.75rem;
+      color: hsl(var(--foreground));
+      outline: none;
+    }
+    .manual-input:focus { border-color: hsl(var(--ring)); }
+    .manual-input:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .inline-val {
+      font-size: 0.625rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+      margin-left: 4px;
+    }
+    .val-ok   { background: hsl(var(--success)/0.1); color: hsl(var(--success)); border: 1px solid hsl(var(--success)/0.3); }
+    .val-err  { background: hsl(var(--destructive)/0.1); color: hsl(var(--destructive)); border: 1px solid hsl(var(--destructive)/0.3); }
+
+    /* ── Empty state ── */
+    .empty-state {
+      padding: 48px 24px;
+      text-align: left;
+      color: hsl(var(--muted-foreground));
+    }
+    .empty-cmd {
+      font-size: 0.75rem;
+      font-family: inherit;
+      background: hsl(var(--muted)/0.6);
+      border: 1px solid hsl(var(--border));
+      border-radius: 3px;
+      padding: 10px 14px;
+      display: inline-block;
+      margin-top: 12px;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 640px) {
+      .thumb-grid { grid-template-columns: repeat(2, 1fr); }
+      .row-actions .btn span { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ── App bar ── -->
+  <header class="app-bar">
+    <span class="app-bar-title">REC</span>
+    <div class="app-bar-spacer"></div>
+    <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));margin-right:4px;">3 DONE · 1 REC · 2 SCHED · 1 FAIL</span>
+    <button class="btn btn-primary" onclick="document.getElementById('modal').classList.remove('hidden')" aria-label="新規予約">
+      + RESERVE
+    </button>
+    <!-- Dark / light toggle -->
+    <button class="btn btn-ghost btn-icon" onclick="document.documentElement.classList.toggle('dark')" aria-label="Toggle dark mode">☀</button>
+  </header>
+
+  <!-- ── Filter bar ── -->
+  <nav class="filter-bar" aria-label="Status filter">
+    <button class="filter-btn active" aria-pressed="true">ALL</button>
+    <button class="filter-btn" aria-pressed="false"><span class="chip chip-rec" style="padding:1px 5px;">REC</span> 1</button>
+    <button class="filter-btn" aria-pressed="false"><span class="chip chip-sched" style="padding:1px 5px;">SCHED</span> 2</button>
+    <button class="filter-btn" aria-pressed="false"><span class="chip chip-done" style="padding:1px 5px;">DONE</span> 3</button>
+    <button class="filter-btn" aria-pressed="false"><span class="chip chip-fail" style="padding:1px 5px;">FAIL</span> 1</button>
+    <div style="flex:1;"></div>
+    <button class="filter-btn" style="gap:4px;">↕ DATE DESC</button>
+  </nav>
+
+  <!-- ── Main content ── -->
+  <main style="max-width:1200px;margin:0 auto;padding:0 0 64px;">
+
+    <!-- SECTION: RECORDING NOW -->
+    <div class="section-hdr"><span class="rec-dot"></span> REC NOW <span class="chip chip-rec">1</span></div>
+
+    <div class="row-item">
+      <div class="row-accent row-accent-rec"></div>
+      <div class="row-body">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="row-title">NHK スペシャル「激動の世界 2025」</span>
+        </div>
+        <div class="row-meta">
+          <span class="chip chip-rec"><span class="rec-dot" style="width:5px;height:5px;"></span> REC</span>
+          <span class="meta-text">NHK総合</span>
+          <span class="meta-text">22:00〜23:00</span>
+          <span class="meta-text" style="font-family:inherit;color:hsl(var(--destructive));">ELAPSED 00:23:14</span>
+        </div>
+        <!-- Recording progress bar -->
+        <div style="height:2px;background:hsl(var(--muted));border-radius:1px;margin-top:4px;overflow:hidden;">
+          <div style="width:38%;height:100%;background:hsl(var(--destructive));border-radius:1px;"></div>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-destruct btn-icon" title="録画停止">■ STOP</button>
+      </div>
+    </div>
+
+    <!-- SECTION: SCHEDULED -->
+    <div class="section-hdr">SCHED <span class="chip chip-sched">2</span></div>
+
+    <div class="row-item">
+      <div class="row-accent row-accent-sched"></div>
+      <div class="row-body">
+        <span class="row-title">ブラタモリ 京都・祇園祭スペシャル</span>
+        <div class="row-meta">
+          <span class="chip chip-sched">SCHED</span>
+          <span class="meta-text">NHK総合</span>
+          <span class="meta-text">2026-04-18 19:30〜20:15</span>
+          <span class="meta-text">0h45m</span>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-ghost btn-icon" title="予約キャンセル">✕ CANCEL</button>
+      </div>
+    </div>
+
+    <div class="row-item">
+      <div class="row-accent row-accent-sched"></div>
+      <div class="row-body">
+        <span class="row-title">映像の世紀バタフライエフェクト</span>
+        <div class="row-meta">
+          <span class="chip chip-sched">SCHED</span>
+          <span class="meta-text">NHK BS</span>
+          <span class="meta-text">2026-04-20 21:00〜22:00</span>
+          <span class="meta-text">1h00m</span>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-ghost btn-icon" title="予約キャンセル">✕ CANCEL</button>
+      </div>
+    </div>
+
+    <!-- SECTION: FAILED -->
+    <div class="section-hdr">FAIL <span class="chip chip-fail">1</span></div>
+
+    <!-- Failed item with log-tail drawer (using <details>) -->
+    <details style="border-bottom:1px solid hsl(var(--border));">
+      <summary style="list-style:none;cursor:pointer;">
+        <div class="row-item" style="border-bottom:none;">
+          <div class="row-accent row-accent-fail"></div>
+          <div class="row-body">
+            <span class="row-title">サッカー日本代表 国際親善試合</span>
+            <div class="row-meta">
+              <span class="chip chip-fail">FAIL</span>
+              <span class="meta-text">テレビ朝日</span>
+              <span class="meta-text">2026-04-16 19:00〜21:00</span>
+              <span class="meta-text" style="color:hsl(var(--destructive));">▼ LOG</span>
+            </div>
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-destruct btn-icon" onclick="event.stopPropagation()" title="削除">✕ DEL</button>
+          </div>
+        </div>
+      </summary>
+      <div class="log-drawer">
+        <div><span class="log-line-ts">2026-04-16T19:00:01.003Z</span> <span class="log-line-err">ERR  ffmpeg exited with code 1</span></div>
+        <div><span class="log-line-ts">2026-04-16T19:00:01.001Z</span> <span style="color:hsl(var(--muted-foreground));">INFO stream open → /data/hls/sess_a3f/index.m3u8</span></div>
+        <div><span class="log-line-ts">2026-04-16T19:00:00.441Z</span> <span style="color:hsl(var(--warning));">WARN tuner lock timeout 5000ms — retry 1/3</span></div>
+        <div style="margin-top:6px;">
+          <button class="btn btn-ghost" style="font-size:0.5625rem;">FULL LOG →</button>
+        </div>
+      </div>
+    </details>
+
+    <!-- SECTION: COMPLETED (thumbnail hero) -->
+    <div class="section-hdr">DONE <span class="chip chip-done">3</span></div>
+
+    <div class="thumb-grid">
+
+      <!-- Completed — fully watched -->
+      <article class="thumb-card" tabindex="0" role="button" aria-label="NHKスペシャル 地球大進化を再生">
+        <div class="thumb-frame">
+          <div class="thumb-bg" style="background:linear-gradient(135deg,hsl(221 83% 30%),hsl(280 60% 20%));">
+            NHK
+          </div>
+          <div class="thumb-ch-bug">NHK総合</div>
+          <div class="thumb-duration">01:00:00</div>
+          <div class="thumb-watched-ribbon"></div>
+          <div class="thumb-progress"><div class="thumb-progress-fill" style="width:100%;background:hsl(var(--success));"></div></div>
+        </div>
+        <div class="thumb-info">
+          <div class="thumb-title">NHKスペシャル 地球大進化</div>
+          <div class="thumb-sub">
+            <span class="chip chip-done" style="font-size:0.5rem;padding:1px 4px;">DONE</span>
+            <span class="meta-text">2026-04-15</span>
+            <span class="meta-text" style="margin-left:auto;">2.4GB</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Completed — partially watched -->
+      <article class="thumb-card" tabindex="0" role="button" aria-label="ドキュメント72時間を再生">
+        <div class="thumb-frame">
+          <div class="thumb-bg" style="background:linear-gradient(135deg,hsl(142 50% 20%),hsl(190 60% 15%));">
+            NHK
+          </div>
+          <div class="thumb-ch-bug">NHK BS</div>
+          <div class="thumb-duration">00:45:00</div>
+          <div class="thumb-progress"><div class="thumb-progress-fill" style="width:62%;"></div></div>
+        </div>
+        <div class="thumb-info">
+          <div class="thumb-title">ドキュメント72時間 東京・深夜の...</div>
+          <div class="thumb-sub">
+            <span class="chip chip-done" style="font-size:0.5rem;padding:1px 4px;">DONE</span>
+            <span class="meta-text">2026-04-14</span>
+            <span class="chip chip-neutral" style="font-size:0.5rem;padding:1px 4px;margin-left:auto;">62%</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Completed — unwatched -->
+      <article class="thumb-card" tabindex="0" role="button" aria-label="クローズアップ現代を再生">
+        <div class="thumb-frame">
+          <div class="thumb-bg" style="background:linear-gradient(135deg,hsl(38 70% 25%),hsl(15 60% 18%));">
+            NHK
+          </div>
+          <div class="thumb-ch-bug">NHK総合</div>
+          <div class="thumb-duration">00:28:00</div>
+          <div class="thumb-progress"><div class="thumb-progress-fill" style="width:0%;"></div></div>
+        </div>
+        <div class="thumb-info">
+          <div class="thumb-title">クローズアップ現代 AI時代の...</div>
+          <div class="thumb-sub">
+            <span class="chip chip-done" style="font-size:0.5rem;padding:1px 4px;">DONE</span>
+            <span class="meta-text">2026-04-13</span>
+            <span style="margin-left:auto;font-size:0.5625rem;font-weight:700;color:hsl(var(--primary));">NEW</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- Desktop: show empty completed state placeholder below (comment out above to see) -->
+    <!--
+    <div class="empty-state">
+      <div style="font-size:0.8125rem;font-weight:700;margin-bottom:4px;">No recordings found</div>
+      <div style="font-size:0.75rem;">Reserve a program to get started.</div>
+      <div class="empty-cmd">$ ls recordings/ → 0 items</div>
+    </div>
+    -->
+
+  </main>
+
+  <!-- ── COMMAND PALETTE MODAL ── -->
+  <div id="modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="新規録画予約">
+    <div class="modal-panel">
+      <div class="modal-search">
+        <span style="color:hsl(var(--muted-foreground));font-size:0.875rem;">⌕</span>
+        <input class="modal-input" type="text" placeholder="番組名を入力... (例: NHKスペシャル)" autofocus />
+        <button class="btn btn-ghost btn-icon" onclick="document.getElementById('modal').classList.add('hidden')" aria-label="閉じる" style="font-size:0.75rem;">ESC</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-section-label">EPG RESULTS — 2026-04-17</div>
+
+        <div class="modal-result" tabindex="0" role="button">
+          <span class="modal-result-ch">NHK総合</span>
+          <div class="modal-result-body">
+            <div class="modal-result-title">NHKスペシャル「気候変動と日本 2025」</div>
+            <div class="modal-result-meta">2026-04-17 22:00〜23:00 · 60min</div>
+          </div>
+          <div class="modal-result-action">
+            <button class="btn btn-primary" style="font-size:0.5625rem;padding:3px 8px;">RESERVE</button>
+          </div>
+        </div>
+
+        <div class="modal-result" tabindex="0" role="button">
+          <span class="modal-result-ch">NHK BS</span>
+          <div class="modal-result-body">
+            <div class="modal-result-title">NHKスペシャル アーカイブス 宇宙の起源</div>
+            <div class="modal-result-meta">2026-04-18 21:00〜22:00 · 60min</div>
+          </div>
+          <div class="modal-result-action">
+            <button class="btn btn-primary" style="font-size:0.5625rem;padding:3px 8px;">RESERVE</button>
+          </div>
+        </div>
+
+        <div class="modal-section-label">EPG RESULTS — 2026-04-18</div>
+
+        <div class="modal-result" tabindex="0" role="button">
+          <span class="modal-result-ch">テレ東</span>
+          <div class="modal-result-body">
+            <div class="modal-result-title">NHKスペシャル re-run: 深海の謎</div>
+            <div class="modal-result-meta">2026-04-18 00:30〜01:30 · 60min <span style="color:hsl(var(--warning));">⚠ OVERLAP: ブラタモリ</span></div>
+          </div>
+          <div class="modal-result-action">
+            <button class="btn btn-ghost" style="font-size:0.5625rem;padding:3px 8px;" disabled>CONFLICT</button>
+          </div>
+        </div>
+
+        <!-- Manual entry section -->
+        <div class="modal-manual">
+          <div class="modal-manual-label">MANUAL ENTRY</div>
+          <div class="manual-row">
+            <div>
+              <label style="font-size:0.5625rem;color:hsl(var(--muted-foreground));display:block;margin-bottom:3px;">CHANNEL</label>
+              <select class="manual-input" style="min-width:120px;">
+                <option>NHK総合</option>
+                <option>NHK BS</option>
+                <option>テレビ朝日</option>
+                <option>テレ東</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.5625rem;color:hsl(var(--muted-foreground));display:block;margin-bottom:3px;">START</label>
+              <input class="manual-input" type="datetime-local" value="2026-04-18T21:00" />
+            </div>
+            <div>
+              <label style="font-size:0.5625rem;color:hsl(var(--muted-foreground));display:block;margin-bottom:3px;">END</label>
+              <input class="manual-input" type="datetime-local" value="2026-04-18T22:00" />
+              <span class="inline-val val-ok">OK</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button class="btn btn-primary">SCHEDULE</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('modal').classList.add('hidden')">CANCEL</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Close modal on overlay click -->
+  <script>
+    document.getElementById('modal').addEventListener('click', function(e) {
+      if (e.target === this) this.classList.add('hidden');
+    });
+  </script>
+</body>
+</html>
