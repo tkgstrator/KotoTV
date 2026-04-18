@@ -23,7 +23,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { useCreateRecordingRule, useDeleteRecordingRule, useUpdateRecordingRule } from '@/hooks/useRecordingRules'
+import {
+  useCreateRecordingRule,
+  useDeleteRecordingRule,
+  useRecordingRulePreview,
+  useUpdateRecordingRule
+} from '@/hooks/useRecordingRules'
 import {
   ARIB_GENRES,
   DOW_LABELS,
@@ -164,6 +169,8 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
     [keywordMode, excludeKeyword]
   )
 
+  const { data: previewData, isPending: isPreviewPending } = useRecordingRulePreview(previewRule)
+
   const activePreset = matchingPreset(timeStart, timeEnd)
 
   const hasRegexError = Boolean(keywordRegexError || excludeKeywordRegexError)
@@ -189,9 +196,16 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 3. キーワード */}
           <div className='flex flex-col gap-2'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              KEYWORD
-            </Label>
+            <div className='flex items-center justify-between gap-2'>
+              <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
+                KEYWORD
+              </Label>
+              {previewRule && (
+                <span className='font-mono tabular-nums text-[0.625rem] text-muted-foreground'>
+                  {isPreviewPending ? '…' : `${previewData?.matchCount ?? 0} 件ヒット`}
+                </span>
+              )}
+            </div>
             <Input
               {...register('keyword')}
               className={cn(
