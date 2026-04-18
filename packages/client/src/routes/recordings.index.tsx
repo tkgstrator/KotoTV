@@ -341,13 +341,6 @@ function RecordingsPage() {
     <>
       <PageHeader ariaLabel='録画ヘッダー' className='items-center gap-2 px-3'>
         <h1 className='font-mono text-[0.9375rem] font-bold leading-none'>録画</h1>
-        {data && (
-          <span className='font-mono text-[0.625rem] text-muted-foreground'>
-            {recordings.filter((r) => r.status === 'recording').length} REC ·{' '}
-            {schedules.filter((s) => s.status === 'pending').length} SCHED ·{' '}
-            {recordings.filter((r) => r.status === 'completed').length} DONE
-          </span>
-        )}
         <div className='flex-1' />
         <Link to='/recordings/rules'>
           <Button
@@ -367,7 +360,7 @@ function RecordingsPage() {
           aria-label='新規予約 (⌘K)'
         >
           <CalendarPlus className='size-3.5' />
-          RESERVE
+          新規予約
         </Button>
       </PageHeader>
 

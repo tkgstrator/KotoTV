@@ -102,7 +102,7 @@ function EpgResults({ channels, programs, query, onSelect }: EpgResultsProps) {
                 onSelect(p)
               }}
             >
-              RESERVE
+              予約
             </Button>
           </button>
         )
