@@ -3,6 +3,10 @@
  * recordings, settings health panel, and app-shell. Extracted before any
  * screen implementation to avoid simultaneous edits in 5–6 files.
  *
+ * Lives in `components/shared/` because `components/ui/` is reserved for
+ * Shadcn-generated primitives (single-source, local variants only). Shared
+ * app primitives that encode product-level vocabulary go here.
+ *
  * See: docs/mocks/app-shell/README.md §StatusChip
  */
 import { cva, type VariantProps } from 'class-variance-authority'
