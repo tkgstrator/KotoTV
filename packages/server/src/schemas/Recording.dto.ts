@@ -11,6 +11,8 @@ export const RecordingScheduleSchema = z.object({
   startAt: z.string().datetime(),
   endAt: z.string().datetime(),
   status: ScheduleStatusSchema,
+  ruleId: z.string().uuid().nullable(),
+  failureReason: z.string().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 })
@@ -61,6 +63,16 @@ export const RecordingEventSchema = z.discriminatedUnion('type', [
     type: z.literal('schedule-updated'),
     scheduleId: z.string().uuid(),
     status: ScheduleStatusSchema
+  }),
+  z.object({
+    type: z.literal('rule-matched'),
+    ruleId: z.string().uuid(),
+    createdCount: z.number().int().nonnegative()
+  }),
+  z.object({
+    type: z.literal('epg-synced'),
+    upserted: z.number().int().nonnegative(),
+    deleted: z.number().int().nonnegative()
   })
 ])
 
