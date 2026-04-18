@@ -45,7 +45,7 @@ const chipVariants = cva(
       },
       size: {
         default: 'gap-1 px-1.5 py-0.5 text-status',
-        sm: 'gap-[3px] px-1 py-[1px] text-[0.5rem] leading-none'
+        sm: 'gap-[3px] px-1 py-[1px] text-[0.5625rem] leading-none'
       }
     },
     defaultVariants: { variant: 'info', size: 'default' }
