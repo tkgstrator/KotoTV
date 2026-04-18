@@ -141,9 +141,9 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   const isPending = createMutation.isPending || updateMutation.isPending
 
   return (
-    <div className='flex h-full flex-col overflow-hidden lg:flex-row'>
+    <div className='flex h-full w-full flex-col overflow-hidden lg:grid lg:grid-cols-[55%_45%]'>
       {/* Form pane */}
-      <div className='flex-1 overflow-y-auto border-b border-border lg:border-b-0 lg:border-r'>
+      <div className='flex-1 overflow-y-auto border-b border-border lg:min-w-0 lg:border-b-0 lg:border-r'>
         <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-5 p-4'>
           {/* ── 1. ルール名 */}
           <div className='flex flex-col gap-1.5'>
@@ -472,7 +472,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
       </div>
 
       {/* Preview pane */}
-      <div className='flex w-full flex-col lg:w-[45%] lg:overflow-hidden'>
+      <div className='flex w-full flex-col lg:min-w-0 lg:overflow-hidden'>
         <div className='border-b border-border px-4 py-2'>
           <span className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
             PREVIEW (今週のヒット)
