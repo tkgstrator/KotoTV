@@ -200,11 +200,14 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
               <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
                 KEYWORD
               </Label>
-              {previewRule && (
-                <span className='font-mono tabular-nums text-[0.625rem] text-muted-foreground'>
-                  {isPreviewPending ? '…' : `${previewData?.matchCount ?? 0} 件ヒット`}
-                </span>
-              )}
+              <span
+                className={cn(
+                  'font-mono tabular-nums text-[0.625rem] text-muted-foreground',
+                  !previewRule && 'invisible'
+                )}
+              >
+                {previewRule ? (isPreviewPending ? '…' : `${previewData?.matchCount ?? 0} 件ヒット`) : '0 件ヒット'}
+              </span>
             </div>
             <Input
               {...register('keyword')}
