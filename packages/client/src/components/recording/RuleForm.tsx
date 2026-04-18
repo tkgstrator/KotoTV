@@ -471,7 +471,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             <Button
               type='submit'
               size='sm'
-              className='font-mono text-[0.75rem] font-bold'
+              className='flex-1 font-mono text-[0.75rem] font-bold sm:flex-none'
               disabled={isPending || hasRegexError}
             >
               {isPending ? 'SAVING...' : existing ? 'UPDATE' : 'CREATE'}
@@ -480,7 +480,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
               type='button'
               variant='outline'
               size='sm'
-              className='font-mono text-[0.75rem]'
+              className='flex-1 font-mono text-[0.75rem] sm:flex-none'
               onClick={() => navigate({ to: '/recordings/rules' })}
             >
               CANCEL
