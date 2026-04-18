@@ -2,7 +2,19 @@
 
 ## What is a theme in this codebase?
 
-A theme is a named set of CSS custom properties declared in `packages/client/src/index.css` under `:root[data-theme="<name>"]` that override the base design tokens. Tailwind v4 `@theme inline` then maps those vars to utility classes. Components consume the utilities — they never hardcode raw values.
+A theme is a named set of CSS custom properties declared in its own file under `packages/client/src/themes/<name>.css` and scoped to `:root[data-theme="<name>"]`. Tailwind v4 `@theme inline` aliases (in `index.css`, theme-invariant) map those vars to utility classes. Components consume the utilities — they never hardcode raw values.
+
+### File layout
+
+```
+packages/client/src/
+├── index.css            Tailwind import + @theme inline aliases + theme file imports
+└── themes/
+    ├── README.md        How to add a theme
+    └── tech.css         Tech theme: palette + shape + typography, light + dark
+```
+
+Adding a second theme means dropping a sibling file (`themes/friendly.css`) and `@import`ing it in `index.css`. Both themes can coexist; the active one is chosen at runtime by `<html data-theme="...">`.
 
 ### Themes are complete visual units — no piecemeal overrides
 
