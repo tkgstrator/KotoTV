@@ -117,17 +117,9 @@ function ScheduleRowEnhanced({ schedule, ruleNameMap }: ScheduleRowEnhancedProps
       <div className='flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5'>
         <span className='truncate font-mono text-[0.8125rem] font-semibold text-foreground'>{schedule.title}</span>
         <div className='flex flex-wrap items-center gap-2'>
-          {isFailed ? (
-            <StatusChip variant='err' size='sm'>
-              FAIL
-            </StatusChip>
-          ) : schedule.status === 'recording' ? (
+          {schedule.status === 'recording' && (
             <StatusChip variant='rec' dot size='sm'>
               REC
-            </StatusChip>
-          ) : (
-            <StatusChip variant='sched' size='sm'>
-              SCHED
             </StatusChip>
           )}
           <span className='font-mono text-[0.6875rem] text-muted-foreground'>{schedule.channelId}</span>
@@ -226,9 +218,6 @@ function DoneCard({ rec }: { rec: Recording }) {
       <div className='flex flex-col gap-1 px-2.5 py-2'>
         <span className='truncate font-mono text-[0.75rem] font-semibold text-foreground'>{rec.title}</span>
         <div className='flex items-center gap-1.5'>
-          <StatusChip variant='done' size='sm'>
-            DONE
-          </StatusChip>
           <span className='font-mono text-[0.6875rem] text-muted-foreground'>{dateLabel}</span>
           {sizeLabel && <span className='ml-auto font-mono text-[0.6875rem] text-muted-foreground'>{sizeLabel}</span>}
         </div>
@@ -253,9 +242,6 @@ function FailedRecordingRow({ rec }: { rec: Recording }) {
         <div className='flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5'>
           <span className='truncate font-mono text-[0.8125rem] font-semibold text-foreground'>{rec.title}</span>
           <div className='flex flex-wrap items-center gap-2'>
-            <StatusChip variant='err' size='sm'>
-              FAIL
-            </StatusChip>
             <span className='font-mono text-[0.6875rem] text-muted-foreground'>{rec.channelId}</span>
             <span className='font-mono text-[0.6875rem] text-muted-foreground'>{dateLabel}</span>
             <span className='font-mono text-[0.6875rem] text-destructive'>{open ? '▲ LOG' : '▼ LOG'}</span>
