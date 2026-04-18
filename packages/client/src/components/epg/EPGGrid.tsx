@@ -1,22 +1,29 @@
 /**
- * EPGGrid — non-virtualised CSS Grid implementation (Phase 3).
- * Virtualisation is intentionally deferred; the DOM structure here is
- * designed so each cell is fully independent, making it straightforward to
- * wrap rows in a row-virtualiser in a future round without touching cell logic.
+ * EPGGrid — virtualised implementation.
  *
- * Desktop (md+): pinned NOW-strip (horizontal scroll) + 2-axis future grid
- * Mobile (<md):  agenda view — per-channel sections with chronological list
+ * Desktop (md+): pinned NOW-strip + 2-axis future grid with row-virtualisation
+ *   via @tanstack/react-virtual. Horizontal axis is NOT virtualised because each
+ *   row holds at most 48 absolutely-positioned cells (24 h / 30 min) — cheap.
  *
- * Both layouts are rendered in DOM simultaneously and toggled via Tailwind's
- * responsive `hidden`/`block` utilities to avoid layout jumps on resize.
+ * Mobile (<md):
+ *   - Channel quick-jump strip (horizontally scrollable chips) below NOW-strip.
+ *     IntersectionObserver tracks the topmost visible section to highlight the
+ *     active chip.
+ *   - Agenda view with per-section virtualisation.
+ *     Sections are variable-height groups (header + N program rows). We use a
+ *     single virtualizer whose item count == channels.length and whose
+ *     estimateSize accounts for the header + typical program list height.
+ *     The actual DOM height is always set via getTotalSize() so the scrollbar
+ *     is accurate, and each item is positioned with translateY.
  */
 
 import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import type { Program } from '@kototv/server/src/schemas/Program.dto'
 import { Link } from '@tanstack/react-router'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { addHours, format, startOfHour } from 'date-fns'
 import { Play } from 'lucide-react'
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useClock } from '@/hooks/useClock'
@@ -32,6 +39,12 @@ const CH_COL_W = 68
 
 /** Number of hours shown in the future grid. */
 const GRID_HOURS = 8
+
+/** Row height for the future grid (px). Fixed — no measureElement needed. */
+const ROW_H = 56
+
+/** Estimated height for one agenda section: header (32) + ~4 programs × 72px. */
+const AGENDA_SECTION_ESTIMATE = 32 + 4 * 72
 
 interface EPGGridProps {
   channels: Channel[]
@@ -119,24 +132,21 @@ function NowCard({ channel, program, now, highlighted }: NowCardProps) {
 
 // ─── Future grid helpers ───────────────────────────────────────────────────────
 
-/** Returns programs for a channel clipped to [gridStartAt, gridEndAt). */
 function clipPrograms(programs: Program[], gridStart: Date, gridEnd: Date): Program[] {
   return programs.filter((p) => new Date(p.endAt) > gridStart && new Date(p.startAt) < gridEnd)
 }
 
-/** Converts a Date into a left-offset px value relative to gridStartAt. */
 function dateToOffset(date: Date, gridStart: Date): number {
   return Math.max(0, (date.getTime() - gridStart.getTime()) / (60_000 / PX_PER_MIN))
 }
 
-/** Width in px for a program segment. */
 function programWidth(program: Program, gridStart: Date, gridEnd: Date): number {
   const start = Math.max(new Date(program.startAt).getTime(), gridStart.getTime())
   const end = Math.min(new Date(program.endAt).getTime(), gridEnd.getTime())
   return Math.max(4, (end - start) / (60_000 / PX_PER_MIN))
 }
 
-// ─── Desktop future grid ───────────────────────────────────────────────────────
+// ─── Desktop future grid (virtualised rows) ────────────────────────────────────
 
 interface FutureGridProps {
   channels: Channel[]
@@ -149,8 +159,8 @@ interface FutureGridProps {
 
 function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart, gridEnd, now }: FutureGridProps) {
   const totalWidth = GRID_HOURS * 60 * PX_PER_MIN
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Build hour tick marks
   const hourTicks = useMemo(() => {
     const ticks: Date[] = []
     let cursor = startOfHour(addHours(gridStart, 1))
@@ -164,12 +174,23 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
   const nowOffset = useMemo(() => dateToOffset(now, gridStart), [now, gridStart])
   const showIndicator = nowOffset > 0 && nowOffset < totalWidth
 
+  const rowVirtualizer = useVirtualizer({
+    count: channels.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_H,
+    overscan: 5
+  })
+
+  const virtualRows = rowVirtualizer.getVirtualItems()
+  const totalRowHeight = rowVirtualizer.getTotalSize()
+
   return (
-    /* The outer wrapper is scrollable on both axes. CH_COL_W sticky column
-     * stays in place, time header row sticks to top-0 within this container.
-     * Using overflow-auto here (not on a parent) keeps the sticky contexts
-     * correct for both axes simultaneously. */
-    <section aria-label='これからの番組グリッド' className='relative overflow-auto [scrollbar-width:thin]'>
+    <section
+      ref={scrollRef}
+      aria-label='これからの番組グリッド'
+      className='relative overflow-auto [scrollbar-width:thin]'
+      style={{ height: '100%' }}
+    >
       {/* Sticky time-header row */}
       <div className='sticky top-0 z-20 flex bg-card' style={{ paddingLeft: CH_COL_W }}>
         {/* Corner cell */}
@@ -199,14 +220,27 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
         </div>
       </div>
 
-      {/* Channel rows */}
-      <div>
-        {channels.map((ch) => {
+      {/* Virtualised channel rows — relative wrapper holds total height */}
+      <div data-testid='future-grid-rows' style={{ height: totalRowHeight, position: 'relative' }}>
+        {virtualRows.map((virtualRow) => {
+          const ch = channels[virtualRow.index]
+          if (!ch) return null
           const programs = clipPrograms(programsByChannel.get(ch.id) ?? [], gridStart, gridEnd)
           const isLoading = loadingChannelIds.has(ch.id)
 
           return (
-            <div key={ch.id} className='flex border-b border-border'>
+            <div
+              key={ch.id}
+              data-row
+              data-channel-id={ch.id}
+              data-index={virtualRow.index}
+              className='absolute flex w-full border-b border-border'
+              style={{
+                top: 0,
+                transform: `translateY(${virtualRow.start}px)`,
+                height: ROW_H
+              }}
+            >
               {/* Channel label — sticky left */}
               <button
                 type='button'
@@ -216,7 +250,7 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
                   'cursor-pointer hover:bg-muted/50 transition-colors',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
                 )}
-                style={{ width: CH_COL_W, minHeight: 56 }}
+                style={{ width: CH_COL_W, height: ROW_H }}
               >
                 <span className='font-mono text-[0.65rem] font-bold' style={{ color: genreToColor('') }}>
                   {ch.channelNumber}
@@ -227,7 +261,10 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
               </button>
 
               {/* Programs row — absolutely positioned within relative container */}
-              <div className='relative bg-background' style={{ width: totalWidth, minHeight: 56, flexShrink: 0 }}>
+              <div
+                className='relative flex-1 bg-background'
+                style={{ height: ROW_H, flexShrink: 0, minWidth: totalWidth }}
+              >
                 {isLoading ? (
                   <div className='absolute inset-0 flex items-center gap-2 px-2'>
                     <Skeleton className='h-8 w-full rounded' />
@@ -253,19 +290,84 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
         })}
       </div>
 
-      {/* Now indicator — destructive 2px vertical line */}
+      {/* Now indicator — destructive 2px vertical line.
+          Positioned relative to the scroll container (not the virtualised rows)
+          by using the 28px time-header offset + scrolled top.
+          We let it span the full virtual height so it stays visible at all scroll positions. */}
       {showIndicator && (
         <div
           aria-hidden
-          className='pointer-events-none absolute top-[28px] bottom-0 z-25 w-[2px] bg-destructive'
-          style={{ left: CH_COL_W + nowOffset }}
+          className='pointer-events-none absolute top-[28px] z-25 w-[2px] bg-destructive'
+          style={{ left: CH_COL_W + nowOffset, height: totalRowHeight }}
         />
       )}
     </section>
   )
 }
 
-// ─── Mobile agenda view ────────────────────────────────────────────────────────
+// ─── Mobile: Channel quick-jump chip strip ─────────────────────────────────────
+
+interface ChannelChipStripProps {
+  channels: Channel[]
+  activeChannelId: string | null
+  onChipClick: (channelId: string) => void
+}
+
+function ChannelChipStrip({ channels, activeChannelId, onChipClick }: ChannelChipStripProps) {
+  const stripRef = useRef<HTMLDivElement>(null)
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    const buttons = stripRef.current?.querySelectorAll<HTMLButtonElement>('button')
+    if (!buttons) return
+    const arr = Array.from(buttons)
+    const focused = document.activeElement
+    const idx = arr.indexOf(focused as HTMLButtonElement)
+    if (idx === -1) return
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      arr[(idx + 1) % arr.length]?.focus()
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      arr[(idx - 1 + arr.length) % arr.length]?.focus()
+    }
+  }, [])
+
+  return (
+    <div
+      ref={stripRef}
+      role='toolbar'
+      aria-label='チャンネルクイックジャンプ'
+      className='flex gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden'
+      onKeyDown={handleKeyDown}
+    >
+      {channels.map((ch) => {
+        const isActive = ch.id === activeChannelId
+        return (
+          <button
+            key={ch.id}
+            type='button'
+            onClick={() => onChipClick(ch.id)}
+            aria-pressed={isActive}
+            aria-label={`${ch.channelNumber} ${ch.name}へジャンプ`}
+            className={cn(
+              'inline-flex flex-shrink-0 items-center rounded-status border font-mono font-bold uppercase tracking-status',
+              'gap-[3px] px-1.5 py-[3px] text-[0.5625rem] leading-none',
+              'cursor-pointer transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+              isActive
+                ? 'border-primary bg-primary/12 text-foreground'
+                : 'border-border bg-muted text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {ch.channelNumber}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Mobile agenda view (virtualised sections) ─────────────────────────────────
 
 interface AgendaViewProps {
   channels: Channel[]
@@ -273,90 +375,190 @@ interface AgendaViewProps {
   loadingChannelIds: Set<string>
   now: Date
   windowEnd: Date
+  /** Ref forwarded from the scrollable parent to wire the virtualizer. */
+  scrollRef: React.RefObject<HTMLDivElement | null>
+  onActiveSectionChange: (channelId: string | null) => void
 }
 
-function AgendaView({ channels, programsByChannel, loadingChannelIds, now, windowEnd }: AgendaViewProps) {
+function AgendaView({
+  channels,
+  programsByChannel,
+  loadingChannelIds,
+  now,
+  windowEnd,
+  scrollRef,
+  onActiveSectionChange
+}: AgendaViewProps) {
+  const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+
+  const rowVirtualizer = useVirtualizer({
+    count: channels.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (index) => {
+      const ch = channels[index]
+      if (!ch) return AGENDA_SECTION_ESTIMATE
+      const programs = programsByChannel.get(ch.id) ?? []
+      const visible = programs.filter((p) => new Date(p.endAt) > now && new Date(p.startAt) < windowEnd)
+      const programRows = visible.length === 0 ? 1 : visible.length
+      return 32 + programRows * 64
+    },
+    overscan: 3,
+    measureElement: (el) => el.getBoundingClientRect().height
+  })
+
+  const virtualRows = rowVirtualizer.getVirtualItems()
+  const totalHeight = rowVirtualizer.getTotalSize()
+
+  // IntersectionObserver: track topmost visible section header for chip active state
+  useEffect(() => {
+    const container = scrollRef.current
+    if (!container || channels.length === 0) return
+
+    const headers = new Map<Element, string>()
+    for (const [id, el] of sectionRefs.current.entries()) {
+      const header = el.querySelector('[data-section-header]')
+      if (header) headers.set(header, id)
+    }
+
+    if (headers.size === 0) return
+
+    let topMost: { channelId: string; top: number } | null = null
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const channelId = headers.get(entry.target)
+          if (!channelId) continue
+          if (entry.isIntersecting) {
+            const top = entry.boundingClientRect.top
+            if (topMost === null || top < topMost.top) {
+              topMost = { channelId, top }
+              onActiveSectionChange(channelId)
+            }
+          }
+        }
+      },
+      {
+        root: container,
+        rootMargin: '0px 0px -80% 0px',
+        threshold: 0
+      }
+    )
+
+    for (const el of headers.keys()) {
+      observer.observe(el)
+    }
+
+    return () => observer.disconnect()
+  }, [channels, scrollRef, onActiveSectionChange])
+
   return (
-    <div>
-      {channels.map((ch) => {
+    <div style={{ height: totalHeight, position: 'relative' }}>
+      {virtualRows.map((virtualRow) => {
+        const ch = channels[virtualRow.index]
+        if (!ch) return null
         const rawPrograms = programsByChannel.get(ch.id) ?? []
         const programs = rawPrograms.filter((p) => new Date(p.endAt) > now && new Date(p.startAt) < windowEnd)
         const isLoading = loadingChannelIds.has(ch.id)
 
         return (
-          <section key={ch.id} aria-label={ch.name}>
-            {/* Channel section header */}
-            <div className='sticky top-page-header z-10 flex items-center gap-2 border-b border-border bg-background px-3 py-1.5'>
-              <span className='font-mono text-[0.6875rem] font-bold text-muted-foreground'>{ch.channelNumber}</span>
-              <span className='text-[0.75rem] font-bold'>{ch.name}</span>
-            </div>
-
-            {isLoading ? (
-              <div className='space-y-1 p-2'>
-                {[...Array(3)].map((_, i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton
-                  <Skeleton key={i} className='h-12 w-full rounded' />
-                ))}
+          <div
+            key={ch.id}
+            data-index={virtualRow.index}
+            ref={(el) => {
+              if (el) {
+                sectionRefs.current.set(ch.id, el)
+                rowVirtualizer.measureElement(el)
+              } else {
+                sectionRefs.current.delete(ch.id)
+              }
+            }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              transform: `translateY(${virtualRow.start}px)`
+            }}
+          >
+            <section aria-label={ch.name}>
+              {/* Section header — the sticky CSS still works because the parent
+                  scroll container provides the sticky context. */}
+              <div
+                data-section-header
+                data-channel-id={ch.id}
+                className='sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background px-3 py-1.5'
+              >
+                <span className='font-mono text-[0.6875rem] font-bold text-muted-foreground'>{ch.channelNumber}</span>
+                <span className='text-[0.75rem] font-bold'>{ch.name}</span>
               </div>
-            ) : programs.length === 0 ? (
-              <p className='px-3 py-2 text-[0.75rem] text-muted-foreground'>番組情報なし</p>
-            ) : (
-              <ul>
-                {programs.map((p) => {
-                  const isNow = new Date(p.startAt) <= now && new Date(p.endAt) > now
-                  const accentColor = genreToColor(p.genres[0] ?? '')
-                  return (
-                    <li key={p.id}>
-                      <Link
-                        to='/live/$channelId'
-                        params={{ channelId: ch.id }}
-                        aria-label={`${p.title} ${formatTimeRange(p.startAt, p.endAt)}`}
-                        className={cn(
-                          'flex items-start gap-2 border-b border-border px-3 py-2',
-                          'hover:bg-muted/30 transition-colors',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-                          isNow && 'bg-muted/20'
-                        )}
-                      >
-                        {/* Genre accent bar */}
-                        <div
-                          className='mt-[3px] w-[3px] self-stretch flex-shrink-0 rounded-full'
-                          style={{ background: accentColor }}
-                          aria-hidden
-                        />
 
-                        <div className='flex flex-1 flex-col gap-[2px]'>
-                          <div className='flex items-center gap-1.5'>
-                            {isNow && (
-                              <StatusChip variant='live' dot size='sm'>
-                                ON AIR
-                              </StatusChip>
-                            )}
-                            <span className='font-mono text-[0.625rem] tabular-nums text-muted-foreground'>
-                              {formatTimeRange(p.startAt, p.endAt)}
-                            </span>
+              {isLoading ? (
+                <div className='space-y-1 p-2'>
+                  {[...Array(3)].map((_, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton
+                    <Skeleton key={i} className='h-12 w-full rounded' />
+                  ))}
+                </div>
+              ) : programs.length === 0 ? (
+                <p className='px-3 py-2 text-[0.75rem] text-muted-foreground'>番組情報なし</p>
+              ) : (
+                <ul>
+                  {programs.map((p) => {
+                    const isNow = new Date(p.startAt) <= now && new Date(p.endAt) > now
+                    const accentColor = genreToColor(p.genres[0] ?? '')
+                    return (
+                      <li key={p.id}>
+                        <Link
+                          to='/live/$channelId'
+                          params={{ channelId: ch.id }}
+                          aria-label={`${p.title} ${formatTimeRange(p.startAt, p.endAt)}`}
+                          className={cn(
+                            'flex items-start gap-2 border-b border-border px-3 py-2',
+                            'hover:bg-muted/30 transition-colors',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                            isNow && 'bg-muted/20'
+                          )}
+                        >
+                          <div
+                            className='mt-[3px] w-[3px] self-stretch flex-shrink-0 rounded-full'
+                            style={{ background: accentColor }}
+                            aria-hidden
+                          />
+
+                          <div className='flex flex-1 flex-col gap-[2px]'>
+                            <div className='flex items-center gap-1.5'>
+                              {isNow && (
+                                <StatusChip variant='live' dot size='sm'>
+                                  ON AIR
+                                </StatusChip>
+                              )}
+                              <span className='font-mono text-[0.625rem] tabular-nums text-muted-foreground'>
+                                {formatTimeRange(p.startAt, p.endAt)}
+                              </span>
+                            </div>
+                            <span className='text-[0.8125rem] font-bold leading-[1.3]'>{p.title}</span>
+                            <div className='mt-[2px] flex flex-wrap gap-1'>
+                              {p.genres[0] && (
+                                <StatusChip variant='muted' size='sm'>
+                                  {p.genres[0]}
+                                </StatusChip>
+                              )}
+                              {p.isRecordable && (
+                                <StatusChip variant='sched' size='sm'>
+                                  予約
+                                </StatusChip>
+                              )}
+                            </div>
                           </div>
-                          <span className='text-[0.8125rem] font-bold leading-[1.3]'>{p.title}</span>
-                          <div className='mt-[2px] flex flex-wrap gap-1'>
-                            {p.genres[0] && (
-                              <StatusChip variant='muted' size='sm'>
-                                {p.genres[0]}
-                              </StatusChip>
-                            )}
-                            {p.isRecordable && (
-                              <StatusChip variant='sched' size='sm'>
-                                予約
-                              </StatusChip>
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </section>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </section>
+          </div>
         )
       })}
     </div>
@@ -373,10 +575,11 @@ export function EPGGrid({
   highlightChannelId
 }: EPGGridProps) {
   const now = useClock()
-
   const gridEnd = useMemo(() => addHours(gridStartAt, GRID_HOURS), [gridStartAt])
+  const agendaScrollRef = useRef<HTMLDivElement>(null)
 
-  // Current programs for the NOW-strip (one per channel, currently airing)
+  const [activeChannelId, setActiveChannelId] = useState<string | null>(highlightChannelId ?? channels[0]?.id ?? null)
+
   const nowPrograms = useMemo(() => {
     const map = new Map<string, Program | null>()
     for (const ch of channels) {
@@ -386,6 +589,27 @@ export function EPGGrid({
     }
     return map
   }, [channels, programsByChannel, now])
+
+  // Jump to the section whose id matches channelId
+  const handleChipClick = useCallback(
+    (channelId: string) => {
+      setActiveChannelId(channelId)
+      const container = agendaScrollRef.current
+      if (!container) return
+      // Find the section header in the DOM. If the section is not yet rendered
+      // (virtualizer hasn't mounted it), scroll by index approximation.
+      const header = container.querySelector<HTMLElement>(`[data-section-header][data-channel-id="${channelId}"]`)
+      if (header) {
+        header.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      } else {
+        const idx = channels.findIndex((c) => c.id === channelId)
+        if (idx >= 0) {
+          container.scrollTo({ top: idx * AGENDA_SECTION_ESTIMATE, behavior: 'smooth' })
+        }
+      }
+    },
+    [channels]
+  )
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
@@ -414,6 +638,11 @@ export function EPGGrid({
         </ul>
       </section>
 
+      {/* ── Mobile: channel quick-jump strip (below NOW-strip, above agenda) ── */}
+      <div className='shrink-0 border-b border-border bg-card md:hidden'>
+        <ChannelChipStrip channels={channels} activeChannelId={activeChannelId} onChipClick={handleChipClick} />
+      </div>
+
       {/* ── Desktop: future schedule grid (md+) ── */}
       <div className='hidden flex-1 overflow-hidden md:flex md:flex-col'>
         <div className='shrink-0 border-b border-border bg-muted/50 px-3 py-1'>
@@ -434,13 +663,15 @@ export function EPGGrid({
       </div>
 
       {/* ── Mobile: agenda view (<md) ── */}
-      <div className='flex-1 overflow-y-auto md:hidden'>
+      <div ref={agendaScrollRef} className='flex-1 overflow-y-auto md:hidden'>
         <AgendaView
           channels={channels}
           programsByChannel={programsByChannel}
           loadingChannelIds={loadingChannelIds}
           now={now}
           windowEnd={gridEnd}
+          scrollRef={agendaScrollRef}
+          onActiveSectionChange={setActiveChannelId}
         />
       </div>
     </div>
