@@ -410,40 +410,40 @@ export const FailureReasonSchema = z.enum([
 - [ ] `docs/plans/phase-3-epg.md` 末尾に Phase 4-rules 追補参照を追加
 
 ### backend (EPG 永続化)
-- [ ] Prisma schema に `Program` モデル追加 — `packages/server/prisma/schema.prisma`
-- [ ] `epg-sync.ts` 実装 (`syncAllPrograms`, `syncChannel`, scheduler) — `packages/server/src/services/epg-sync.ts`
-- [ ] サーバ起動時 `startEpgSyncScheduler()` + SIGTERM で `stopEpgSyncScheduler()` を await — `packages/server/src/index.ts`
-- [ ] `routes/programs.ts` を DB クエリベースに切替 + Mirakc フォールバック実装
-- [ ] `mirakc-client.ts` に `getStatus()` (tuner 総数取得 + キャッシュ) 追加
-- [ ] Program row → `ProgramSchema` serializer を `packages/server/src/schemas/Program.dto.ts` に追加
+- [x] Prisma schema に `Program` モデル追加 — `packages/server/prisma/schema.prisma`
+- [x] `epg-sync.ts` 実装 (`syncAllPrograms`, `syncChannel`, scheduler) — `packages/server/src/services/epg-sync.ts`
+- [x] サーバ起動時 `startEpgSyncScheduler()` + SIGTERM で `stopEpgSyncScheduler()` を await — `packages/server/src/index.ts`
+- [x] `routes/programs.ts` を DB クエリベースに切替 + Mirakc フォールバック実装
+- [x] `mirakc-client.ts` に `getStatus()` (tuner 総数取得 + キャッシュ) 追加
+- [x] Program row → `ProgramSchema` serializer を `packages/server/src/schemas/Program.dto.ts` に追加
 
 ### backend (rule エンジン)
-- [ ] Prisma schema に `RecordingRule` + enum 2 種 + `RecordingSchedule.ruleId` + `RecordingSchedule.failureReason` 追加
-- [ ] `bunx prisma migrate dev --name add-recording-rules-and-programs`
-- [ ] `RecordingRule.dto.ts` に Zod スキーマ群 — `packages/server/src/schemas/RecordingRule.dto.ts`
-- [ ] `Recording.dto.ts` に `rule-matched` / `epg-synced` event + `FailureReasonSchema` 追加
-- [ ] `/api/recording-rules` CRUD + `/preview` 実装 — `packages/server/src/routes/recording-rules.ts`
-- [ ] `app.ts` にマウント + `AppType` 更新
-- [ ] `rule-matcher.ts`: `matches()` 純関数 + `runRuleMatcher()` + `resolveConflicts()` + scheduler
-- [ ] サーバ起動時 EPG 初回同期完了 → `runRuleMatcher()` → `startRuleMatcherScheduler()` のシーケンス
-- [ ] regex keyword 保存時バリデーション (`new RegExp()` try/catch)
-- [ ] 単体テスト: `matches()` の真偽表 (keyword / genre / channel / time / dayOfWeek / exclude / 日跨ぎ)
-- [ ] 単体テスト: `resolveConflicts()` (tuner_total=2 で 3 本重複 → 低優先度 1 本が failed)
+- [x] Prisma schema に `RecordingRule` + enum 2 種 + `RecordingSchedule.ruleId` + `RecordingSchedule.failureReason` 追加
+- [x] `bunx prisma migrate dev --name add-recording-rules-and-programs`
+- [x] `RecordingRule.dto.ts` に Zod スキーマ群 — `packages/server/src/schemas/RecordingRule.dto.ts`
+- [x] `Recording.dto.ts` に `rule-matched` / `epg-synced` event + `FailureReasonSchema` 追加
+- [x] `/api/recording-rules` CRUD + `/preview` 実装 — `packages/server/src/routes/recording-rules.ts`
+- [x] `app.ts` にマウント + `AppType` 更新
+- [x] `rule-matcher.ts`: `matches()` 純関数 + `runRuleMatcher()` + `resolveConflicts()` + scheduler
+- [x] サーバ起動時 EPG 初回同期完了 → `runRuleMatcher()` → `startRuleMatcherScheduler()` のシーケンス
+- [x] regex keyword 保存時バリデーション (`new RegExp()` try/catch)。client 側でも入力時に inline error + submit guard (2026-04-18)
+- [x] 単体テスト: `matches()` の真偽表 (keyword / genre / channel / time / dayOfWeek / exclude / 日跨ぎ)
+- [x] 単体テスト: `resolveConflicts()` (tuner_total=2 で 3 本重複 → 低優先度 1 本が failed)
 
 ### frontend
-- [ ] `useRecordingRules` / `useCreateRecordingRule` / `useUpdateRecordingRule` / `useDeleteRecordingRule` — `packages/client/src/hooks/useRecordingRules.ts`
-- [ ] `useRecordingRulePreview` (debounce 500ms の mutation) — 同上
-- [ ] `/recordings` を 3 タブ化 (`?tab=pending|completed|failed`) — `packages/client/src/routes/recordings/index.tsx`
+- [x] `useRecordingRules` / `useCreateRecordingRule` / `useUpdateRecordingRule` / `useDeleteRecordingRule` — `packages/client/src/hooks/useRecordingRules.ts`
+- [x] `useRecordingRulePreview` (debounce 500ms の mutation) — 同上
+- [x] `/recordings` を 3 タブ化 (`?tab=pending|completed|failed`) — `packages/client/src/routes/recordings.index.tsx`
 - [ ] 失敗タブで `failureReason` の日本語表示 (tuner_conflict → "チューナー不足")
-- [ ] `/recordings/rules` 一覧 — `packages/client/src/routes/recordings/rules/index.tsx`
-- [ ] `/recordings/rules/$ruleId` 編集 — `packages/client/src/routes/recordings/rules/$ruleId.tsx`
-- [ ] `/recordings/rules/new` — `packages/client/src/routes/recordings/rules/new.tsx`
-- [ ] `RecordingRuleForm` (Shadcn Form + Switch + MultiSelect + Slider for time) — `packages/client/src/components/recording/RecordingRuleForm.tsx`
-- [ ] `RecordingRuleList` — `packages/client/src/components/recording/RecordingRuleList.tsx`
-- [ ] `RecordingRulePreview` (プレビューペイン + matchCount バッジ) — `packages/client/src/components/recording/RecordingRulePreview.tsx`
-- [ ] `ChannelPicker` (GR/BS/CS 一括ボタン + チェックボックス群) — `packages/client/src/components/recording/ChannelPicker.tsx`
+- [x] `/recordings/rules` 一覧 — `packages/client/src/routes/recordings.rules.index.tsx`
+- [x] `/recordings/rules/$ruleId` 編集 — `packages/client/src/routes/recordings.rules.$id.tsx`
+- [x] `/recordings/rules/new` — `packages/client/src/routes/recordings.rules.new.tsx`
+- [x] `RuleForm` (Shadcn Form + Switch + ToggleGroup + channel picker) — `packages/client/src/components/recording/RuleForm.tsx`
+- [x] rules 一覧 UI (data-table 風) — `packages/client/src/routes/recordings.rules.index.tsx`
+- [x] `RulePreviewPane` (プレビューペイン + matchCount バッジ) + 入力欄横にも件数 inline 表示 — `packages/client/src/components/recording/RulePreviewPane.tsx`
+- [x] `ChannelPicker` (GR/BS/CS Accordion + indeterminate 一括 + レスポンシブ列数) — `packages/client/src/components/recording/ChannelPicker.tsx`
 - [ ] SSE の `rule-matched` / `epg-synced` 受信で適切に invalidate
-- [ ] ルール削除確認 `AlertDialog` (紐づく pending スケジュール件数を表示)
+- [x] ルール削除確認 `AlertDialog` (紐づく pending スケジュール件数を表示)
 
 ### streaming
 - [ ] 変更なし (recording-manager は `ruleId` / `failureReason` を意識しない。ただし FFmpeg 異常終了時に `failureReason='ffmpeg_exit_<code>'` を書き込む 1 行追加はあってよい)
@@ -458,7 +458,20 @@ export const FailureReasonSchema = z.enum([
   - `feat(client): /recordings 3-tab + failure reason display`
   - `feat(client): /recordings/rules UI + preview`
 
-**チェックリスト項目合計: 46**
+**チェックリスト項目合計: 46** (残: SSE client 受信、失敗理由の日本語表示)
+
+## Changes during execution (〜2026-04-18)
+
+UX 磨き込み (当初 checklist に無かった項目):
+
+- **再放送スキップ強化**: `(再)` / `[リピート]` / 全角揺れを `normalizeTitleForDedup()` で除去してから ±60 日窓で重複判定 — `packages/server/src/lib/title-normalize.ts` + DB 統合テスト追加
+- **Rule form 55/45 レイアウト固定**: flex から `lg:grid lg:grid-cols-[55%_45%]` に変更、プレビュー更新で form ペイン幅が動かない regression test 追加
+- **キーワード件数 inline 表示**: プレビューペイン到達前に件数を確認できるよう KEYWORD ラベル右に `{matchCount} 件ヒット` を配置、行高を予約して出現時のレイアウトシフト防止
+- **ChannelPicker レスポンシブ化**: mobile 2 列 → sm 3 列 → lg 4 列、折返し時の段ズレ解消
+- **モバイル UX**: MODE/TARGET/TIME RANGE/DAY OF WEEK を mobile では flex-1 横幅均等、CREATE/CANCEL も full-width split、誤タップ抑止
+- **ENABLED トグルを form から除去**: 新規作成は常に enabled、オンオフは一覧行の Switch で
+- **空状態**: 「まだ録画ルールがありません」のみのシンプル表示
+- **ジャンル選択 hint の高さ予約**: 選択時にレイアウトが上に詰まる問題を `invisible` で解消
 
 ## 検証基準
 

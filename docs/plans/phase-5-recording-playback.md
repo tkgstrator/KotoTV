@@ -58,6 +58,12 @@
 - [ ] 型検査 + Biome
 - [ ] コミット: `feat(streaming): recording playback`, `feat(client): recording player page`
 
+## Changes during execution (〜2026-04-18)
+
+- **PlayerControls の rate / quality セレクタ**を native `<select>` から Shadcn `Select` プリミティブに置換、trigger を content にフィット (`af675d2` / `ef8066d`)
+- **SeekbarChapters + PlayerControls chapters prop** 対応済み、録画ページで stub chapters を表示 (Mirakc なしで UI 検証可能)
+- **useStream の POST/DELETE ループ修正**: 依存配列を source オブジェクトから primitive key に変更、race 対策も追加
+
 ## 共有コントラクト (参照)
 
 - **`<PlayerControls isLive>`**: Phase 2 で `isLive={true}` として build 済み。Phase 5 では同じコンポーネントを `isLive={false}` で使い、差分はシークバー role 切替 (`progressbar` → `slider`) とチャプター tick オーバーレイ追加のみ。ファイル: `packages/client/src/components/player/PlayerControls.tsx`。

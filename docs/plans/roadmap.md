@@ -26,11 +26,11 @@ KonomiTV の Python 実装や黒魔術的手法を避け、TypeScript 統一ス�
 |---|----------|------|------|--------------|------|
 | 0 | プロジェクト基盤 | 1-2 日 | 1-2 日 | [phase-0-foundation.md](phase-0-foundation.md) | 完了 |
 | 1 | チャンネル一覧 + Mirakc 連携 | 2-3 日 | 3-5 日 | [phase-1-channels.md](phase-1-channels.md) | 完了 |
-| 2 ★ | ライブ HLS ストリーミング | 3-5 日 | 6-10 日 | [phase-2-live-hls.md](phase-2-live-hls.md) | 未着手 |
-| 3 | EPG 番組表 | 2-3 日 | 8-13 日 | [phase-3-epg.md](phase-3-epg.md) | 未着手 |
-| 4 | 録画 | 3-4 日 | 11-17 日 | [phase-4-recording.md](phase-4-recording.md) | 未着手 |
-| 5 | 録画視聴 | 1-2 日 | 12-19 日 | [phase-5-recording-playback.md](phase-5-recording-playback.md) | 未着手 |
-| 6 | 品質改善 | 2-3 日 | 14-22 日 | [phase-6-polish.md](phase-6-polish.md) | 未着手 |
+| 2 ★ | ライブ HLS ストリーミング | 3-5 日 | 6-10 日 | [phase-2-live-hls.md](phase-2-live-hls.md) | Mirakc-free 完了、本実装は Mirakc 稼働待ち |
+| 3 | EPG 番組表 | 2-3 日 | 8-13 日 | [phase-3-epg.md](phase-3-epg.md) | 完了 |
+| 4 | 録画 | 3-4 日 | 11-17 日 | [phase-4-recording.md](phase-4-recording.md) | Mirakc-free 完了、SSE client + サムネ UI 残 |
+| 5 | 録画視聴 | 1-2 日 | 12-19 日 | [phase-5-recording-playback.md](phase-5-recording-playback.md) | Mirakc-free 完了、VOD HLS 接続は待ち |
+| 6 | 品質改善 | 2-3 日 | 14-22 日 | [phase-6-polish.md](phase-6-polish.md) | 着手中 (健康監視 + ローカライズ + UX 一貫化 完了) |
 
 **合計: 14-22 日 (1 人月弱)**
 
