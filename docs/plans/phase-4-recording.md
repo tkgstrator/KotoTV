@@ -4,7 +4,7 @@
 |------|-----|
 | **目標** | 録画予約の作成・一覧表示・削除が `/recordings` で可能。予約時刻に Mirakc→FFmpeg で録画ファイルを生成 |
 | **工数** | 3-4 日 |
-| **ステータス** | 未着手 |
+| **ステータス** | 実行中 (Mirakc-free パート着手 2026-04-18) |
 | **前提フェーズ** | Phase 1, Phase 2 |
 
 ## 全体フロー
@@ -19,8 +19,22 @@
 
 ## 採択デザイン
 
-- 候補: `docs/mocks/recordings/v1.html` 他
-- 採択: _(未定)_
+- 採択: **v10** (`docs/mocks/recordings/v10.html`) — sectioned single-column feed (REC NOW / SCHED / FAIL / DONE) + command-palette 予約フォーム
+- 詳細: `docs/mocks/recordings/README.md` §Chosen variant
+- DONE セクションのみ thumbnail、他は text-dense
+
+## 実行スプリット (2026-04-18)
+
+**Mirakc-free (今回):**
+- devops: compose recordings volume + `.env.example` に `RECORDINGS_DIR`
+- backend: Prisma schema (Recording + RecordingSchedule) + migration + `Recording.dto.ts` + CRUD routes + SSE events route (subscriber管理だけ、emit 元は streaming 側が後で供給)
+- frontend: `useRecordings` / `useRecordingEvents` フック + `RecordingList` + `RecordingScheduleForm` + `/recordings` ルート + SSE 購読
+
+**Mirakc 依存 (後続):**
+- streaming: `recording-manager.ts` (起動時 pending 復元 + setTimeout 登録 + Mirakc stream open + FFmpeg spawn)
+- `buildRecordArgs()` 純関数 (HLS とは別の `-c copy -f mp4` ベース)
+- 録画完了後のサムネ抽出ジョブ (FFmpeg で代表フレーム → SSE push)
+- SIGTERM ハンドラ
 
 ## 状態遷移 (planner 合意用)
 
@@ -42,10 +56,10 @@ Recording.thumbnailUrl: string | null   # ← 独立フィールド。status の
 - [ ] `RecordingSchedule` / `Recording` の状態遷移 + backend/streaming の責任分担を `docs/plans/phase-4-recording-design.md` (sub doc) に明記
 - [ ] スケジューラの実装方針 (node-cron vs 自前 `setTimeout` + DB ポーリング) を選定
 
-### designer
-- [ ] `docs/mocks/recordings/` に一覧画面 + 予約フォームのバリアント (リスト vs カレンダー、モーダル vs 別ページ)
-- [ ] 状態表示 (pending/recording/completed/failed) のバッジデザイン
-- [ ] 削除確認 UI (destructive action 規約)
+### designer ✅ 完了 2026-04-17
+- [x] `docs/mocks/recordings/` に v1-v12 バリアント生成
+- [x] v10 採択 (sectioned feed + command palette form)
+- [x] StatusChip マッピング: `scheduled → sched`, `recording → rec`, `completed → done`, `failed → err`
 
 ### devops
 - [ ] `compose.yaml` の app サービスに `volumes: [recordings:/app/data/recordings]` と named volume を追加 — `compose.yaml`
