@@ -270,13 +270,7 @@ function DoneCardInner({
             変換
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant='destructive'
-            onSelect={(e) => {
-              e.preventDefault()
-              setConfirmOpen(true)
-            }}
-          >
+          <DropdownMenuItem variant='destructive' onSelect={() => setConfirmOpen(true)}>
             <Trash2 className='size-3.5' />
             削除
           </DropdownMenuItem>
