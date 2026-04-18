@@ -30,20 +30,76 @@ enum RecordingStatus {
   failed
 }
 
+enum RuleKeywordMode {
+  literal
+  regex
+}
+
+enum RuleKeywordTarget {
+  title
+  title_description
+}
+
+model Program {
+  id          String   @id
+  channelId   String   @map("channel_id")
+  title       String
+  description String?
+  startAt     DateTime @map("start_at") @db.Timestamptz
+  endAt       DateTime @map("end_at")   @db.Timestamptz
+  genres      String[] @default([])
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  fetchedAt   DateTime @default(now()) @map("fetched_at")
+
+  @@index([channelId, startAt])
+  @@index([startAt, endAt])
+  @@index([title])
+  @@map("programs")
+}
+
+model RecordingRule {
+  id               String            @id @default(uuid())
+  name             String
+  enabled          Boolean           @default(true)
+  keyword          String?
+  keywordMode      RuleKeywordMode   @default(literal) @map("keyword_mode")
+  keywordTarget    RuleKeywordTarget @default(title)   @map("keyword_target")
+  excludeKeyword   String?           @map("exclude_keyword")
+  channelIds       String[]          @default([]) @map("channel_ids")
+  genres           String[]          @default([])
+  dayOfWeek        Int[]             @default([]) @map("day_of_week")
+  timeStartMinutes Int?              @map("time_start_minutes")
+  timeEndMinutes   Int?              @map("time_end_minutes")
+  priority         Int               @default(0)
+  avoidDuplicates  Boolean           @default(true) @map("avoid_duplicates")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt      @map("updated_at")
+
+  schedules RecordingSchedule[]
+
+  @@index([enabled])
+  @@map("recording_rules")
+}
+
 model RecordingSchedule {
-  id        String         @id @default(uuid())
-  channelId String         @map("channel_id")
-  programId String         @map("program_id")
-  title     String
-  startAt   DateTime       @map("start_at") @db.Timestamptz
-  endAt     DateTime       @map("end_at") @db.Timestamptz
-  status    ScheduleStatus @default(pending)
-  createdAt DateTime       @default(now()) @map("created_at")
-  updatedAt DateTime       @updatedAt @map("updated_at")
+  id            String         @id @default(uuid())
+  channelId     String         @map("channel_id")
+  programId     String         @map("program_id")
+  title         String
+  startAt       DateTime       @map("start_at") @db.Timestamptz
+  endAt         DateTime       @map("end_at") @db.Timestamptz
+  status        ScheduleStatus @default(pending)
+  ruleId        String?        @map("rule_id")
+  failureReason String?        @map("failure_reason")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
 
   recording Recording?
+  rule      RecordingRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
 
+  @@unique([ruleId, programId])
   @@index([status, startAt])
+  @@index([ruleId])
   @@map("recording_schedules")
 }
 
