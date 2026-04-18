@@ -27,7 +27,7 @@
   /* Tech theme — status surface tokens */
   --radius-status: 3px;
   --radius-action: calc(var(--radius) - 2px);
-  --text-status: 0.6875rem;
+  --text-status: 0.75rem;
   --tracking-status: 0.05em;
 }
 
