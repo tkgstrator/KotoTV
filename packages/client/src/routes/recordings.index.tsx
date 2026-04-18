@@ -373,15 +373,15 @@ function RecordingsPage() {
           onValueChange={(v) => navigate({ search: { tab: v as TabValue } })}
           className='flex flex-1 flex-col overflow-hidden'
         >
-          <div className='sticky top-0 z-10 border-b border-border bg-background px-3 pt-2'>
-            <TabsList variant='line' className='gap-0'>
-              <TabsTrigger value='pending' className='font-mono text-[0.75rem] font-bold'>
+          <div className='sticky top-0 z-10 border-b border-border bg-background'>
+            <TabsList variant='line' className='w-full gap-0'>
+              <TabsTrigger value='pending' className='flex-1 font-mono text-[0.75rem] font-bold'>
                 録画待ち
                 {pendingItems.length > 0 && (
                   <span className='ml-1 font-mono text-[0.5625rem] text-muted-foreground'>({pendingItems.length})</span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value='completed' className='font-mono text-[0.75rem] font-bold'>
+              <TabsTrigger value='completed' className='flex-1 font-mono text-[0.75rem] font-bold'>
                 完了
                 {completedItems.length > 0 && (
                   <span className='ml-1 font-mono text-[0.5625rem] text-muted-foreground'>
@@ -389,7 +389,7 @@ function RecordingsPage() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value='failed' className='font-mono text-[0.75rem] font-bold'>
+              <TabsTrigger value='failed' className='flex-1 font-mono text-[0.75rem] font-bold'>
                 失敗
                 {failedItems.length > 0 && (
                   <span className='ml-1 font-mono text-[0.5625rem] text-destructive'>({failedItems.length})</span>
