@@ -116,31 +116,6 @@ pgadmin: <http://localhost:8080>（`admin@example.com` / `admin`、接続先は 
 └── CLAUDE.md                   # Claude Code からの入口
 ```
 
-### Claude Code Agent Teams で進める
-
-`leader` が `planner / designer / backend / frontend / streaming / devops / qa` を束ねる構成。`/compose` で起動。
-
-```
-/compose        ← leader がヒアリング → planner に計画策定を依頼
-        ↓
-docs/plans/<phase>-<slug>.md    ← planner が計画を書く
-        ↓
-(UI 有り) designer が docs/mocks/<slug>/ に 2-3 案 → ユーザーが選定
-        ↓
-ユーザー承認 → backend / frontend / streaming 並列実行
-        ↓
-qa が type check + biome + commitlint 形式でコミット
-```
-
-エージェント定義は [`.claude/agents/`](.claude/agents/)、ドメイン別ガイドは [`.claude/skills/`](.claude/skills/)。
-
-### コード品質ゲート
-
-1. **PostToolUse フック** — Edit/Write の直後に `bunx biome check --write`
-2. **Stop フック** — ターン終了前にリポジトリ全体の Biome + `tsc -b --noEmit`
-3. **`qa` エージェント** — 機能実装後の最終ゲート
-4. **CI** — `.github/workflows/ci.yml` で全ワークスペースの type check + biome
-
 ## ライセンス
 
 MIT License — [`LICENSE`](LICENSE) を参照。
