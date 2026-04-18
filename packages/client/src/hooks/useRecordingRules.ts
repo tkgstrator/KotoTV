@@ -83,6 +83,7 @@ export function useCreateRecordingRule() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: createRule,
+    meta: { skipGlobalError: true },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RULES_KEY })
       queryClient.invalidateQueries({ queryKey: ['recordings'] })
@@ -94,6 +95,7 @@ export function useUpdateRecordingRule() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateRecordingRule> }) => updateRule(id, data),
+    meta: { skipGlobalError: true },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RULES_KEY })
       queryClient.invalidateQueries({ queryKey: ['recordings'] })
@@ -105,6 +107,7 @@ export function useDeleteRecordingRule() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: deleteRule,
+    meta: { skipGlobalError: true },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RULES_KEY })
       queryClient.invalidateQueries({ queryKey: ['recordings'] })
