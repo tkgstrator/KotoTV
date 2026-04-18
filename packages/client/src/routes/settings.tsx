@@ -457,7 +457,7 @@ function SettingsPage() {
 
   return (
     <>
-      <PageHeader ariaLabel='設定ヘッダー' className='items-center px-4'>
+      <PageHeader ariaLabel='設定ヘッダー' className='items-center gap-2 px-3'>
         <h1 className='font-mono text-[0.9375rem] font-bold leading-none'>設定</h1>
       </PageHeader>
 
