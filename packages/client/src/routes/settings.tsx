@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { HealthLogTail } from '@/components/settings/HealthLogTail'
 import { StatusChip } from '@/components/shared/status-chip'
 import { PageHeader } from '@/components/shell/PageHeader'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { type Subsystem, useHealth } from '@/hooks/useHealth'
 import { type CodecChoice, type QualityChoice, usePlaybackPrefs } from '@/hooks/usePlaybackPrefs'
@@ -371,42 +372,14 @@ function PlaybackTab() {
       <SectHead>再生動作</SectHead>
       <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
         <Row title='自動再生' sub='チャンネル/録画を開いた直後に再生を開始'>
-          <button
-            type='button'
-            role='switch'
-            aria-checked={prefs.autoplay}
-            onClick={() => update({ autoplay: !prefs.autoplay })}
-            className={cn(
-              'relative h-[22px] w-[38px] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              prefs.autoplay ? 'bg-primary' : 'bg-muted'
-            )}
-          >
-            <span
-              className={cn(
-                'absolute top-[2px] size-[18px] rounded-full bg-card shadow transition-transform',
-                prefs.autoplay ? 'translate-x-[18px]' : 'translate-x-[2px]'
-              )}
-            />
-          </button>
+          <Switch checked={prefs.autoplay} onCheckedChange={(v) => update({ autoplay: v })} aria-label='自動再生' />
         </Row>
         <Row title='低遅延モード' sub='ライブ時にバッファを最小化 (帯域不安定だとカクつく可能性)'>
-          <button
-            type='button'
-            role='switch'
-            aria-checked={prefs.lowLatency}
-            onClick={() => update({ lowLatency: !prefs.lowLatency })}
-            className={cn(
-              'relative h-[22px] w-[38px] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              prefs.lowLatency ? 'bg-primary' : 'bg-muted'
-            )}
-          >
-            <span
-              className={cn(
-                'absolute top-[2px] size-[18px] rounded-full bg-card shadow transition-transform',
-                prefs.lowLatency ? 'translate-x-[18px]' : 'translate-x-[2px]'
-              )}
-            />
-          </button>
+          <Switch
+            checked={prefs.lowLatency}
+            onCheckedChange={(v) => update({ lowLatency: v })}
+            aria-label='低遅延モード'
+          />
         </Row>
         <Row title='デフォルト音量' sub={`${Math.round(prefs.defaultVolume * 100)}%`}>
           <input
