@@ -10,6 +10,7 @@ const STICK_THRESHOLD_PX = 16
 interface HealthLogTailProps {
   subsystem: Subsystem
   status: 'ok' | 'warn' | 'err'
+  defaultOpen?: boolean
 }
 
 function levelClass(level: string): string {
@@ -25,9 +26,9 @@ function levelClass(level: string): string {
   }
 }
 
-export function HealthLogTail({ subsystem, status }: HealthLogTailProps) {
+export function HealthLogTail({ subsystem, status, defaultOpen = false }: HealthLogTailProps) {
   const isWarningOrError = status === 'warn' || status === 'err'
-  const [open, setOpen] = useState(isWarningOrError)
+  const [open, setOpen] = useState(defaultOpen)
 
   const { data, isFetching } = useHealthLogs(open ? subsystem : undefined)
   const lines = data?.lines ?? []
