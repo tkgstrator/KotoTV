@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recording Rules v1 — Dense Data-Table List + Fixed Side-by-Side Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:               'hsl(var(--background))',
+            foreground:               'hsl(var(--foreground))',
+            card:                     'hsl(var(--card))',
+            'card-foreground':        'hsl(var(--card-foreground))',
+            muted:                    'hsl(var(--muted))',
+            'muted-foreground':       'hsl(var(--muted-foreground))',
+            border:                   'hsl(var(--border))',
+            primary:                  'hsl(var(--primary))',
+            'primary-foreground':     'hsl(var(--primary-foreground))',
+            destructive:              'hsl(var(--destructive))',
+            'destructive-foreground': 'hsl(var(--destructive-foreground))',
+            ring:                     'hsl(var(--ring))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:             220 16% 93%;
+      --foreground:             222 22% 16%;
+      --card:                   0 0% 99%;
+      --card-foreground:        222 22% 16%;
+      --muted:                  215 12% 87%;
+      --muted-foreground:       215 10% 44%;
+      --border:                 214 14% 82%;
+      --primary:                221 83% 53%;
+      --primary-foreground:     210 40% 98%;
+      --ring:                   221 83% 53%;
+      --destructive:            0 72% 52%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 38%;
+      --warning:                38 92% 46%;
+    }
+    .dark {
+      --background:             222 22% 8%;
+      --foreground:             210 18% 90%;
+      --card:                   222 20% 12%;
+      --card-foreground:        210 18% 90%;
+      --muted:                  222 18% 18%;
+      --muted-foreground:       215 12% 52%;
+      --border:                 222 18% 20%;
+      --primary:                221 83% 60%;
+      --primary-foreground:     222 20% 10%;
+      --ring:                   221 83% 60%;
+      --destructive:            0 72% 58%;
+      --destructive-foreground: 0 0% 98%;
+      --success:                142 70% 46%;
+      --warning:                38 92% 50%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", ui-monospace, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 3px;
+      border-radius: 3px;
+    }
+
+    /* ── App bar ── */
+    .app-bar {
+      position: sticky; top: 0; z-index: 50;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 16px; height: 48px;
+    }
+    .wordmark {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
+      color: hsl(var(--primary));
+    }
+    .nav-sep { width: 1px; height: 18px; background: hsl(var(--border)); flex-shrink: 0; }
+    .nav-item {
+      font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em;
+      color: hsl(var(--muted-foreground)); padding: 4px 8px;
+      border-radius: 3px; cursor: pointer; text-decoration: none;
+      border: 1px solid transparent;
+    }
+    .nav-item:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+    .nav-item.active { color: hsl(var(--foreground)); border-color: hsl(var(--border)); background: hsl(var(--muted)/0.6); }
+    .spacer { flex: 1; }
+
+    /* ── Chips ── */
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.5625rem; font-weight: 700; letter-spacing: 0.07em;
+      padding: 2px 6px; border-radius: 3px; border: 1px solid transparent;
+      font-family: inherit; white-space: nowrap;
+    }
+    .chip-ok     { background: hsl(var(--success)/0.12);     border-color: hsl(var(--success)/0.35);     color: hsl(var(--success)); }
+    .chip-sched  { background: hsl(var(--warning)/0.1);      border-color: hsl(var(--warning)/0.35);     color: hsl(var(--warning)); }
+    .chip-muted  { background: hsl(var(--muted));             border-color: hsl(var(--border));            color: hsl(var(--muted-foreground)); }
+    .chip-info   { background: hsl(var(--primary)/0.1);      border-color: hsl(var(--primary)/0.3);      color: hsl(var(--primary)); }
+    .chip-err    { background: hsl(var(--destructive)/0.1);  border-color: hsl(var(--destructive)/0.3);  color: hsl(var(--destructive)); }
+    .chip-rule   { background: hsl(var(--primary)/0.08);     border-color: hsl(var(--primary)/0.2);      color: hsl(var(--primary)); font-size: 0.5rem; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px; border-radius: 4px;
+      font-size: 0.6875rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; border: 1px solid transparent;
+      transition: opacity 0.12s, background 0.12s;
+      letter-spacing: 0.02em;
+    }
+    .btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-ghost { background: transparent; color: hsl(var(--muted-foreground)); border-color: hsl(var(--border)); }
+    .btn-ghost:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .btn-destructive { background: hsl(var(--destructive)/0.12); color: hsl(var(--destructive)); border-color: hsl(var(--destructive)/0.4); }
+    .btn-destructive:hover { background: hsl(var(--destructive)/0.2); }
+    .btn-sm { padding: 3px 8px; font-size: 0.5625rem; }
+
+    /* ── Form input ── */
+    .form-input {
+      width: 100%; background: hsl(var(--background)); color: hsl(var(--foreground));
+      border: 1px solid hsl(var(--border)); border-radius: 4px;
+      padding: 6px 10px; font-size: 0.75rem; font-family: inherit;
+      outline: none;
+    }
+    .form-input:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 2px hsl(var(--ring)/0.2); }
+    .form-input::placeholder { color: hsl(var(--muted-foreground)); }
+
+    /* ── Toggle / Switch ── */
+    .switch-track {
+      display: inline-flex; width: 32px; height: 18px;
+      background: hsl(var(--muted)); border-radius: 9px;
+      cursor: pointer; position: relative; transition: background 0.15s;
+      border: 1px solid hsl(var(--border));
+      flex-shrink: 0;
+    }
+    .switch-track.on { background: hsl(var(--primary)); border-color: hsl(var(--primary)); }
+    .switch-thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 12px; height: 12px; border-radius: 6px;
+      background: hsl(var(--card)); transition: left 0.15s;
+    }
+    .switch-track.on .switch-thumb { left: 16px; }
+
+    /* ── Checkbox ── */
+    .cb {
+      width: 14px; height: 14px; border-radius: 2px;
+      border: 1px solid hsl(var(--border)); background: hsl(var(--background));
+      cursor: pointer; appearance: none; flex-shrink: 0;
+      position: relative;
+    }
+    .cb:checked { background: hsl(var(--primary)); border-color: hsl(var(--primary)); }
+    .cb:checked::after {
+      content: ''; position: absolute; left: 3px; top: 1px;
+      width: 5px; height: 8px; border: 1.5px solid hsl(var(--primary-foreground));
+      border-top: none; border-left: none; transform: rotate(45deg);
+    }
+    .cb:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* ── Day chip toggle ── */
+    .day-chip {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 24px; border-radius: 3px;
+      border: 1px solid hsl(var(--border)); background: hsl(var(--muted));
+      color: hsl(var(--muted-foreground)); font-size: 0.6875rem; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .day-chip:hover { border-color: hsl(var(--primary)/0.5); color: hsl(var(--primary)); }
+    .day-chip.active { background: hsl(var(--primary)/0.15); border-color: hsl(var(--primary)/0.5); color: hsl(var(--primary)); }
+    .day-chip:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* ── Skeleton ── */
+    .skeleton {
+      background: hsl(var(--muted)); border-radius: 2px;
+      position: relative; overflow: hidden;
+    }
+    .skeleton::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent 0%, hsl(var(--foreground)/0.04) 50%, transparent 100%);
+      animation: shimmer 2s linear infinite; transform: translateX(-100%);
+    }
+    @keyframes shimmer { to { transform: translateX(100%); } }
+
+    /* ── Table ── */
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th {
+      font-size: 0.5625rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: hsl(var(--muted-foreground));
+      padding: 6px 12px; border-bottom: 1px solid hsl(var(--border));
+      text-align: left; white-space: nowrap; background: hsl(var(--card));
+    }
+    .tbl td {
+      padding: 9px 12px; border-bottom: 1px solid hsl(var(--border));
+      vertical-align: middle; background: hsl(var(--card));
+    }
+    .tbl tr:hover td { background: hsl(var(--muted)/0.5); }
+    .tbl tr.row-disabled td { opacity: 0.5; }
+
+    /* ── Preview pane ── */
+    .preview-pane {
+      background: hsl(var(--card)); border-left: 1px solid hsl(var(--border));
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .preview-header {
+      padding: 10px 14px; border-bottom: 1px solid hsl(var(--border));
+      display: flex; align-items: center; gap: 8px;
+      background: hsl(var(--card)); flex-shrink: 0;
+    }
+    .preview-label {
+      font-size: 0.5625rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: hsl(var(--muted-foreground));
+    }
+    .match-count {
+      font-size: 1.1rem; font-weight: 700; color: hsl(var(--primary));
+      line-height: 1; font-family: inherit;
+    }
+    .match-sub {
+      font-size: 0.5625rem; color: hsl(var(--muted-foreground));
+    }
+    .preview-row {
+      padding: 8px 14px; border-bottom: 1px solid hsl(var(--border));
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .preview-row:hover { background: hsl(var(--muted)/0.4); }
+    .preview-title { font-size: 0.75rem; font-weight: 600; color: hsl(var(--foreground)); }
+    .preview-title mark { background: hsl(var(--warning)/0.35); color: inherit; border-radius: 2px; padding: 0 2px; }
+    .preview-meta { font-size: 0.5625rem; color: hsl(var(--muted-foreground)); }
+
+    /* ── Form section label ── */
+    .form-section {
+      font-size: 0.5625rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: hsl(var(--muted-foreground));
+      padding: 12px 0 6px; border-top: 1px solid hsl(var(--border)); margin-top: 10px;
+    }
+    .form-section:first-child { padding-top: 0; border-top: none; margin-top: 0; }
+    .form-label { font-size: 0.6875rem; color: hsl(var(--muted-foreground)); margin-bottom: 4px; }
+
+    /* ── Channel picker ── */
+    .ch-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 4px;
+    }
+    .ch-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; border-radius: 3px;
+      border: 1px solid hsl(var(--border)); background: hsl(var(--background));
+      cursor: pointer; font-size: 0.625rem;
+    }
+    .ch-item:hover { background: hsl(var(--muted)); }
+    .ch-item.selected { border-color: hsl(var(--primary)/0.5); background: hsl(var(--primary)/0.08); }
+    .ch-item:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* ── Genre tag ── */
+    .genre-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 3px;
+      border: 1px solid hsl(var(--border)); background: hsl(var(--muted));
+      font-size: 0.625rem; color: hsl(var(--muted-foreground)); cursor: pointer;
+    }
+    .genre-tag.selected { border-color: hsl(var(--primary)/0.5); background: hsl(var(--primary)/0.1); color: hsl(var(--primary)); }
+    .genre-tag:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* ── Mode toggle group ── */
+    .toggle-group {
+      display: inline-flex; border: 1px solid hsl(var(--border)); border-radius: 4px; overflow: hidden;
+    }
+    .toggle-btn {
+      padding: 4px 10px; font-size: 0.625rem; font-weight: 700; font-family: inherit;
+      background: hsl(var(--background)); color: hsl(var(--muted-foreground)); cursor: pointer;
+      border: none; border-right: 1px solid hsl(var(--border)); letter-spacing: 0.04em;
+    }
+    .toggle-btn:last-child { border-right: none; }
+    .toggle-btn.active { background: hsl(var(--primary)/0.12); color: hsl(var(--primary)); }
+    .toggle-btn:hover:not(.active) { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .toggle-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex; border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--card)); padding: 0 16px; gap: 0;
+    }
+    .tab-item {
+      padding: 10px 14px; font-size: 0.6875rem; font-weight: 700;
+      letter-spacing: 0.04em; color: hsl(var(--muted-foreground));
+      cursor: pointer; border-bottom: 2px solid transparent;
+      margin-bottom: -1px; white-space: nowrap;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .tab-item:hover { color: hsl(var(--foreground)); }
+    .tab-item.active { color: hsl(var(--foreground)); border-bottom-color: hsl(var(--primary)); }
+    .tab-item:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      padding: 48px 24px; text-align: center;
+      color: hsl(var(--muted-foreground));
+    }
+    .empty-cmd {
+      font-size: 0.75rem; font-family: inherit;
+      color: hsl(var(--muted-foreground)); display: block; margin-bottom: 8px;
+    }
+
+    /* ── Scroll area ── */
+    .scroll-y { overflow-y: auto; }
+    .scroll-y::-webkit-scrollbar { width: 4px; }
+    .scroll-y::-webkit-scrollbar-track { background: transparent; }
+    .scroll-y::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+
+    /* Layout: section labels showing context */
+    .section-note {
+      font-size: 0.5625rem; color: hsl(var(--muted-foreground));
+      padding: 4px 16px 8px; letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: DESKTOP — /recordings/rules LIST                        -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div style="margin-bottom: 40px;">
+  <div style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:hsl(var(--muted-foreground));padding:12px 16px;border-bottom:1px solid hsl(var(--border));background:hsl(var(--muted)/0.5);">
+    DESKTOP  ~1440px — /recordings/rules — Rule List (data-table, dense)
+  </div>
+
+  <!-- App bar -->
+  <div class="app-bar">
+    <span class="wordmark">KotoTV</span>
+    <div class="nav-sep"></div>
+    <a class="nav-item" href="#">ライブ</a>
+    <a class="nav-item" href="#">EPG</a>
+    <a class="nav-item active" href="#">録画</a>
+    <a class="nav-item" href="#">設定</a>
+    <div class="spacer"></div>
+    <!-- health strip small -->
+    <span class="chip chip-ok">MIRAKC OK</span>
+    <span class="chip chip-ok">DB OK</span>
+  </div>
+
+  <!-- Recordings sub-tabs -->
+  <div class="tab-bar">
+    <div class="tab-item">録画待ち <span style="font-size:0.5625rem;opacity:0.7;">12</span></div>
+    <div class="tab-item">完了 <span style="font-size:0.5625rem;opacity:0.7;">48</span></div>
+    <div class="tab-item">失敗 <span style="font-size:0.5625rem;opacity:0.7;">3</span></div>
+    <div class="spacer"></div>
+    <button class="tab-item active">ルール管理</button>
+    <button class="tab-item" style="color:hsl(var(--primary))">+ 手動予約</button>
+  </div>
+
+  <!-- Rule list toolbar -->
+  <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid hsl(var(--border));background:hsl(var(--card));">
+    <span style="font-size:0.5625rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:hsl(var(--muted-foreground));">録画ルール</span>
+    <span class="chip chip-muted">6 件</span>
+    <div class="spacer"></div>
+    <input class="form-input" style="width:180px;" placeholder="ルールを検索…" />
+    <button class="btn btn-primary btn-sm">+ 新規ルール</button>
+  </div>
+
+  <!-- Rule table -->
+  <div style="overflow-x:auto;background:hsl(var(--card));">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th style="width:28px;"></th>
+          <th>ルール名</th>
+          <th>キーワード</th>
+          <th>チャンネル</th>
+          <th>曜日・時間帯</th>
+          <th style="text-align:center;">24h ヒット</th>
+          <th style="text-align:center;">優先度</th>
+          <th style="text-align:center;">有効</th>
+          <th style="width:80px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Row 1: active rule -->
+        <tr>
+          <td>
+            <div style="width:3px;height:28px;background:hsl(var(--success));border-radius:1px;"></div>
+          </td>
+          <td>
+            <span style="font-size:0.75rem;font-weight:600;color:hsl(var(--foreground));">アニメ深夜 — 一般</span>
+          </td>
+          <td>
+            <span style="font-family:inherit;font-size:0.6875rem;color:hsl(var(--foreground));background:hsl(var(--muted));padding:1px 6px;border-radius:2px;">アニメ</span>
+            <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));margin-left:4px;">literal / title</span>
+          </td>
+          <td>
+            <span class="chip chip-muted">GR 全局</span>
+          </td>
+          <td>
+            <span style="font-size:0.625rem;color:hsl(var(--foreground));">月水金 / 23:00–03:00</span>
+          </td>
+          <td style="text-align:center;">
+            <span style="font-size:0.875rem;font-weight:700;color:hsl(var(--primary));">23</span>
+          </td>
+          <td style="text-align:center;">
+            <span style="font-size:0.75rem;color:hsl(var(--foreground));">0</span>
+          </td>
+          <td style="text-align:center;">
+            <div class="switch-track on" tabindex="0" role="switch" aria-checked="true">
+              <div class="switch-thumb"></div>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-ghost btn-sm" tabindex="0">編集</button>
+              <button class="btn btn-destructive btn-sm" tabindex="0">削除</button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 2: active rule -->
+        <tr>
+          <td>
+            <div style="width:3px;height:28px;background:hsl(var(--success));border-radius:1px;"></div>
+          </td>
+          <td>
+            <span style="font-size:0.75rem;font-weight:600;color:hsl(var(--foreground));">NHK ニュース</span>
+          </td>
+          <td>
+            <span style="font-family:inherit;font-size:0.6875rem;color:hsl(var(--foreground));background:hsl(var(--muted));padding:1px 6px;border-radius:2px;">ニュース</span>
+            <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));margin-left:4px;">literal / title</span>
+          </td>
+          <td>
+            <span class="chip chip-muted">NHK 総合</span>
+          </td>
+          <td>
+            <span style="font-size:0.625rem;color:hsl(var(--foreground));">毎日 / 19:00–21:00</span>
+          </td>
+          <td style="text-align:center;">
+            <span style="font-size:0.875rem;font-weight:700;color:hsl(var(--primary));">2</span>
+          </td>
+          <td style="text-align:center;">
+            <span style="font-size:0.75rem;color:hsl(var(--foreground));">10</span>
+          </td>
+          <td style="text-align:center;">
+            <div class="switch-track on" tabindex="0" role="switch" aria-checked="true">
+              <div class="switch-thumb"></div>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-ghost btn-sm" tabindex="0">編集</button>
+              <button class="btn btn-destructive btn-sm" tabindex="0">削除</button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 3: PAUSED rule -->
+        <tr class="row-disabled">
+          <td>
+            <div style="width:3px;height:28px;background:hsl(var(--border));border-radius:1px;"></div>
+          </td>
+          <td>
+            <span style="font-size:0.75rem;font-weight:600;color:hsl(var(--foreground));">BSドキュメンタリー</span>
+            <span class="chip chip-muted" style="margin-left:6px;">PAUSED</span>
+          </td>
+          <td>
+            <span style="font-family:inherit;font-size:0.6875rem;color:hsl(var(--foreground));background:hsl(var(--muted));padding:1px 6px;border-radius:2px;">ドキュメンタリー</span>
+            <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));margin-left:4px;">literal / title+desc</span>
+          </td>
+          <td>
+            <span class="chip chip-muted">BS 全局</span>
+          </td>
+          <td>
+            <span style="font-size:0.625rem;color:hsl(var(--foreground));">毎日 / 終日</span>
+          </td>
+          <td style="text-align:center;">
+            <span style="font-size:0.875rem;font-weight:700;color:hsl(var(--muted-foreground));">—</span>
+          </td>
+          <td style="text-align:center;">
+            <span style="font-size:0.75rem;color:hsl(var(--foreground));">0</span>
+          </td>
+          <td style="text-align:center;">
+            <div class="switch-track" tabindex="0" role="switch" aria-checked="false">
+              <div class="switch-thumb"></div>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-ghost btn-sm" tabindex="0">編集</button>
+              <button class="btn btn-destructive btn-sm" tabindex="0">削除</button>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Row 4: regex rule with err chip -->
+        <tr>
+          <td>
+            <div style="width:3px;height:28px;background:hsl(var(--success));border-radius:1px;"></div>
+          </td>
+          <td>
+            <span style="font-size:0.75rem;font-weight:600;color:hsl(var(--foreground));">スポーツ録画</span>
+          </td>
+          <td>
+            <span style="font-family:inherit;font-size:0.6875rem;color:hsl(var(--warning));background:hsl(var(--warning)/0.1);padding:1px 6px;border-radius:2px;">(プロ野球|サッカー)</span>
+            <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));margin-left:4px;">regex / title</span>
+          </td>
+          <td>
+            <span class="chip chip-muted">5 局</span>
+          </td>
+          <td>
+            <span style="font-size:0.625rem;color:hsl(var(--foreground));">土日 / 終日</span>
+          </td>
+          <td style="text-align:center;">
+            <span style="font-size:0.875rem;font-weight:700;color:hsl(var(--primary));">8</span>
+          </td>
+          <td style="text-align:center;">
+            <span style="font-size:0.75rem;color:hsl(var(--foreground));">5</span>
+          </td>
+          <td style="text-align:center;">
+            <div class="switch-track on" tabindex="0" role="switch" aria-checked="true">
+              <div class="switch-thumb"></div>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-ghost btn-sm" tabindex="0">編集</button>
+              <button class="btn btn-destructive btn-sm" tabindex="0">削除</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: DESKTOP — /recordings/rules/new — EDITOR (side-by-side) -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div style="margin-bottom: 40px;">
+  <div style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:hsl(var(--muted-foreground));padding:12px 16px;border-bottom:1px solid hsl(var(--border));background:hsl(var(--muted)/0.5);">
+    DESKTOP ~1440px — /recordings/rules/new — Rule Editor (form left 55% / preview right 45%)
+  </div>
+
+  <!-- App bar same -->
+  <div class="app-bar">
+    <span class="wordmark">KotoTV</span>
+    <div class="nav-sep"></div>
+    <a class="nav-item" href="#">ライブ</a>
+    <a class="nav-item" href="#">EPG</a>
+    <a class="nav-item active" href="#">録画</a>
+    <a class="nav-item" href="#">設定</a>
+    <div class="spacer"></div>
+    <span class="chip chip-ok">MIRAKC OK</span>
+    <span class="chip chip-ok">DB OK</span>
+  </div>
+
+  <!-- Breadcrumb bar -->
+  <div style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-bottom:1px solid hsl(var(--border));background:hsl(var(--card));font-size:0.625rem;color:hsl(var(--muted-foreground));">
+    <a href="#" style="color:hsl(var(--muted-foreground));text-decoration:none;">録画</a>
+    <span>/</span>
+    <a href="#" style="color:hsl(var(--muted-foreground));text-decoration:none;">ルール管理</a>
+    <span>/</span>
+    <span style="color:hsl(var(--foreground));">新規ルール</span>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost btn-sm">キャンセル</button>
+    <button class="btn btn-primary btn-sm">保存</button>
+  </div>
+
+  <!-- Main two-pane layout -->
+  <div style="display:flex;height:680px;overflow:hidden;">
+
+    <!-- LEFT: form pane (55%) -->
+    <div class="scroll-y" style="width:55%;border-right:1px solid hsl(var(--border));padding:16px 20px;background:hsl(var(--background));">
+
+      <!-- Basic -->
+      <div class="form-section" style="padding-top:0;border-top:none;margin-top:0;">基本設定</div>
+
+      <div style="margin-bottom:12px;">
+        <div class="form-label">ルール名 <span style="color:hsl(var(--destructive));">*</span></div>
+        <input class="form-input" value="アニメ深夜 — 一般" />
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <div class="switch-track on" tabindex="0" role="switch" aria-checked="true"><div class="switch-thumb"></div></div>
+        <span style="font-size:0.75rem;color:hsl(var(--foreground));">有効</span>
+        <div class="spacer"></div>
+        <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));">重複回避</span>
+        <div class="switch-track on" tabindex="0" role="switch" aria-checked="true"><div class="switch-thumb"></div></div>
+      </div>
+
+      <!-- Keyword -->
+      <div class="form-section">キーワード</div>
+
+      <div style="margin-bottom:10px;">
+        <div class="form-label">キーワード（マッチ）</div>
+        <div style="display:flex;gap:6px;">
+          <input class="form-input" value="アニメ" style="flex:1;" />
+          <div class="toggle-group">
+            <button class="toggle-btn active">literal</button>
+            <button class="toggle-btn">regex</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+          <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));">対象:</span>
+          <div class="toggle-group">
+            <button class="toggle-btn active">タイトル</button>
+            <button class="toggle-btn">タイトル+概要</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div class="form-label">除外キーワード</div>
+        <input class="form-input" placeholder="例: 再放送" />
+      </div>
+
+      <!-- Channel picker -->
+      <div class="form-section">チャンネル</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <button class="btn btn-ghost btn-sm" tabindex="0">GR すべて</button>
+        <button class="btn btn-ghost btn-sm" tabindex="0">BS すべて</button>
+        <button class="btn btn-ghost btn-sm" tabindex="0">CS すべて</button>
+        <div class="spacer"></div>
+        <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));align-self:center;">3 局選択中</span>
+      </div>
+      <div class="ch-grid" style="margin-bottom:16px;">
+        <label class="ch-item selected" tabindex="0"><input class="cb" type="checkbox" checked /> NHK 総合</label>
+        <label class="ch-item selected" tabindex="0"><input class="cb" type="checkbox" checked /> NHK Eテレ</label>
+        <label class="ch-item selected" tabindex="0"><input class="cb" type="checkbox" checked /> フジテレビ</label>
+        <label class="ch-item" tabindex="0"><input class="cb" type="checkbox" /> テレビ朝日</label>
+        <label class="ch-item" tabindex="0"><input class="cb" type="checkbox" /> TBS</label>
+        <label class="ch-item" tabindex="0"><input class="cb" type="checkbox" /> 日本テレビ</label>
+        <label class="ch-item" tabindex="0"><input class="cb" type="checkbox" /> テレビ東京</label>
+        <label class="ch-item" tabindex="0"><input class="cb" type="checkbox" /> MX</label>
+      </div>
+
+      <!-- Genre -->
+      <div class="form-section">ジャンル</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px;">
+        <span class="genre-tag selected" tabindex="0">アニメ／特撮</span>
+        <span class="genre-tag" tabindex="0">スポーツ</span>
+        <span class="genre-tag" tabindex="0">ドラマ</span>
+        <span class="genre-tag" tabindex="0">バラエティ</span>
+        <span class="genre-tag" tabindex="0">ドキュメンタリー</span>
+        <span class="genre-tag" tabindex="0">映画</span>
+        <span class="genre-tag" tabindex="0">音楽</span>
+        <span class="genre-tag" tabindex="0">ニュース</span>
+        <span class="genre-tag" tabindex="0">情報／ワイドショー</span>
+      </div>
+
+      <!-- Schedule filter -->
+      <div class="form-section">スケジュール絞り込み</div>
+      <div style="margin-bottom:10px;">
+        <div class="form-label">曜日（複数選択可）</div>
+        <div style="display:flex;gap:4px;">
+          <button class="day-chip active" tabindex="0">月</button>
+          <button class="day-chip" tabindex="0">火</button>
+          <button class="day-chip active" tabindex="0">水</button>
+          <button class="day-chip" tabindex="0">木</button>
+          <button class="day-chip active" tabindex="0">金</button>
+          <button class="day-chip" tabindex="0">土</button>
+          <button class="day-chip" tabindex="0">日</button>
+          <button class="btn btn-ghost btn-sm" tabindex="0" style="margin-left:8px;">すべて</button>
+          <button class="btn btn-ghost btn-sm" tabindex="0">平日</button>
+          <button class="btn btn-ghost btn-sm" tabindex="0">週末</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <div class="form-label">時間帯（JST）</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input class="form-input" style="width:80px;" value="23:00" />
+          <span style="color:hsl(var(--muted-foreground));">〜</span>
+          <input class="form-input" style="width:80px;" value="03:00" />
+          <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));">（空欄=終日）</span>
+        </div>
+      </div>
+
+      <!-- Priority -->
+      <div class="form-section">優先度・その他</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div style="flex:1;">
+          <div class="form-label">優先度 <span style="color:hsl(var(--muted-foreground));">(高いほど優先、チューナー競合時に使用)</span></div>
+          <input class="form-input" type="number" value="0" style="width:80px;" />
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex;gap:8px;padding-top:16px;border-top:1px solid hsl(var(--border));">
+        <button class="btn btn-primary">保存</button>
+        <button class="btn btn-ghost">キャンセル</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: preview pane (45%) -->
+    <div class="preview-pane" style="width:45%;">
+      <div class="preview-header">
+        <div>
+          <div class="preview-label">ライブプレビュー</div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px;">
+            <span class="match-count">23 件</span>
+            <span class="match-sub">ヒット — 次 24h の EPG</span>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <span class="chip chip-info">debounce 500ms</span>
+      </div>
+
+      <div class="scroll-y" style="flex:1;">
+        <!-- Preview rows with keyword highlight -->
+        <div class="preview-row">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="chip chip-muted">NHK 総合</span>
+            <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">04/17 23:30–01:00</span>
+            <span class="chip chip-info">title</span>
+          </div>
+          <div class="preview-title"><mark>アニメ</mark>映画「君の名は」</div>
+        </div>
+        <div class="preview-row">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="chip chip-muted">フジテレビ</span>
+            <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">04/17 24:00–24:30</span>
+            <span class="chip chip-info">title</span>
+          </div>
+          <div class="preview-title"><mark>アニメ</mark>「ワンピース」第1000話</div>
+        </div>
+        <div class="preview-row">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="chip chip-muted">NHK Eテレ</span>
+            <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">04/17 00:10–00:40</span>
+            <span class="chip chip-info">title</span>
+          </div>
+          <div class="preview-title">深夜<mark>アニメ</mark>「推しの子」第2期</div>
+        </div>
+        <div class="preview-row">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="chip chip-muted">フジテレビ</span>
+            <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">04/18 01:15–01:45</span>
+            <span class="chip chip-info">title</span>
+          </div>
+          <div class="preview-title"><mark>アニメ</mark>「葬送のフリーレン」#14</div>
+        </div>
+        <div class="preview-row" style="opacity:0.5;">
+          <div style="font-size:0.5625rem;color:hsl(var(--muted-foreground));font-style:italic;">… さらに 19 件</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 3: DESKTOP — EMPTY STATE + LOADING STATE                   -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div style="margin-bottom:40px;display:flex;gap:0;">
+  <!-- Empty rule list -->
+  <div style="width:50%;border-right:1px solid hsl(var(--border));">
+    <div style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:hsl(var(--muted-foreground));padding:12px 16px;border-bottom:1px solid hsl(var(--border));background:hsl(var(--muted)/0.5);">
+      DESKTOP — Rule list EMPTY state
+    </div>
+    <div style="background:hsl(var(--card));">
+      <table class="tbl"><thead><tr>
+        <th style="width:28px;"></th><th>ルール名</th><th>キーワード</th><th>チャンネル</th><th>曜日・時間帯</th>
+        <th style="text-align:center;">24h ヒット</th><th style="text-align:center;">有効</th><th style="width:80px;"></th>
+      </tr></thead></table>
+    </div>
+    <div class="empty-state">
+      <code class="empty-cmd">$ no rules yet — tap + to create</code>
+      <div style="font-size:0.6875rem;color:hsl(var(--muted-foreground));margin-bottom:16px;">ルールを作成すると、キーワード・チャンネル・時間帯の条件で番組を自動予約します。</div>
+      <button class="btn btn-primary">+ 最初のルールを作る</button>
+    </div>
+  </div>
+
+  <!-- Preview loading state -->
+  <div style="width:50%;">
+    <div style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:hsl(var(--muted-foreground));padding:12px 16px;border-bottom:1px solid hsl(var(--border));background:hsl(var(--muted)/0.5);">
+      DESKTOP — Preview pane LOADING state
+    </div>
+    <div class="preview-pane" style="height:260px;">
+      <div class="preview-header">
+        <div>
+          <div class="preview-label">ライブプレビュー</div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px;">
+            <span class="skeleton" style="width:40px;height:20px;display:inline-block;"></span>
+            <span class="match-sub">検索中…</span>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <span class="chip chip-info" style="opacity:0.6;">debouncing…</span>
+      </div>
+      <div style="padding:8px 14px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="skeleton" style="width:64px;height:14px;"></div>
+          <div class="skeleton" style="width:120px;height:14px;"></div>
+        </div>
+        <div class="skeleton" style="width:220px;height:14px;"></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="skeleton" style="width:64px;height:14px;"></div>
+          <div class="skeleton" style="width:140px;height:14px;"></div>
+        </div>
+        <div class="skeleton" style="width:180px;height:14px;"></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="skeleton" style="width:64px;height:14px;"></div>
+          <div class="skeleton" style="width:100px;height:14px;"></div>
+        </div>
+        <div class="skeleton" style="width:200px;height:14px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 4: MOBILE ~390px                                           -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div style="max-width:390px;margin:0 auto 40px;border:1px solid hsl(var(--border));border-radius:6px;overflow:hidden;">
+  <div style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:hsl(var(--muted-foreground));padding:12px 16px;border-bottom:1px solid hsl(var(--border));background:hsl(var(--muted)/0.5);">
+    MOBILE ~390px — /recordings/rules — Rule list
+  </div>
+
+  <!-- Mobile app bar -->
+  <div class="app-bar" style="height:44px;">
+    <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">←</span>
+    <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.04em;">録画ルール</span>
+    <div class="spacer"></div>
+    <button class="btn btn-primary btn-sm">+</button>
+  </div>
+
+  <!-- Mobile tabs -->
+  <div style="display:flex;border-bottom:1px solid hsl(var(--border));background:hsl(var(--card));overflow-x:auto;">
+    <div class="tab-item" style="font-size:0.625rem;padding:8px 10px;">録画待ち</div>
+    <div class="tab-item" style="font-size:0.625rem;padding:8px 10px;">完了</div>
+    <div class="tab-item" style="font-size:0.625rem;padding:8px 10px;">失敗</div>
+    <div class="tab-item active" style="font-size:0.625rem;padding:8px 10px;">ルール</div>
+  </div>
+
+  <!-- Mobile rule cards -->
+  <div style="background:hsl(var(--background));">
+    <!-- Rule card 1 -->
+    <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));padding:12px 14px;display:flex;gap:10px;align-items:flex-start;">
+      <div style="width:3px;align-self:stretch;background:hsl(var(--success));border-radius:1px;flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span style="font-size:0.75rem;font-weight:600;color:hsl(var(--foreground));flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">アニメ深夜 — 一般</span>
+          <div class="switch-track on" style="flex-shrink:0;" tabindex="0" role="switch"><div class="switch-thumb"></div></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+          <code style="font-size:0.5625rem;background:hsl(var(--muted));padding:1px 5px;border-radius:2px;color:hsl(var(--foreground));">アニメ</code>
+          <span class="chip chip-muted">GR 全局</span>
+          <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));">月水金 23-03時</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:0.6875rem;color:hsl(var(--primary));font-weight:700;">▶ 今日 23 件</span>
+          <div class="spacer"></div>
+          <button class="btn btn-ghost btn-sm">編集</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rule card 2: PAUSED -->
+    <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));padding:12px 14px;display:flex;gap:10px;align-items:flex-start;opacity:0.6;">
+      <div style="width:3px;align-self:stretch;background:hsl(var(--border));border-radius:1px;flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span style="font-size:0.75rem;font-weight:600;color:hsl(var(--foreground));flex:1;">BSドキュメンタリー</span>
+          <span class="chip chip-muted">PAUSED</span>
+          <div class="switch-track" style="flex-shrink:0;" tabindex="0" role="switch"><div class="switch-thumb"></div></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <code style="font-size:0.5625rem;background:hsl(var(--muted));padding:1px 5px;border-radius:2px;color:hsl(var(--foreground));">ドキュメンタリー</code>
+          <span class="chip chip-muted">BS 全局</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 5: MOBILE — Rule editor stacked (form + preview below)     -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div style="max-width:390px;margin:0 auto 40px;border:1px solid hsl(var(--border));border-radius:6px;overflow:hidden;">
+  <div style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:hsl(var(--muted-foreground));padding:12px 16px;border-bottom:1px solid hsl(var(--border));background:hsl(var(--muted)/0.5);">
+    MOBILE ~390px — /recordings/rules/new — Editor (stacked: form top, preview bottom)
+  </div>
+
+  <div class="app-bar" style="height:44px;">
+    <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">←</span>
+    <span style="font-size:0.75rem;font-weight:700;">新規ルール</span>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost btn-sm">キャンセル</button>
+    <button class="btn btn-primary btn-sm">保存</button>
+  </div>
+
+  <!-- Form section (mobile) -->
+  <div style="padding:14px;background:hsl(var(--background));border-bottom:2px solid hsl(var(--border));">
+    <div style="margin-bottom:10px;">
+      <div class="form-label">ルール名</div>
+      <input class="form-input" placeholder="例: アニメ深夜" />
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <div style="flex:1;">
+        <div class="form-label">キーワード</div>
+        <input class="form-input" value="アニメ" />
+      </div>
+      <div style="flex-shrink:0;padding-top:18px;">
+        <div class="toggle-group">
+          <button class="toggle-btn active" style="font-size:0.5rem;">lit</button>
+          <button class="toggle-btn" style="font-size:0.5rem;">re</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div class="form-label">曜日</div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap;">
+        <button class="day-chip active">月</button>
+        <button class="day-chip">火</button>
+        <button class="day-chip active">水</button>
+        <button class="day-chip">木</button>
+        <button class="day-chip active">金</button>
+        <button class="day-chip">土</button>
+        <button class="day-chip">日</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input class="form-input" style="width:72px;" value="23:00" />
+      <span style="color:hsl(var(--muted-foreground));">–</span>
+      <input class="form-input" style="width:72px;" value="03:00" />
+      <div class="spacer"></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));">有効</span>
+        <div class="switch-track on" tabindex="0" role="switch"><div class="switch-thumb"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview section (mobile, below form) -->
+  <div class="preview-pane" style="height:200px;">
+    <div class="preview-header" style="padding:8px 14px;">
+      <div>
+        <div class="preview-label">プレビュー</div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-top:2px;">
+          <span class="match-count" style="font-size:0.875rem;">23 件</span>
+          <span class="match-sub">/ 次 24h</span>
+        </div>
+      </div>
+    </div>
+    <div class="scroll-y" style="flex:1;">
+      <div class="preview-row">
+        <div style="display:flex;gap:4px;align-items:center;">
+          <span class="chip chip-muted" style="font-size:0.5rem;">NHK 総合</span>
+          <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">23:30</span>
+        </div>
+        <div class="preview-title" style="font-size:0.6875rem;"><mark>アニメ</mark>映画「君の名は」</div>
+      </div>
+      <div class="preview-row">
+        <div style="display:flex;gap:4px;align-items:center;">
+          <span class="chip chip-muted" style="font-size:0.5rem;">フジテレビ</span>
+          <span style="font-size:0.5rem;color:hsl(var(--muted-foreground));">24:00</span>
+        </div>
+        <div class="preview-title" style="font-size:0.6875rem;"><mark>アニメ</mark>「ワンピース」</div>
+      </div>
+      <div class="preview-row" style="opacity:0.4;">
+        <div style="font-size:0.5rem;color:hsl(var(--muted-foreground));">… さらに 21 件</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 6: /recordings 3-TAB LAYOUT (updated)                      -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div style="margin-bottom:40px;">
+  <div style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:hsl(var(--muted-foreground));padding:12px 16px;border-bottom:1px solid hsl(var(--border));background:hsl(var(--muted)/0.5);">
+    DESKTOP — /recordings 3-tab: 録画待ち tab with RULE/MANUAL source chips
+  </div>
+
+  <div class="app-bar">
+    <span class="wordmark">KotoTV</span>
+    <div class="nav-sep"></div>
+    <a class="nav-item active" href="#">録画</a>
+    <div class="spacer"></div>
+    <span class="chip chip-ok">MIRAKC OK</span>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active">録画待ち <span style="font-size:0.5625rem;opacity:0.7;">12</span></div>
+    <div class="tab-item">完了 <span style="font-size:0.5625rem;opacity:0.7;">48</span></div>
+    <div class="tab-item">失敗 <span style="font-size:0.5625rem;opacity:0.7;">3</span></div>
+    <div class="spacer"></div>
+    <button style="padding:8px 14px;font-size:0.6875rem;font-weight:700;color:hsl(var(--primary));background:transparent;border:none;cursor:pointer;font-family:inherit;">⚙ ルール管理</button>
+    <button style="padding:8px 14px;font-size:0.6875rem;font-weight:700;color:hsl(var(--primary));background:transparent;border:none;cursor:pointer;font-family:inherit;">+ 手動予約</button>
+  </div>
+
+  <!-- Pending schedules with source chips -->
+  <div style="background:hsl(var(--card));">
+    <!-- REC NOW -->
+    <div style="display:flex;align-items:stretch;border-bottom:1px solid hsl(var(--border));">
+      <div style="width:3px;background:hsl(var(--destructive));flex-shrink:0;"></div>
+      <div style="flex:1;padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+          <span class="chip" style="background:hsl(var(--destructive)/0.1);border-color:hsl(var(--destructive)/0.35);color:hsl(var(--destructive));">
+            <span style="width:6px;height:6px;border-radius:50%;background:hsl(var(--destructive));animation:rec-pulse 1.4s ease-in-out infinite;"></span>
+            REC
+          </span>
+          <span class="chip chip-rule">RULE アニメ深夜—一般</span>
+          <span class="chip chip-muted">NHK 総合</span>
+        </div>
+        <div style="font-size:0.8125rem;font-weight:600;">アニメ映画「君の名は」</div>
+        <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));margin-top:2px;">23:30 – 01:00 (90 min)</div>
+      </div>
+    </div>
+
+    <!-- SCHED from rule -->
+    <div style="display:flex;align-items:stretch;border-bottom:1px solid hsl(var(--border));">
+      <div style="width:3px;background:hsl(var(--warning));flex-shrink:0;"></div>
+      <div style="flex:1;padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+          <span class="chip chip-sched">SCHED</span>
+          <span class="chip chip-rule">RULE NHKニュース</span>
+          <span class="chip chip-muted">NHK 総合</span>
+        </div>
+        <div style="font-size:0.8125rem;font-weight:600;">NHK ニュース 7</div>
+        <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));margin-top:2px;">19:00 – 20:00 明日</div>
+      </div>
+    </div>
+
+    <!-- SCHED from manual -->
+    <div style="display:flex;align-items:stretch;border-bottom:1px solid hsl(var(--border));">
+      <div style="width:3px;background:hsl(var(--warning));flex-shrink:0;"></div>
+      <div style="flex:1;padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+          <span class="chip chip-sched">SCHED</span>
+          <span class="chip chip-muted">MANUAL</span>
+          <span class="chip chip-muted">テレビ朝日</span>
+        </div>
+        <div style="font-size:0.8125rem;font-weight:600;">相棒 Season 22 最終回</div>
+        <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));margin-top:2px;">21:00 – 22:54 今週木曜</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Failed tab demo -->
+  <div style="margin-top:20px;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:hsl(var(--muted-foreground));padding:8px 16px;border-bottom:1px solid hsl(var(--border));background:hsl(var(--muted)/0.5);">
+    DESKTOP — 失敗タブ with failureReason
+  </div>
+  <div style="background:hsl(var(--card));">
+    <div style="display:flex;align-items:stretch;border-bottom:1px solid hsl(var(--border));">
+      <div style="width:3px;background:hsl(var(--destructive)/0.5);flex-shrink:0;"></div>
+      <div style="flex:1;padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+          <span class="chip chip-err">FAIL</span>
+          <span class="chip chip-rule">RULE スポーツ録画</span>
+          <span class="chip chip-muted">フジテレビ</span>
+        </div>
+        <div style="font-size:0.8125rem;font-weight:600;">プロ野球 読売 vs 阪神</div>
+        <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));margin-top:2px;">昨日 18:00 – 21:00</div>
+        <div style="margin-top:6px;padding:5px 8px;background:hsl(var(--destructive)/0.07);border-left:2px solid hsl(var(--destructive)/0.4);font-size:0.5625rem;color:hsl(var(--destructive));">
+          tuner_conflict — チューナー不足でスキップされました（同時刻 3 本、チューナー上限 2）
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:stretch;border-bottom:1px solid hsl(var(--border));">
+      <div style="width:3px;background:hsl(var(--destructive)/0.5);flex-shrink:0;"></div>
+      <div style="flex:1;padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+          <span class="chip chip-err">FAIL</span>
+          <span class="chip chip-muted">MANUAL</span>
+          <span class="chip chip-muted">BS 朝日</span>
+        </div>
+        <div style="font-size:0.8125rem;font-weight:600;">特集 世界遺産</div>
+        <div style="font-size:0.625rem;color:hsl(var(--muted-foreground));margin-top:2px;">昨日 20:00 – 21:00</div>
+        <div style="margin-top:6px;padding:5px 8px;background:hsl(var(--destructive)/0.07);border-left:2px solid hsl(var(--destructive)/0.4);font-size:0.5625rem;color:hsl(var(--destructive));">
+          mirakc_unreachable — 録画中に Mirakc が応答しなくなりました
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Dark mode toggle helper -->
+<div style="position:fixed;bottom:16px;right:16px;z-index:100;">
+  <button class="btn btn-ghost btn-sm" onclick="document.documentElement.classList.toggle('dark')" tabindex="0">
+    ☀/☾ テーマ切替
+  </button>
+</div>
+
+<style>
+  @keyframes rec-pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+</style>
+
+</body>
+</html>
