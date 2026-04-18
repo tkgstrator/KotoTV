@@ -82,9 +82,10 @@ export function ChannelPicker({ channels, value, onChange }: ChannelPickerProps)
             </AccordionTrigger>
           </div>
           <AccordionContent className='pb-1'>
-            <div className='grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-1 pl-6 pr-2'>
+            {/* Fixed 4-column grid so rows align perfectly; labels truncate within cells. */}
+            <div className='grid grid-cols-4 gap-x-3 gap-y-1 pl-6 pr-2'>
               {(groups[type] ?? []).map((ch) => (
-                <div key={ch.id} className='flex items-center gap-2'>
+                <div key={ch.id} className='flex min-w-0 items-center gap-2'>
                   <Checkbox
                     id={`ch-${ch.id}`}
                     checked={value.includes(ch.id)}
