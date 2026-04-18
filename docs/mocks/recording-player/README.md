@@ -95,7 +95,19 @@ and **states/v3** (monospace status chips, log tail, square corners for status,
 
 ---
 
-## Recommendation
+## Chosen variant
+
+**v12 — inline-above-seek identity strip + collapsed fault log + auto-resume toast** (confirmed by user 2026-04-17).
+
+Designer recommended v10, user picked v12. Implementation implications:
+
+- **Fault log is collapsed by default** (`<details>` / Shadcn `Collapsible`), auto-expand on FATAL. Unlike v10's always-visible log, this keeps the ctrl-zone quiet when everything is healthy.
+- **Cross-screen retrofit**: designer recommended adding the same collapsed-log toggle to live-player v10 (currently always-visible 5-line tail). Do this during Phase 2 so both players share the `<FaultLog>` component.
+- **Auto-resume toast**: on arrival, non-modal overlay inside the video well ("続きから 34:12"). Dismisses automatically after interaction or ~5s. Needs coordination with Phase 6 `<Sonner>` tokens so the toast doesn't stack with unrelated toasts.
+- **Inline identity strip** sits between the video well and the seekbar — NOT a fixed header. App-bar above is minimal (breadcrumb + chips only), leaving more vertical room for the video.
+- `role="slider"` on seekbar with chapter tick marks. Shared `<PlayerControls isLive={false}>` component from Phase 2 (per plan).
+
+## Designer recommendation (not picked)
 
 **v10** — because:
 
