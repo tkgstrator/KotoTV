@@ -15,3 +15,55 @@ model HealthCheck {
 
   @@map("health_checks")
 }
+
+enum ScheduleStatus {
+  pending
+  recording
+  completed
+  failed
+  cancelled
+}
+
+enum RecordingStatus {
+  recording
+  completed
+  failed
+}
+
+model RecordingSchedule {
+  id        String         @id @default(uuid())
+  channelId String         @map("channel_id")
+  programId String         @map("program_id")
+  title     String
+  startAt   DateTime       @map("start_at") @db.Timestamptz
+  endAt     DateTime       @map("end_at") @db.Timestamptz
+  status    ScheduleStatus @default(pending)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  recording Recording?
+
+  @@index([status, startAt])
+  @@map("recording_schedules")
+}
+
+model Recording {
+  id           String          @id @default(uuid())
+  scheduleId   String          @unique @map("schedule_id")
+  channelId    String          @map("channel_id")
+  title        String
+  startedAt    DateTime        @map("started_at") @db.Timestamptz
+  endedAt      DateTime?       @map("ended_at") @db.Timestamptz
+  filePath     String?         @map("file_path")
+  sizeBytes    BigInt?         @map("size_bytes")
+  durationSec  Int?            @map("duration_sec")
+  thumbnailUrl String?         @map("thumbnail_url")
+  status       RecordingStatus
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  schedule RecordingSchedule @relation(fields: [scheduleId], references: [id])
+
+  @@index([status, startedAt])
+  @@map("recordings")
+}
