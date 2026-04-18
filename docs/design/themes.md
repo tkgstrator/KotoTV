@@ -4,6 +4,19 @@
 
 A theme is a named set of CSS custom properties declared in `packages/client/src/index.css` under `:root[data-theme="<name>"]` that override the base design tokens. Tailwind v4 `@theme inline` then maps those vars to utility classes. Components consume the utilities — they never hardcode raw values.
 
+### Themes are complete visual units — no piecemeal overrides
+
+A theme is NOT a knob for tweaking one color. **Every new theme MUST redeclare the full set of tokens as a cohesive system** — background, foreground, surface hierarchy, border, primary / secondary / accent, destructive / warning / success, status surface radius, action radius, font stacks, chip typography. Partial themes break visual consistency.
+
+Concretely, a theme declaration at minimum overrides:
+
+- **Palette**: `--background`, `--foreground`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`, `--muted`, `--muted-foreground`, `--accent`, `--accent-foreground`, `--primary`, `--primary-foreground`, `--secondary`, `--secondary-foreground`, `--destructive`, `--destructive-foreground`, `--success`, `--border`, `--input`, `--ring`
+- **Shape**: `--radius` (base), `--radius-status`, `--radius-action`
+- **Typography**: `--font-mono`, `--font-sans`, `--text-status`, `--tracking-status`
+- **Both modes**: light + dark (use `:root[data-theme="<name>"]` + `:root[data-theme="<name>"].dark`)
+
+A theme is accepted only when it passes the regression suite against all locked mocks: every screen (`channel-list`, `epg`, `live-player`, `recording-player`, `recordings`, `settings`, `app-shell`, `states`) must still render legibly under the new theme. If a theme needs a component to change *structure* (not just appearance), that is a new design direction, not a theme swap — open a `docs/mocks/<screen>/` exploration instead.
+
 The active theme is declared once in `packages/client/index.html`:
 
 ```html
