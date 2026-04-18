@@ -13,9 +13,11 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RecordingsRouteImport } from './routes/recordings'
 import { Route as EpgRouteImport } from './routes/epg'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RecordingsIndexRouteImport } from './routes/recordings.index'
 import { Route as RecordingsRulesRouteImport } from './routes/recordings.rules'
 import { Route as RecordingsIdRouteImport } from './routes/recordings/$id'
 import { Route as LiveChannelIdRouteImport } from './routes/live/$channelId'
+import { Route as RecordingsRulesIndexRouteImport } from './routes/recordings.rules.index'
 import { Route as RecordingsRulesNewRouteImport } from './routes/recordings.rules.new'
 import { Route as RecordingsRulesIdRouteImport } from './routes/recordings.rules.$id'
 
@@ -39,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecordingsIndexRoute = RecordingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RecordingsRoute,
+} as any)
 const RecordingsRulesRoute = RecordingsRulesRouteImport.update({
   id: '/rules',
   path: '/rules',
@@ -53,6 +60,11 @@ const LiveChannelIdRoute = LiveChannelIdRouteImport.update({
   id: '/live/$channelId',
   path: '/live/$channelId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const RecordingsRulesIndexRoute = RecordingsRulesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RecordingsRulesRoute,
 } as any)
 const RecordingsRulesNewRoute = RecordingsRulesNewRouteImport.update({
   id: '/new',
@@ -73,19 +85,21 @@ export interface FileRoutesByFullPath {
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
   '/recordings/rules': typeof RecordingsRulesRouteWithChildren
+  '/recordings/': typeof RecordingsIndexRoute
   '/recordings/rules/$id': typeof RecordingsRulesIdRoute
   '/recordings/rules/new': typeof RecordingsRulesNewRoute
+  '/recordings/rules/': typeof RecordingsRulesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/epg': typeof EpgRoute
-  '/recordings': typeof RecordingsRouteWithChildren
   '/settings': typeof SettingsRoute
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
-  '/recordings/rules': typeof RecordingsRulesRouteWithChildren
+  '/recordings': typeof RecordingsIndexRoute
   '/recordings/rules/$id': typeof RecordingsRulesIdRoute
   '/recordings/rules/new': typeof RecordingsRulesNewRoute
+  '/recordings/rules': typeof RecordingsRulesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -96,8 +110,10 @@ export interface FileRoutesById {
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
   '/recordings/rules': typeof RecordingsRulesRouteWithChildren
+  '/recordings/': typeof RecordingsIndexRoute
   '/recordings/rules/$id': typeof RecordingsRulesIdRoute
   '/recordings/rules/new': typeof RecordingsRulesNewRoute
+  '/recordings/rules/': typeof RecordingsRulesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -109,19 +125,21 @@ export interface FileRouteTypes {
     | '/live/$channelId'
     | '/recordings/$id'
     | '/recordings/rules'
+    | '/recordings/'
     | '/recordings/rules/$id'
     | '/recordings/rules/new'
+    | '/recordings/rules/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/epg'
-    | '/recordings'
     | '/settings'
     | '/live/$channelId'
     | '/recordings/$id'
-    | '/recordings/rules'
+    | '/recordings'
     | '/recordings/rules/$id'
     | '/recordings/rules/new'
+    | '/recordings/rules'
   id:
     | '__root__'
     | '/'
@@ -131,8 +149,10 @@ export interface FileRouteTypes {
     | '/live/$channelId'
     | '/recordings/$id'
     | '/recordings/rules'
+    | '/recordings/'
     | '/recordings/rules/$id'
     | '/recordings/rules/new'
+    | '/recordings/rules/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -173,6 +193,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recordings/': {
+      id: '/recordings/'
+      path: '/'
+      fullPath: '/recordings/'
+      preLoaderRoute: typeof RecordingsIndexRouteImport
+      parentRoute: typeof RecordingsRoute
+    }
     '/recordings/rules': {
       id: '/recordings/rules'
       path: '/rules'
@@ -194,6 +221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LiveChannelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recordings/rules/': {
+      id: '/recordings/rules/'
+      path: '/'
+      fullPath: '/recordings/rules/'
+      preLoaderRoute: typeof RecordingsRulesIndexRouteImport
+      parentRoute: typeof RecordingsRulesRoute
+    }
     '/recordings/rules/new': {
       id: '/recordings/rules/new'
       path: '/new'
@@ -214,11 +248,13 @@ declare module '@tanstack/react-router' {
 interface RecordingsRulesRouteChildren {
   RecordingsRulesIdRoute: typeof RecordingsRulesIdRoute
   RecordingsRulesNewRoute: typeof RecordingsRulesNewRoute
+  RecordingsRulesIndexRoute: typeof RecordingsRulesIndexRoute
 }
 
 const RecordingsRulesRouteChildren: RecordingsRulesRouteChildren = {
   RecordingsRulesIdRoute: RecordingsRulesIdRoute,
   RecordingsRulesNewRoute: RecordingsRulesNewRoute,
+  RecordingsRulesIndexRoute: RecordingsRulesIndexRoute,
 }
 
 const RecordingsRulesRouteWithChildren = RecordingsRulesRoute._addFileChildren(
@@ -228,11 +264,13 @@ const RecordingsRulesRouteWithChildren = RecordingsRulesRoute._addFileChildren(
 interface RecordingsRouteChildren {
   RecordingsIdRoute: typeof RecordingsIdRoute
   RecordingsRulesRoute: typeof RecordingsRulesRouteWithChildren
+  RecordingsIndexRoute: typeof RecordingsIndexRoute
 }
 
 const RecordingsRouteChildren: RecordingsRouteChildren = {
   RecordingsIdRoute: RecordingsIdRoute,
   RecordingsRulesRoute: RecordingsRulesRouteWithChildren,
+  RecordingsIndexRoute: RecordingsIndexRoute,
 }
 
 const RecordingsRouteWithChildren = RecordingsRoute._addFileChildren(
