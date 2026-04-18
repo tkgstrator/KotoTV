@@ -198,15 +198,8 @@ function RecordingRulesPage() {
       )}
 
       {!isPending && !isError && rules.length === 0 && (
-        <div className='px-4 py-16'>
-          <p className='mb-3 font-mono text-[0.8125rem] font-semibold text-muted-foreground'>
-            $ no rules yet — tap + to create
-          </p>
-          <Link to='/recordings/rules/new'>
-            <Button variant='outline' size='sm' className='font-mono text-[0.75rem]'>
-              + 最初のルールを作成
-            </Button>
-          </Link>
+        <div className='px-4 py-16 text-center'>
+          <p className='text-[0.875rem] text-muted-foreground'>まだ録画ルールがありません</p>
         </div>
       )}
 
