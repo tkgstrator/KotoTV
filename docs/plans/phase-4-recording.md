@@ -89,7 +89,7 @@ Recording.thumbnailUrl: string | null   # ← 独立フィールド
 
 理由:
 - コンシューマ GeForce の NVEnc 同時セッション数は Turing/Ampere で 3、Ada で 5-8 と限定的。4 チューナー構成で全録画 + ライブ視聴が重なると枠不足
-- 録画中に `-c copy` だけで .ts を書けば NVEnc / QSV を一切消費せず、ライブ視聴側に全エンコード枠を譲れる
+- 録画中に `-c copy` だけで .ts を書けば NVEnc / VAAPI を一切消費せず、ライブ視聴側に全エンコード枠を譲れる
 - 変換は完了後のバックグラウンドキューで逐次実行すれば HW エンコーダは常に 1 セッションのみ占有
 - TS を一次保存しておけば、変換失敗時の再試行・コーデック変更・字幕/ARIB メタ抽出の余地が残る
 
@@ -107,7 +107,7 @@ Recording.thumbnailUrl: string | null   # ← 独立フィールド
 - [ ] エラー時は `status='failed'` + `failureReason` に `ffmpeg_exit_<code>` / `mirakc_unreachable` / `disk_full` 等をセット、ログに stderr 保存
 - [ ] 録画中は一時拡張子 `.tmp.ts` を使い完走後にリネーム (ファイル破損を避ける)
 - [ ] **変換キュー (conversion-queue.ts)** を実装: 同時実行 1 (HW エンコーダ占有回避)、`status=recorded_ts` の録画を `converting` → `completed` に遷移、出力 `.mp4` を `filePath` に更新 — `packages/server/src/services/conversion-queue.ts`
-- [ ] 変換用 FFmpeg コマンド `buildConvertArgs({hwAccel, codec, input, output})` を追加: `nvenc` / `qsv` / `vaapi` / `libx264` の分岐 — `packages/server/src/lib/ffmpeg.ts`
+- [x] 変換用 FFmpeg コマンド `buildConvertArgs({hwAccel, codec, input, output})` を追加: `nvenc` / `vaapi` / `libx264` の分岐 — `packages/server/src/lib/ffmpeg.ts` (ユニットテスト 29 ケース付、2026-04-18)
 - [ ] 変換失敗時は `.ts` を保持したまま `status='convert_failed'` に。UI から再試行可能 (失敗タブに表示)
 - [ ] `completed` 遷移後にバックグラウンドでサムネイル抽出ジョブを enqueue: FFmpeg で代表フレーム 1 枚を `data/thumbnails/<recordingId>.jpg` に書き出し、`Recording.thumbnailUrl` を UPDATE → SSE で `thumbnail-ready` を emit。抽出失敗は `thumbnailUrl=null` のまま放置 — `packages/server/src/services/recording-manager.ts`
 - [ ] サムネ抽出ジョブは録画本体の FFmpeg プロセスとは分離し、`completed` 遷移自体は抽出完了を待たない

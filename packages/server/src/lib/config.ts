@@ -5,7 +5,7 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().default(11575),
   DATABASE_URL: z.string().url(),
   MIRAKC_URL: z.string().url().default('http://mirakc:40772'),
-  HW_ACCEL_TYPE: z.enum(['nvenc', 'qsv', 'vaapi', 'none']).default('none'),
+  HW_ACCEL_TYPE: z.enum(['nvenc', 'vaapi', 'none']).default('none'),
   /* Workspace-relative. Prod mounts this path as tmpfs via compose. */
   HLS_DIR: z.string().default('./data/hls')
 })
