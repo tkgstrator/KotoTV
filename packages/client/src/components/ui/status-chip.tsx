@@ -23,7 +23,7 @@ export type StatusVariant =
   | 'buf'
 
 const chipVariants = cva(
-  'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] border font-mono text-[0.6875rem] font-bold uppercase tracking-[0.05em]',
+  'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-status border font-mono text-status font-bold uppercase tracking-status',
   {
     variants: {
       variant: {
