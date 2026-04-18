@@ -35,6 +35,16 @@ import {
 import { cn } from '@/lib/utils'
 import type { CreateRecordingRule, RecordingRule } from '@/types/RecordingRule'
 
+function regexError(value: string | null | undefined): string | null {
+  if (!value) return null
+  try {
+    new RegExp(value)
+    return null
+  } catch (e) {
+    return e instanceof Error ? e.message : 'invalid regex'
+  }
+}
+
 interface RuleFormProps {
   channels: Channel[]
   existing?: RecordingRule
@@ -96,6 +106,14 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   }, [watched])
 
   async function onSubmit(data: CreateRecordingRule) {
+    if (data.keywordMode === 'regex') {
+      const kErr = regexError(data.keyword)
+      const eErr = regexError(data.excludeKeyword)
+      if (kErr || eErr) {
+        toast.error(`正規表現が不正: ${kErr ?? eErr}`)
+        return
+      }
+    }
     const cleaned: CreateRecordingRule = {
       ...data,
       keyword: data.keyword || null,
@@ -135,9 +153,21 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   const avoidDuplicates = watch('avoidDuplicates')
   const keywordMode = watch('keywordMode')
   const keywordTarget = watch('keywordTarget')
+  const keyword = watch('keyword')
+  const excludeKeyword = watch('excludeKeyword')
+
+  const keywordRegexError = useMemo(
+    () => (keywordMode === 'regex' ? regexError(keyword) : null),
+    [keywordMode, keyword]
+  )
+  const excludeKeywordRegexError = useMemo(
+    () => (keywordMode === 'regex' ? regexError(excludeKeyword) : null),
+    [keywordMode, excludeKeyword]
+  )
 
   const activePreset = matchingPreset(timeStart, timeEnd)
 
+  const hasRegexError = Boolean(keywordRegexError || excludeKeywordRegexError)
   const isPending = createMutation.isPending || updateMutation.isPending
 
   return (
@@ -173,9 +203,16 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             </Label>
             <Input
               {...register('keyword')}
-              className='h-8 font-mono text-[0.8125rem]'
+              className={cn(
+                'h-8 font-mono text-[0.8125rem]',
+                keywordRegexError && 'border-destructive focus-visible:ring-destructive'
+              )}
               placeholder='番組タイトルのキーワード'
+              aria-invalid={keywordRegexError ? true : undefined}
             />
+            {keywordRegexError && (
+              <p className='font-mono text-[0.5625rem] text-destructive'>regex error: {keywordRegexError}</p>
+            )}
             <div className='flex flex-wrap gap-2'>
               <div className='flex flex-col gap-1'>
                 <span className='font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
@@ -226,9 +263,16 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             </Label>
             <Input
               {...register('excludeKeyword')}
-              className='h-8 font-mono text-[0.8125rem]'
+              className={cn(
+                'h-8 font-mono text-[0.8125rem]',
+                excludeKeywordRegexError && 'border-destructive focus-visible:ring-destructive'
+              )}
               placeholder='除外したいキーワード (任意)'
+              aria-invalid={excludeKeywordRegexError ? true : undefined}
             />
+            {excludeKeywordRegexError && (
+              <p className='font-mono text-[0.5625rem] text-destructive'>regex error: {excludeKeywordRegexError}</p>
+            )}
           </div>
 
           {/* ── 5. チャンネルピッカー */}
@@ -424,7 +468,12 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 11. ボタン群 */}
           <div className='flex flex-wrap items-center gap-2 border-t border-border pt-4'>
-            <Button type='submit' size='sm' className='font-mono text-[0.75rem] font-bold' disabled={isPending}>
+            <Button
+              type='submit'
+              size='sm'
+              className='font-mono text-[0.75rem] font-bold'
+              disabled={isPending || hasRegexError}
+            >
               {isPending ? 'SAVING...' : existing ? 'UPDATE' : 'CREATE'}
             </Button>
             <Button
