@@ -200,9 +200,11 @@ function EpgHeader({ windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps)
           aria-label='前日'
         >
           <ChevronLeft className='size-3' />
-          前日
+          <span className='hidden sm:inline'>前日</span>
         </Button>
-        <span className='min-w-[6rem] text-center font-mono text-[0.8rem] font-semibold tabular-nums'>{dateLabel}</span>
+        <span className='min-w-[5rem] text-center font-mono text-[0.8rem] font-semibold tabular-nums sm:min-w-[6rem]'>
+          {dateLabel}
+        </span>
         <Button
           variant='outline'
           size='sm'
@@ -210,7 +212,7 @@ function EpgHeader({ windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps)
           onClick={onNextDay}
           aria-label='翌日'
         >
-          翌日
+          <span className='hidden sm:inline'>翌日</span>
           <ChevronRight className='size-3' />
         </Button>
       </div>
