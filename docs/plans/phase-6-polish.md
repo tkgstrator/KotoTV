@@ -35,7 +35,7 @@
 - [ ] キーボードフォーカス順序とリモコン操作を意識した DOM 順序の見直し (`tabIndex`、`aria-label`) — `packages/client/src/components/player/PlayerControls.tsx` 他
 - [ ] テーマ切替 (light/dark/system) が全画面で期待通り動くか確認
 - [ ] `useHealth` フック: query key `['health']`、`refetchInterval: 15_000`、`refetchIntervalInBackground: false` (document hidden 時はポーリング停止)。app-shell のヘルスサマリと settings status tab が同じフックを共有 (フェッチ 1 本) — `packages/client/src/hooks/useHealth.ts`
-- [ ] `/live/$id` と `/recordings/$id` ルートに入ったら `<html data-mode="player">` を setAttribute、離脱したら削除する shell ロジックを実装。`--shell-offset` の値切替はテーマファイル側で `:root[data-theme='tech'][data-mode='player']` が担う (既に `packages/client/src/themes/tech.css` に定義済み) — `packages/client/src/components/shell/AppShell.tsx`
+- [ ] shell chrome (HealthBar 32px + NavBar 40px = 72px) は **全ルートで不変** (決定 2026-04-17)。プレイヤーページでも縮退しない — ナビゲーション時のレイアウトジャンプ防止 + 視聴中も診断情報を維持 — `packages/client/src/components/shell/AppShell.tsx`
 - [ ] app-shell ヘルスチップと settings status tab のバッジは `<StatusChip>` (Phase 2 導入) を再利用
 
 ### devops
@@ -72,7 +72,7 @@
 ## 共有コントラクト
 
 - **`['health']` query**: 上記 `GET /api/health` と `useHealth` フック。app-shell と settings status tab は必ず同じ query key を使い、単一フェッチ / 単一 15s ポーリングでまかなう。
-- **`--shell-offset` / レイアウト変数**: テーマファイル (`packages/client/src/themes/tech.css`) が宣言。`--shell-offset` / `--shell-health-bar-h` / `--shell-nav-bar-h` / `--mobile-nav-h` / `--diag-sidebar-w` / `--now-strip-h` / `--sidebar-w` / `--container-max` 全てここに集約。プレイヤーモード時は `:root[data-theme='tech'][data-mode='player']` が `--shell-offset` を 40px に縮退。EPG / live-player / recording-player / app-shell はこれらを `var(...)` または Tailwind `h-shell-offset` 等のユーティリティで参照、ハードコード禁止。
+- **`--shell-offset` / レイアウト変数**: テーマファイル (`packages/client/src/themes/tech.css`) が宣言。`--shell-offset` / `--shell-health-bar-h` / `--shell-nav-bar-h` / `--mobile-nav-h` / `--diag-sidebar-w` / `--now-strip-h` / `--sidebar-w` / `--container-max` 全てここに集約。shell chrome は全ルートで不変 (決定 2026-04-17、`data-mode="player"` による縮退は廃止)。EPG / live-player / recording-player / app-shell はこれらを `var(...)` または Tailwind `h-shell-offset` 等のユーティリティで参照、ハードコード禁止。
 - **`<StatusChip>`**: Phase 2 frontend が先行で用意するプリミティブ。Phase 6 ではヘルスサマリ / settings status tab / 各種状態表示でローカル再実装せず再利用する。仕様は [`docs/mocks/app-shell/README.md`](../mocks/app-shell/README.md) §StatusChip。
 
 ## 参照スキル
