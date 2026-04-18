@@ -126,3 +126,7 @@ Recording.thumbnailUrl: string | null   # ← 独立フィールド。status の
 ## 参照スキル
 
 - `prisma-postgres`、`mirakc`、`ffmpeg-hls`、`bun-hono`、`tanstack-query-best-practices`、`shadcn`
+
+## 追補: ルールベース自動録画
+
+単発予約のパイプラインが着地した後、ルール中心の自動録画機能を追加する。設計は [`phase-4-recording-rules.md`](phase-4-recording-rules.md) 参照。主役はルール、単発予約は副次に降格する方針。

@@ -80,3 +80,11 @@
 ## 参照スキル
 
 - `mirakc`、`bun-hono`、`tanstack-router`、`tanstack-query-best-practices`、`shadcn`、`spatial-nav`
+
+## 後続追補 (2026-04-18)
+
+- Phase 4-rules 追補 ([`phase-4-recording-rules.md`](phase-4-recording-rules.md)) で **EPG を DB に永続化** する方針に切り替え。
+  - 新規 `Program` モデルを追加し、15 分周期の `epg-sync` ワーカーで Mirakc → Postgres を同期。
+  - `GET /api/programs` は DB クエリベースに移行、`mirakc-client.listProgramsInRange()` はフォールバックとして残置。
+  - Phase 3 のクライアント / ルート実装 (`usePrograms`、`EPGGrid`) は変更不要 (API レスポンス shape は不変)。
+- Phase 3 本体のステータスは「完了」のまま。データソースの移行作業は Phase 4-rules のチェックリストで追跡。
