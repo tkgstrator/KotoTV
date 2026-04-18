@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { ThemeProvider } from 'next-themes'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Toaster } from 'sonner'
 import { routeTree } from './routeTree.gen'
 import './index.css'
 
@@ -31,6 +32,7 @@ createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
         <RouterProvider router={router} />
+        <Toaster richColors position='bottom-right' />
       </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>
