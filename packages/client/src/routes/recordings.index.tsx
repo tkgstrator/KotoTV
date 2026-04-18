@@ -32,6 +32,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRecordingRules } from '@/hooks/useRecordingRules'
 import { useDeleteRecording, useRecordingEvents, useRecordings } from '@/hooks/useRecordings'
 import { failureReasonLabel } from '@/lib/recording-labels'
+import { cn } from '@/lib/utils'
+
+// Match the settings page tab styling so the tab bar height + typography
+// are consistent across the app (border-bottom active marker, mono uppercase).
+const REC_TAB_CLASS =
+  'rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.75rem] font-bold text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
 
 type TabValue = 'pending' | 'completed' | 'failed'
 
@@ -449,14 +455,14 @@ function RecordingsPage() {
           className='flex flex-1 flex-col overflow-hidden'
         >
           <div className='sticky top-0 z-10 border-b border-border bg-background'>
-            <TabsList variant='line' className='w-full gap-0'>
-              <TabsTrigger value='pending' className='flex-1 font-mono text-[0.75rem] font-bold'>
+            <TabsList className='h-auto w-full justify-start rounded-none bg-transparent p-0'>
+              <TabsTrigger value='pending' className={cn(REC_TAB_CLASS, 'flex-1')}>
                 録画待ち
                 {pendingItems.length > 0 && (
                   <span className='ml-1 font-mono text-[0.5625rem] text-muted-foreground'>({pendingItems.length})</span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value='completed' className='flex-1 font-mono text-[0.75rem] font-bold'>
+              <TabsTrigger value='completed' className={cn(REC_TAB_CLASS, 'flex-1')}>
                 完了
                 {completedItems.length > 0 && (
                   <span className='ml-1 font-mono text-[0.5625rem] text-muted-foreground'>
@@ -464,7 +470,7 @@ function RecordingsPage() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value='failed' className='flex-1 font-mono text-[0.75rem] font-bold'>
+              <TabsTrigger value='failed' className={cn(REC_TAB_CLASS, 'flex-1')}>
                 失敗
                 {failedItems.length > 0 && (
                   <span className='ml-1 font-mono text-[0.5625rem] text-destructive'>({failedItems.length})</span>
