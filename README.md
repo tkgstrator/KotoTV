@@ -1,6 +1,6 @@
-# KotoTV — KonomiTV-clone on Bun + Hono
+# KotoTV
 
-外出先からのライブ視聴を最優先に、KonomiTV を TypeScript 統一スタックでクリーンに再構築するプロジェクト。
+外出先からのライブ視聴を最優先にした、TypeScript 統一スタックの TV 視聴 Web アプリ。
 
 - **ランタイム**: Bun
 - **バックエンド**: Hono (`Bun.serve`) + Prisma + Postgres 17
