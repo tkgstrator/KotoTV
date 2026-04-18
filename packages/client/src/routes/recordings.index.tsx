@@ -366,7 +366,8 @@ function RecordingsPage() {
           onClick={() => setFormOpen(true)}
           aria-label='新規予約 (⌘K)'
         >
-          <CalendarPlus className='size-3.5' />+ RESERVE
+          <CalendarPlus className='size-3.5' />
+          RESERVE
         </Button>
       </PageHeader>
 
