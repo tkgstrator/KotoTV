@@ -12,7 +12,7 @@ export function HealthBar() {
       className='sticky top-0 z-[70] flex h-[var(--shell-health-bar-h)] shrink-0 items-center overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
     >
       <span className='flex h-full shrink-0 items-center border-r border-border px-3 font-mono text-[0.625rem] font-black uppercase tracking-[0.14em] text-muted-foreground'>
-        TELEMAX
+        KotoTV
       </span>
 
       <div className='flex h-full shrink-0 items-center gap-1.5 border-r border-border/50 px-2.5'>
