@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Player — v1 Overlay Controls (Immersive)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+    }
+
+    /* Shadcn-style focus ring */
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* ── Player shell ──────────────────────────────── */
+    .player-shell {
+      position: relative;
+      width: 100%;
+      background: hsl(222 30% 6%);
+      overflow: hidden;
+    }
+
+    /* 16:9 aspect ratio container */
+    .video-aspect {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+    }
+
+    .video-bg {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, hsl(222 30% 8%) 0%, hsl(240 20% 5%) 50%, hsl(200 25% 7%) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Fake scanline shimmer for "loading" state */
+    .shimmer-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to right,
+        transparent 0%,
+        hsl(var(--muted) / 0.08) 50%,
+        transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 1.8s infinite linear;
+    }
+    @keyframes shimmer {
+      from { background-position: -200% 0; }
+      to   { background-position: 200% 0; }
+    }
+
+    /* ── Overlay controls ──────────────────────────── */
+    /* Controls layer: always shown in this mock (toggle .hidden to simulate auto-hide) */
+    .controls-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none; /* children re-enable */
+    }
+
+    .controls-overlay.hidden { opacity: 0; }
+
+    /* Top bar — back + channel name */
+    .ctrl-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: linear-gradient(to bottom, hsl(222 30% 4% / 0.85) 0%, transparent 100%);
+      pointer-events: auto;
+    }
+
+    /* Bottom bar — playback controls + metadata */
+    .ctrl-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 16px 14px;
+      background: linear-gradient(to top, hsl(222 30% 4% / 0.90) 0%, transparent 100%);
+      pointer-events: auto;
+    }
+
+    /* Control buttons */
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+      color: hsl(var(--foreground));
+      cursor: pointer;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .ctrl-btn:hover { background: hsl(var(--muted) / 0.6); }
+    .ctrl-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 1px;
+    }
+    /* Simulate focused state for screenshot demonstration */
+    .ctrl-btn.demo-focus {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 1px;
+      background: hsl(var(--muted) / 0.5);
+    }
+
+    /* Progress bar */
+    .prog-bar-track {
+      width: 100%;
+      height: 3px;
+      background: hsl(var(--muted) / 0.6);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .prog-bar-fill {
+      height: 100%;
+      background: hsl(var(--primary));
+      border-radius: 2px;
+      width: 42%;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 1px 6px;
+      border-radius: 3px;
+      line-height: 1.6;
+    }
+    .badge-gr { background: hsl(221 83% 60% / 0.2); color: hsl(221 83% 72%); }
+    .badge-live { background: hsl(0 72% 58% / 0.2); color: hsl(0 72% 70%); }
+    .badge-soon { background: hsl(38 92% 52% / 0.2); color: hsl(38 92% 66%); }
+
+    /* Metadata card below video (portrait scroll area) */
+    .meta-card {
+      background: hsl(var(--card));
+      border-top: 1px solid hsl(var(--border));
+    }
+
+    /* Desktop sidebar layout */
+    @media (min-width: 1024px) {
+      .page-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        min-height: 100vh;
+        align-items: start;
+      }
+      .video-col { position: sticky; top: 0; }
+      .video-aspect { padding-top: 0; height: 100vh; max-height: 56.25vw; }
+      .video-bg { position: absolute; inset: 0; }
+      .side-panel {
+        height: 100vh;
+        overflow-y: auto;
+        border-left: 1px solid hsl(var(--border));
+        background: hsl(var(--card));
+      }
+    }
+
+    /* Scrollbar styling */
+    .side-panel::-webkit-scrollbar { width: 4px; }
+    .side-panel::-webkit-scrollbar-track { background: transparent; }
+    .side-panel::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 4px; }
+
+    /* Quality selector */
+    .quality-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 4px;
+      background: hsl(var(--muted) / 0.6);
+      color: hsl(var(--foreground));
+      border: none;
+      cursor: pointer;
+      height: 28px;
+      transition: background 0.15s;
+    }
+    .quality-btn:hover { background: hsl(var(--muted)); }
+    .quality-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+
+    /* ── State panels ── */
+    .state-loading, .state-error {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid hsl(var(--muted));
+      border-top-color: hsl(var(--primary));
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .skeleton {
+      background: hsl(var(--muted));
+      border-radius: 4px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+
+    /* Next program row */
+    .next-prog-row {
+      display: flex;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid hsl(var(--border));
+      align-items: flex-start;
+    }
+    .next-prog-row:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: NORMAL (PLAYING) STATE — Desktop layout         -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));">
+  v1 · Overlay Controls · Desktop (1440px) — <strong style="color:hsl(var(--foreground))">Playing state</strong>
+</p>
+
+<div class="page-layout" style="max-width:1440px;margin:0 auto;">
+
+  <!-- Left: video column -->
+  <div class="video-col player-shell">
+    <div class="video-aspect">
+      <!-- Video placeholder -->
+      <div class="video-bg">
+        <!-- Simulated video frame content -->
+        <div style="position:absolute;inset:0;background:linear-gradient(160deg,hsl(210 40% 8%) 0%,hsl(220 35% 5%) 40%,hsl(200 30% 7%) 100%);">
+          <!-- Fake TV content lines -->
+          <div style="position:absolute;top:30%;left:10%;right:10%;height:2px;background:hsl(var(--muted)/0.15);border-radius:1px;"></div>
+          <div style="position:absolute;top:40%;left:5%;right:25%;height:1px;background:hsl(var(--muted)/0.08);border-radius:1px;"></div>
+          <div style="position:absolute;top:50%;left:15%;right:5%;height:1px;background:hsl(var(--muted)/0.08);border-radius:1px;"></div>
+          <div style="position:absolute;top:60%;left:8%;right:20%;height:1px;background:hsl(var(--muted)/0.08);border-radius:1px;"></div>
+          <!-- Center play indicator (subtle) -->
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0.1;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="hsl(var(--foreground))"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls overlay (always visible in mock) -->
+      <div class="controls-overlay" id="controls">
+
+        <!-- Top bar -->
+        <div class="ctrl-top">
+          <a href="/" aria-label="チャンネルリストへ戻る"
+             style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:6px;color:hsl(var(--foreground));text-decoration:none;background:hsl(var(--muted)/0.4);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+          </a>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="badge badge-gr">GR</span>
+              <span style="font-size:0.875rem;font-weight:600;">NHK総合・東京</span>
+              <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">Ch.1</span>
+            </div>
+            <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin-top:1px;">ニュース7 — 21:00〜21:30</div>
+          </div>
+          <!-- Quality selector (stub) -->
+          <button class="quality-btn" aria-label="画質を変更" aria-haspopup="listbox">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            1080p
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+
+        <!-- Bottom bar -->
+        <div class="ctrl-bottom">
+          <!-- Program progress -->
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;">21:00</span>
+            <div class="prog-bar-track" style="flex:1;">
+              <div class="prog-bar-fill"></div>
+            </div>
+            <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;">21:30</span>
+          </div>
+          <!-- Controls row -->
+          <div style="display:flex;align-items:center;gap:4px;">
+            <!-- Mute -->
+            <button class="ctrl-btn" aria-label="ミュート" title="ミュート (M)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            </button>
+            <!-- Play/Pause (demo-focus applied to show focus ring) -->
+            <button class="ctrl-btn demo-focus" aria-label="一時停止" title="再生/停止 (Space)" style="width:48px;height:48px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            </button>
+            <!-- LIVE badge -->
+            <span class="badge badge-live" style="margin-left:4px;">LIVE</span>
+            <div style="flex:1;"></div>
+            <!-- Fullscreen -->
+            <button class="ctrl-btn" aria-label="フルスクリーン" title="フルスクリーン (F)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: side panel (desktop only) -->
+  <aside class="side-panel" aria-label="番組情報">
+    <!-- Current program -->
+    <div style="padding:20px 16px 16px;border-bottom:1px solid hsl(var(--border));">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:0.6875rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:hsl(var(--muted-foreground));">現在放送中</span>
+        <span class="badge badge-soon">まもなく終了</span>
+      </div>
+      <h2 style="font-size:1rem;font-weight:700;margin:0 0 4px;">ニュース7</h2>
+      <p style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin:0 0 10px;">
+        21:00 〜 21:30 <span style="margin-left:8px;">残り 13 分</span>
+      </p>
+      <!-- Progress -->
+      <div class="prog-bar-track">
+        <div class="prog-bar-fill"></div>
+      </div>
+      <p style="font-size:0.8125rem;color:hsl(var(--foreground));margin:10px 0 0;line-height:1.5;">
+        本日の主要ニュースをお伝えします。国内・海外のトップニュースを分かりやすく解説。
+      </p>
+    </div>
+
+    <!-- Next programs -->
+    <div style="padding:12px 16px 8px;border-bottom:1px solid hsl(var(--border));">
+      <span style="font-size:0.6875rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:hsl(var(--muted-foreground));">次の番組</span>
+    </div>
+
+    <div class="next-prog-row">
+      <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;padding-top:1px;">21:30</div>
+      <div>
+        <div style="font-size:0.875rem;font-weight:600;">首都圏ニュース845</div>
+        <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));">30分</div>
+      </div>
+    </div>
+    <div class="next-prog-row">
+      <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;padding-top:1px;">22:00</div>
+      <div>
+        <div style="font-size:0.875rem;font-weight:600;">クローズアップ現代</div>
+        <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));">30分</div>
+      </div>
+    </div>
+    <div class="next-prog-row">
+      <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;padding-top:1px;">22:30</div>
+      <div>
+        <div style="font-size:0.875rem;font-weight:600;">ドキュメント72時間</div>
+        <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));">30分</div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: LOADING STATE                                    -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));margin-top:32px;">
+  v1 · <strong style="color:hsl(var(--foreground))">Loading state</strong> — waiting for playlist (up to 10s)
+</p>
+
+<div style="max-width:1440px;margin:0 auto;" class="page-layout">
+  <div class="player-shell">
+    <div class="video-aspect">
+      <div class="video-bg">
+        <div class="shimmer-overlay"></div>
+        <div class="state-loading">
+          <div class="spinner"></div>
+          <div style="text-align:center;">
+            <div style="font-size:0.875rem;font-weight:600;color:hsl(var(--foreground));">ストリーム接続中…</div>
+            <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin-top:4px;">NHK総合・東京</div>
+          </div>
+        </div>
+      </div>
+      <!-- Top bar still visible -->
+      <div class="controls-overlay">
+        <div class="ctrl-top">
+          <a href="/" aria-label="チャンネルリストへ戻る"
+             style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:6px;color:hsl(var(--foreground));text-decoration:none;background:hsl(var(--muted)/0.4);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+          </a>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="badge badge-gr">GR</span>
+              <span style="font-size:0.875rem;font-weight:600;">NHK総合・東京</span>
+            </div>
+          </div>
+        </div>
+        <div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side panel: skeleton -->
+  <aside class="side-panel">
+    <div style="padding:20px 16px;">
+      <div class="skeleton" style="height:12px;width:80px;margin-bottom:12px;"></div>
+      <div class="skeleton" style="height:20px;width:180px;margin-bottom:8px;"></div>
+      <div class="skeleton" style="height:12px;width:120px;margin-bottom:12px;"></div>
+      <div class="skeleton" style="height:3px;width:100%;margin-bottom:12px;"></div>
+      <div class="skeleton" style="height:12px;width:100%;margin-bottom:6px;"></div>
+      <div class="skeleton" style="height:12px;width:85%;"></div>
+    </div>
+    <div style="padding:8px 16px;border-top:1px solid hsl(var(--border));">
+      <div class="skeleton" style="height:12px;width:60px;margin-bottom:12px;margin-top:8px;"></div>
+      <div class="skeleton" style="height:16px;width:160px;margin-bottom:6px;"></div>
+      <div class="skeleton" style="height:12px;width:80px;margin-bottom:16px;"></div>
+      <div class="skeleton" style="height:16px;width:140px;margin-bottom:6px;"></div>
+      <div class="skeleton" style="height:12px;width:80px;"></div>
+    </div>
+  </aside>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 3: ERROR STATE                                      -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));margin-top:32px;">
+  v1 · <strong style="color:hsl(var(--foreground))">Error state</strong> — mirakc 不通 / transcoder 起動失敗
+</p>
+
+<div style="max-width:1440px;margin:0 auto;" class="page-layout">
+  <div class="player-shell">
+    <div class="video-aspect">
+      <div class="video-bg">
+        <div class="state-error" style="gap:12px;">
+          <div style="display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:hsl(var(--destructive)/0.15);color:hsl(var(--destructive));">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:0.9375rem;font-weight:700;color:hsl(var(--foreground));">ストリームを開始できません</div>
+            <div style="font-size:0.8125rem;color:hsl(var(--muted-foreground));margin-top:6px;max-width:280px;line-height:1.5;">
+              チューナーへの接続に失敗しました。<br>しばらく待ってから再試行してください。
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <a href="/"
+               style="display:inline-flex;align-items:center;gap:6px;font-size:0.875rem;font-weight:600;padding:8px 16px;border-radius:6px;background:hsl(var(--muted));color:hsl(var(--foreground));text-decoration:none;border:1px solid hsl(var(--border));">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+              戻る
+            </a>
+            <button
+               style="display:inline-flex;align-items:center;gap:6px;font-size:0.875rem;font-weight:600;padding:8px 16px;border-radius:6px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none;cursor:pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+              再試行
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- Top bar -->
+      <div class="controls-overlay">
+        <div class="ctrl-top">
+          <a href="/" aria-label="チャンネルリストへ戻る"
+             style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:6px;color:hsl(var(--foreground));text-decoration:none;background:hsl(var(--muted)/0.4);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+          </a>
+          <span style="font-size:0.875rem;font-weight:600;">NHK総合・東京</span>
+        </div>
+        <div></div>
+      </div>
+    </div>
+  </div>
+  <aside class="side-panel">
+    <div style="padding:20px 16px;color:hsl(var(--muted-foreground));font-size:0.875rem;">番組情報を取得できませんでした。</div>
+  </aside>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 4: PORTRAIT (MOBILE) — Playing state               -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));margin-top:32px;">
+  v1 · Portrait mobile (390px) — <strong style="color:hsl(var(--foreground))">Playing state</strong>
+</p>
+
+<div style="max-width:390px;margin:32px auto;background:hsl(var(--background));border:1px solid hsl(var(--border));border-radius:12px;overflow:hidden;">
+  <div class="player-shell">
+    <div class="video-aspect">
+      <div class="video-bg">
+        <div style="position:absolute;inset:0;background:linear-gradient(160deg,hsl(210 40% 8%) 0%,hsl(220 35% 5%) 100%);"></div>
+      </div>
+      <div class="controls-overlay">
+        <div class="ctrl-top" style="padding:10px 12px;">
+          <a href="/" aria-label="戻る"
+             style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;color:hsl(var(--foreground));text-decoration:none;background:hsl(var(--muted)/0.5);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+          </a>
+          <div style="flex:1;margin-left:8px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="badge badge-gr">GR</span>
+              <span style="font-size:0.8125rem;font-weight:600;">NHK総合・東京</span>
+            </div>
+          </div>
+          <button class="quality-btn" style="font-size:0.6875rem;padding:1px 8px;height:24px;">
+            1080p
+          </button>
+        </div>
+        <div class="ctrl-bottom" style="padding:10px 12px 12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;">21:00</span>
+            <div class="prog-bar-track" style="flex:1;">
+              <div class="prog-bar-fill"></div>
+            </div>
+            <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;">21:30</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <button class="ctrl-btn" aria-label="ミュート" style="width:36px;height:36px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            </button>
+            <button class="ctrl-btn demo-focus" aria-label="一時停止" style="width:44px;height:44px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            </button>
+            <span class="badge badge-live" style="margin-left:4px;">LIVE</span>
+            <div style="flex:1;"></div>
+            <button class="ctrl-btn" aria-label="フルスクリーン" style="width:36px;height:36px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Below-video metadata (portrait) -->
+  <div class="meta-card" style="padding:16px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+      <div>
+        <h2 style="font-size:1rem;font-weight:700;margin:0 0 2px;">ニュース7</h2>
+        <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));">21:00 〜 21:30 · 残り 13 分</div>
+      </div>
+      <span class="badge badge-soon">まもなく終了</span>
+    </div>
+    <p style="font-size:0.8125rem;color:hsl(var(--foreground));margin:10px 0 0;line-height:1.55;">
+      本日の主要ニュースをお伝えします。
+    </p>
+  </div>
+  <div style="border-top:1px solid hsl(var(--border));padding:10px 16px 4px;">
+    <div style="font-size:0.6875rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:hsl(var(--muted-foreground));margin-bottom:8px;">次の番組</div>
+    <div class="next-prog-row" style="padding:8px 0;">
+      <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;padding-top:1px;min-width:36px;">21:30</div>
+      <div><div style="font-size:0.875rem;font-weight:600;">首都圏ニュース845</div><div style="font-size:0.75rem;color:hsl(var(--muted-foreground));">30分</div></div>
+    </div>
+    <div class="next-prog-row" style="padding:8px 0;">
+      <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;padding-top:1px;min-width:36px;">22:00</div>
+      <div><div style="font-size:0.875rem;font-weight:600;">クローズアップ現代</div><div style="font-size:0.75rem;color:hsl(var(--muted-foreground));">30分</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- Dark/Light mode note                                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div style="max-width:640px;margin:32px auto;padding:16px;border:1px solid hsl(var(--border));border-radius:8px;background:hsl(var(--card));font-size:0.8125rem;color:hsl(var(--muted-foreground));">
+  <strong style="color:hsl(var(--foreground));">Dark mode only</strong> — This player always renders dark (video content demands dark chrome). Light mode would use <code>bg-zinc-50</code> for the metadata panel but the player shell stays dark. Toggle <code>class="dark"</code> on <code>&lt;html&gt;</code> to test metadata panel in light mode.
+</div>
+<div style="height:48px;"></div>
+
+</body>
+</html>

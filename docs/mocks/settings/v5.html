@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — v5 Mobile-native Sub-pages (iOS-ish)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:          'hsl(var(--background))',
+            foreground:          'hsl(var(--foreground))',
+            card:                'hsl(var(--card))',
+            'card-foreground':   'hsl(var(--card-foreground))',
+            muted:               'hsl(var(--muted))',
+            'muted-foreground':  'hsl(var(--muted-foreground))',
+            border:              'hsl(var(--border))',
+            primary:             'hsl(var(--primary))',
+            'primary-foreground':'hsl(var(--primary-foreground))',
+            ring:                'hsl(var(--ring))',
+            destructive:         'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:         0 0% 96%;
+      --foreground:         222 14% 18%;
+      --card:               0 0% 100%;
+      --card-foreground:    222 14% 18%;
+      --muted:              210 10% 90%;
+      --muted-foreground:   215 10% 45%;
+      --border:             214 13% 84%;
+      --primary:            221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring:               221 83% 53%;
+      --destructive:        0 72% 58%;
+    }
+    .dark {
+      --background:         222 20% 10%;
+      --foreground:         210 20% 92%;
+      --card:               222 18% 14%;
+      --card-foreground:    210 20% 92%;
+      --muted:              222 16% 20%;
+      --muted-foreground:   215 12% 55%;
+      --border:             222 16% 22%;
+      --primary:            221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring:               221 83% 60%;
+      --destructive:        0 72% 58%;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* ── Viewport simulator (390px phone) ── */
+    .phone-shell {
+      width: 390px;
+      min-height: 700px;
+      border: 2px solid hsl(var(--border));
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      background: hsl(var(--background));
+    }
+
+    /* ── Screen layers (slide in/out) ── */
+    .screen {
+      position: absolute;
+      inset: 0;
+      overflow-y: auto;
+      background: hsl(var(--background));
+      transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+      will-change: transform;
+    }
+    .screen.offscreen-right { transform: translateX(100%); }
+    .screen.offscreen-left  { transform: translateX(-30%); }
+
+    /* ── iOS-style group table ── */
+    .table-group {
+      margin: 20px 16px 0;
+    }
+    .table-group-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 6px;
+      padding: 0 4px;
+    }
+    .table-body {
+      background: hsl(var(--card));
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid hsl(var(--border));
+    }
+    .table-row {
+      display: flex;
+      align-items: center;
+      padding: 13px 14px;
+      gap: 10px;
+      cursor: pointer;
+      transition: background 0.1s;
+      min-height: 48px;
+    }
+    .table-row + .table-row {
+      border-top: 1px solid hsl(var(--border));
+    }
+    .table-row:active, .table-row:hover {
+      background: hsl(var(--muted));
+    }
+    .table-row:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+    }
+
+    /* ── Diagnostic rows: style differently ── */
+    .table-row.read-only {
+      cursor: default;
+      pointer-events: none;
+    }
+    .table-row.read-only:hover { background: transparent; }
+
+    .row-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .row-icon-primary { background: hsl(var(--primary)); }
+    .row-icon-muted   { background: hsl(var(--muted)); }
+    .row-icon-green   { background: hsl(142 70% 42%); }
+    .row-icon-orange  { background: hsl(38 92% 52%); }
+
+    .row-label { flex: 1; font-size: 0.9375rem; }
+    .row-value { font-size: 0.875rem; color: hsl(var(--muted-foreground)); }
+    .row-chevron {
+      color: hsl(var(--muted-foreground));
+      flex-shrink: 0;
+    }
+
+    /* ── Sub-page header ── */
+    .sub-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: hsl(var(--card) / 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: hsl(var(--primary));
+      font-size: 0.9375rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    /* ── Switch ── */
+    .switch { position:relative; width:44px; height:24px; flex-shrink:0; }
+    .switch input { opacity:0; width:0; height:0; }
+    .switch-track {
+      position:absolute; inset:0;
+      background:hsl(var(--muted));
+      border-radius:999px;
+      transition:background 0.2s;
+      cursor:pointer;
+    }
+    .switch-track::after {
+      content:''; position:absolute;
+      left:3px; top:3px; width:18px; height:18px;
+      border-radius:50%;
+      background:hsl(var(--muted-foreground));
+      transition:transform 0.2s, background 0.2s;
+    }
+    .switch input:checked + .switch-track { background:hsl(var(--primary)); }
+    .switch input:checked + .switch-track::after {
+      transform:translateX(20px);
+      background:hsl(var(--primary-foreground));
+    }
+
+    /* ── Radio option list ── */
+    .radio-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 14px;
+      cursor: pointer;
+      font-size: 0.9375rem;
+    }
+    .radio-row + .radio-row { border-top: 1px solid hsl(var(--border)); }
+    .radio-row:focus-within { background: hsl(var(--muted)); }
+    .radio-row input { position: absolute; opacity: 0; pointer-events: none; }
+    .checkmark { color: hsl(var(--primary)); display: none; }
+    .radio-row:has(input:checked) .checkmark { display: inline; }
+
+    /* ── Progress ── */
+    .progress { height:5px; border-radius:999px; background:hsl(var(--muted)); overflow:hidden; }
+    .progress-fill { height:100%; border-radius:999px; background:hsl(var(--primary)); }
+
+    /* ── Status ── */
+    .dot-up   { background:hsl(142 70% 50%); }
+    .dot-down { background:hsl(0 72% 58%); }
+  </style>
+</head>
+<body>
+
+<!-- Demo toolbar -->
+<div style="position:sticky;top:0;z-index:50;background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));padding:8px 16px;display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:hsl(var(--muted-foreground))">
+  <span>v5 — Mobile-native Sub-pages (iOS-ish)</span>
+  <button onclick="document.documentElement.classList.toggle('dark');this.textContent=document.documentElement.classList.contains('dark')?'Light mode':'Dark mode'"
+    style="background:hsl(var(--muted));color:hsl(var(--muted-foreground));border:1px solid hsl(var(--border));border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;">
+    Light mode
+  </button>
+</div>
+
+<!-- Layout: phone + annotation -->
+<div style="display:flex;gap:32px;padding:24px 24px 64px;flex-wrap:wrap;align-items:flex-start;">
+
+  <!-- Phone shell -->
+  <div class="phone-shell" id="phone">
+
+    <!-- ── Screen 0: Main settings list ── -->
+    <div class="screen" id="screen-main">
+
+      <div style="padding:20px 16px 8px;">
+        <h1 style="font-size:1.5rem;font-weight:700;margin:0;">設定</h1>
+      </div>
+
+      <!-- 外観 group -->
+      <div class="table-group">
+        <div class="table-group-label">外観</div>
+        <div class="table-body">
+          <div class="table-row" role="button" tabindex="0" onclick="goTo('screen-theme')" onkeydown="if(event.key==='Enter'||event.key===' ')goTo('screen-theme')">
+            <div class="row-icon row-icon-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary-foreground))" stroke-width="2.2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+            </div>
+            <span class="row-label">テーマ</span>
+            <span class="row-value" id="theme-current">ダーク</span>
+            <svg class="row-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- 再生 group -->
+      <div class="table-group">
+        <div class="table-group-label">再生</div>
+        <div class="table-body">
+          <div class="table-row" role="button" tabindex="0" onclick="goTo('screen-quality')" onkeydown="if(event.key==='Enter'||event.key===' ')goTo('screen-quality')">
+            <div class="row-icon" style="background:hsl(0 72% 58%);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary-foreground))" stroke-width="2.2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            </div>
+            <span class="row-label">ライブ画質</span>
+            <span class="row-value" id="quality-current">高画質</span>
+            <svg class="row-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- 診断 group (read-only visual) -->
+      <div class="table-group">
+        <div class="table-group-label">診断情報（読み取り専用）</div>
+        <div class="table-body">
+
+          <div class="table-row read-only" aria-disabled="true">
+            <div class="row-icon row-icon-muted">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--muted-foreground))" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="15" x2="4" y2="15"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="15" x2="22" y2="15"/></svg>
+            </div>
+            <span class="row-label" style="color:hsl(var(--muted-foreground));">HW アクセラレーター</span>
+            <span class="row-value" style="font-family:monospace;font-weight:700;">nvenc</span>
+          </div>
+
+          <div class="table-row read-only" aria-disabled="true">
+            <div class="row-icon row-icon-muted">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--muted-foreground))" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
+            <span class="row-label" style="color:hsl(var(--muted-foreground));">録画ストレージ</span>
+            <span class="row-value">28%</span>
+          </div>
+
+          <div class="table-row" role="button" tabindex="0" onclick="goTo('screen-health')" onkeydown="if(event.key==='Enter'||event.key===' ')goTo('screen-health')">
+            <div class="row-icon row-icon-muted">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--muted-foreground))" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <span class="row-label" style="color:hsl(var(--muted-foreground));">サーバー状態</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.8125rem;color:hsl(142 70% 50%);font-weight:600;">
+              <span style="width:6px;height:6px;border-radius:50%;display:inline-block;" class="dot-up"></span>
+              すべて稼働中
+            </span>
+            <svg class="row-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- About group -->
+      <div class="table-group">
+        <div class="table-group-label">アプリ情報</div>
+        <div class="table-body">
+          <div class="table-row" role="button" tabindex="0" onclick="goTo('screen-about')" onkeydown="if(event.key==='Enter'||event.key===' ')goTo('screen-about')">
+            <div class="row-icon" style="background:hsl(var(--primary));">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary-foreground))" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <span class="row-label">About</span>
+            <span class="row-value">v0.1.0-alpha</span>
+            <svg class="row-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:32px;"></div>
+    </div><!-- /screen-main -->
+
+    <!-- ── Screen: テーマ ── -->
+    <div class="screen offscreen-right" id="screen-theme">
+      <div class="sub-header">
+        <button class="back-btn" onclick="goBack()" aria-label="戻る">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          設定
+        </button>
+        <span style="flex:1;text-align:center;font-weight:600;font-size:0.9375rem;margin-right:60px;">テーマ</span>
+      </div>
+
+      <div class="table-group" style="margin-top:16px;">
+        <div class="table-body">
+          <label class="radio-row" tabindex="0">
+            <input type="radio" name="theme-sub" value="light" onchange="document.getElementById('theme-current').textContent='ライト'"/>
+            ☀️ ライト
+            <svg class="checkmark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </label>
+          <label class="radio-row" tabindex="0">
+            <input type="radio" name="theme-sub" value="dark" checked onchange="document.getElementById('theme-current').textContent='ダーク'"/>
+            🌙 ダーク
+            <svg class="checkmark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </label>
+          <label class="radio-row" tabindex="0">
+            <input type="radio" name="theme-sub" value="system" onchange="document.getElementById('theme-current').textContent='システム'"/>
+            🖥️ システム (OS に従う)
+            <svg class="checkmark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Screen: 画質 ── -->
+    <div class="screen offscreen-right" id="screen-quality">
+      <div class="sub-header">
+        <button class="back-btn" onclick="goBack()" aria-label="戻る">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          設定
+        </button>
+        <span style="flex:1;text-align:center;font-weight:600;font-size:0.9375rem;margin-right:60px;">ライブ画質</span>
+      </div>
+
+      <div class="table-group" style="margin-top:16px;">
+        <div class="table-body">
+          <label class="radio-row" tabindex="0">
+            <input type="radio" name="quality-sub" value="auto" onchange="document.getElementById('quality-current').textContent='自動'"/>
+            自動
+            <svg class="checkmark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </label>
+          <label class="radio-row" tabindex="0">
+            <input type="radio" name="quality-sub" value="high" checked onchange="document.getElementById('quality-current').textContent='高画質'"/>
+            高画質 (~8 Mbps)
+            <svg class="checkmark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </label>
+          <label class="radio-row" tabindex="0">
+            <input type="radio" name="quality-sub" value="medium" onchange="document.getElementById('quality-current').textContent='中画質'"/>
+            中画質 (~4 Mbps)
+            <svg class="checkmark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </label>
+          <label class="radio-row" tabindex="0">
+            <input type="radio" name="quality-sub" value="low" onchange="document.getElementById('quality-current').textContent='低画質'"/>
+            低画質 (~1.5 Mbps)
+            <svg class="checkmark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Screen: サーバー状態 ── -->
+    <div class="screen offscreen-right" id="screen-health">
+      <div class="sub-header">
+        <button class="back-btn" onclick="goBack()" aria-label="戻る">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          設定
+        </button>
+        <span style="flex:1;text-align:center;font-weight:600;font-size:0.9375rem;margin-right:60px;">サーバー状態</span>
+      </div>
+
+      <div style="padding:12px 16px 0;font-size:0.75rem;color:hsl(var(--muted-foreground));display:flex;align-items:center;gap:5px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        読み取り専用 — GET /api/health
+      </div>
+
+      <div class="table-group" style="margin-top:10px;">
+        <div class="table-body">
+          <div class="table-row read-only">
+            <span class="row-label">mirakc</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:0.875rem;font-weight:600;color:hsl(142 70% 50%);">
+              <span style="width:7px;height:7px;border-radius:50%;display:inline-block;" class="dot-up"></span>
+              稼働中
+            </span>
+          </div>
+          <div class="table-row read-only">
+            <span class="row-label">Postgres</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:0.875rem;font-weight:600;color:hsl(142 70% 50%);">
+              <span style="width:7px;height:7px;border-radius:50%;display:inline-block;" class="dot-up"></span>
+              稼働中
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-group">
+        <div class="table-group-label">ストレージ</div>
+        <div class="table-body">
+          <div class="table-row read-only" style="flex-direction:column;align-items:flex-start;gap:8px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;width:100%;">
+              <span style="font-size:0.875rem;color:hsl(var(--muted-foreground));">録画 /recordings</span>
+              <span style="font-size:0.875rem;color:hsl(var(--muted-foreground));">142 / 500 GB</span>
+            </div>
+            <div class="progress" style="width:100%;">
+              <div class="progress-fill" style="width:28%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Screen: About ── -->
+    <div class="screen offscreen-right" id="screen-about">
+      <div class="sub-header">
+        <button class="back-btn" onclick="goBack()" aria-label="戻る">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          設定
+        </button>
+        <span style="flex:1;text-align:center;font-weight:600;font-size:0.9375rem;margin-right:60px;">About</span>
+      </div>
+
+      <div style="padding:24px 16px 0;text-align:center;">
+        <div style="width:60px;height:60px;border-radius:14px;background:hsl(var(--primary));display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary-foreground))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        </div>
+        <div style="font-size:1.125rem;font-weight:700;">KonomiTV</div>
+        <div style="font-size:0.875rem;color:hsl(var(--muted-foreground));margin-top:2px;">v0.1.0-alpha</div>
+      </div>
+
+      <div class="table-group" style="margin-top:20px;">
+        <div class="table-body">
+          <a href="#" tabindex="0" class="table-row" style="text-decoration:none;color:inherit;">
+            <span class="row-label">ソースコード</span>
+            <span class="row-value">GitHub</span>
+            <svg class="row-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </a>
+          <div class="table-row read-only">
+            <span class="row-label">ライセンス</span>
+            <span class="row-value">MIT</span>
+          </div>
+          <div class="table-row read-only">
+            <span class="row-label">フェーズ</span>
+            <span class="row-value" style="font-size:0.8125rem;font-weight:600;background:hsl(var(--primary) / 0.12);color:hsl(var(--primary));padding:2px 8px;border-radius:4px;">Phase 1</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /phone-shell -->
+
+  <!-- Annotation -->
+  <div style="max-width:320px;font-size:0.8125rem;color:hsl(var(--muted-foreground));line-height:1.6;">
+    <p style="margin:0 0 10px;font-weight:600;color:hsl(var(--foreground));">操作方法</p>
+    <ul style="margin:0;padding:0 0 0 16px;">
+      <li>行をタップ → サブページへスライド遷移</li>
+      <li>「設定」ボタン → メインへ戻る</li>
+      <li>診断行（HW / ストレージ）はシェブロンなし・クリック不可</li>
+      <li>テーマ・画質の選択は即時反映（チェックマーク）</li>
+    </ul>
+    <p style="margin:12px 0 0;font-size:0.75rem;background:hsl(var(--muted));border-radius:6px;padding:8px 10px;">
+      読み取り専用の行は <code>pointer-events:none</code> + シェブロンなし で視覚的・操作的両方に区別
+    </p>
+  </div>
+
+</div><!-- /layout -->
+
+<script>
+  let currentScreen = 'screen-main';
+
+  function goTo(screenId) {
+    const current = document.getElementById(currentScreen);
+    const next = document.getElementById(screenId);
+    if (!next) return;
+    current.classList.add('offscreen-left');
+    next.classList.remove('offscreen-right');
+    currentScreen = screenId;
+  }
+
+  function goBack() {
+    const current = document.getElementById(currentScreen);
+    current.classList.add('offscreen-right');
+    const main = document.getElementById('screen-main');
+    main.classList.remove('offscreen-left');
+    currentScreen = 'screen-main';
+  }
+</script>
+
+<div style="position:fixed;bottom:12px;right:12px;font-size:0.6875rem;color:hsl(var(--muted-foreground));background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:6px;padding:4px 10px;pointer-events:none;">
+  390px phone / sub-pages
+</div>
+
+</body>
+</html>

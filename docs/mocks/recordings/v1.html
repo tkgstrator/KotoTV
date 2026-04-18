@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recordings — v1 List + Modal Form</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    .app-bar {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    /* Status badges */
+    .status-pending    { background: hsl(38 92% 52% / 0.2);  color: hsl(38 92% 65%);  border: 1px solid hsl(38 92% 52% / 0.4); }
+    .status-recording  { background: hsl(0 72% 58% / 0.2);   color: hsl(0 72% 70%);   border: 1px solid hsl(0 72% 58% / 0.4); }
+    .status-completed  { background: hsl(142 70% 40% / 0.2); color: hsl(142 70% 58%); border: 1px solid hsl(142 70% 40% / 0.4); }
+    .status-failed     { background: hsl(0 50% 40% / 0.2);   color: hsl(0 50% 60%);   border: 1px solid hsl(0 50% 40% / 0.4); }
+    .status-cancelled  { background: hsl(215 12% 40% / 0.2); color: hsl(215 12% 58%); border: 1px solid hsl(215 12% 40% / 0.4); }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      line-height: 1.5;
+      white-space: nowrap;
+    }
+
+    /* Recording list item */
+    .rec-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0;
+      border-bottom: 1px solid hsl(var(--border));
+      transition: background 0.1s;
+      padding: 0;
+      position: relative;
+    }
+    .rec-item:hover { background: hsl(var(--muted) / 0.4); }
+    .rec-item:focus-within { outline: none; }
+
+    .rec-item-body {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .rec-item-actions {
+      padding: 12px 12px 12px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Status stripe on left */
+    .rec-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      border-radius: 0 2px 2px 0;
+    }
+    .rec-item.pending::before    { background: hsl(38 92% 52%); }
+    .rec-item.recording::before  { background: hsl(0 72% 58%); }
+    .rec-item.completed::before  { background: hsl(142 70% 45%); }
+    .rec-item.failed::before     { background: hsl(0 50% 45%); }
+    .rec-item.cancelled::before  { background: hsl(215 12% 45%); }
+
+    /* Action button */
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .icon-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .icon-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+    .icon-btn.danger:hover { background: hsl(var(--destructive) / 0.15); color: hsl(var(--destructive)); }
+
+    /* Progress bar (recording in progress) */
+    .rec-progress {
+      height: 3px;
+      background: hsl(var(--muted));
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .rec-progress-fill {
+      height: 100%;
+      background: hsl(var(--destructive));
+      border-radius: 2px;
+      animation: rec-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes rec-pulse { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: hsl(0 0% 0% / 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      padding: 16px;
+    }
+    .modal {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 12px;
+      width: 100%;
+      max-width: 480px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px hsl(0 0% 0% / 0.4);
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid hsl(var(--border));
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* Form field */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 0.8125rem; font-weight: 600; color: hsl(var(--foreground)); }
+    .field input, .field select {
+      background: hsl(var(--background));
+      border: 1px solid hsl(var(--border));
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.875rem;
+      color: hsl(var(--foreground));
+      width: 100%;
+      box-sizing: border-box;
+      transition: border-color 0.12s;
+    }
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: hsl(var(--ring));
+      box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+    }
+    .field-hint { font-size: 0.75rem; color: hsl(var(--muted-foreground)); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.12s, filter 0.12s;
+      border: none;
+    }
+    .btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+    .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-ghost  { background: transparent; border: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); }
+    .btn-ghost:hover { background: hsl(var(--muted)); }
+    .btn-destructive { background: hsl(var(--destructive)); color: hsl(210 40% 98%); }
+    .btn-destructive:hover { filter: brightness(1.1); }
+  </style>
+</head>
+<body>
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:6px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));">
+  Recordings v1 · List layout + Modal reservation form — dark mode
+</p>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: DESKTOP — Full list view                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<div style="max-width:900px;margin:0 auto;">
+
+  <!-- App bar -->
+  <div class="app-bar">
+    <a href="/" style="display:inline-flex;align-items:center;gap:6px;font-size:0.875rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 10px;border-radius:6px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+      ライブ
+    </a>
+    <span style="color:hsl(var(--muted-foreground));">|</span>
+    <span style="font-weight:700;">録画</span>
+    <div style="flex:1;"></div>
+    <!-- Status filter tabs -->
+    <div role="tablist" style="display:flex;gap:2px;">
+      <button role="tab" aria-selected="true" style="padding:4px 10px;border-radius:4px;font-size:0.75rem;font-weight:700;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none;cursor:pointer;">すべて</button>
+      <button role="tab" aria-selected="false" style="padding:4px 10px;border-radius:4px;font-size:0.75rem;font-weight:600;background:transparent;border:none;cursor:pointer;color:hsl(var(--muted-foreground));">予約済み</button>
+      <button role="tab" aria-selected="false" style="padding:4px 10px;border-radius:4px;font-size:0.75rem;font-weight:600;background:transparent;border:none;cursor:pointer;color:hsl(var(--muted-foreground));">録画中</button>
+      <button role="tab" aria-selected="false" style="padding:4px 10px;border-radius:4px;font-size:0.75rem;font-weight:600;background:transparent;border:none;cursor:pointer;color:hsl(var(--muted-foreground));">完了</button>
+    </div>
+    <!-- Reserve button -->
+    <button class="btn btn-primary" aria-label="新しい録画を予約" style="margin-left:8px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      録画を予約
+    </button>
+  </div>
+
+  <!-- Summary chips -->
+  <div style="padding:10px 16px;display:flex;gap:8px;align-items:center;border-bottom:1px solid hsl(var(--border));">
+    <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">合計 7 件</span>
+    <span style="font-size:0.75rem;" class="badge status-recording">● 録画中 1</span>
+    <span style="font-size:0.75rem;" class="badge status-pending">予約済み 3</span>
+    <span style="font-size:0.75rem;" class="badge status-completed">完了 2</span>
+    <span style="font-size:0.75rem;" class="badge status-failed">失敗 1</span>
+  </div>
+
+  <!-- ── Recording in progress ── -->
+  <div style="padding:8px 16px 4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:hsl(var(--muted-foreground));">録画中</div>
+
+  <div class="rec-item recording">
+    <div class="rec-item-body">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="badge status-recording">
+          <span style="width:5px;height:5px;border-radius:50%;background:currentColor;animation:rec-pulse 1s ease-in-out infinite;"></span>
+          録画中
+        </span>
+        <span style="font-size:0.6875rem;font-weight:700;color:hsl(0 72% 70%);">残り 23 分</span>
+        <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));">2.1 GB / 推定 4.8 GB</span>
+      </div>
+      <span style="font-size:0.9375rem;font-weight:700;line-height:1.3;">日曜劇場「アンチヒーロー」第12話</span>
+      <div style="display:flex;gap:12px;align-items:center;font-size:0.75rem;color:hsl(var(--muted-foreground));">
+        <span>TBS · Ch.6</span>
+        <span>2026-04-17 21:00–23:00</span>
+      </div>
+      <!-- Progress -->
+      <div class="rec-progress" style="width:180px;">
+        <div class="rec-progress-fill" style="width:37%;"></div>
+      </div>
+    </div>
+    <div class="rec-item-actions">
+      <button class="icon-btn danger" aria-label="録画停止" title="停止">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Scheduled / pending ── -->
+  <div style="padding:8px 16px 4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:hsl(var(--muted-foreground));">予約済み</div>
+
+  <!-- Pending item 1 -->
+  <div class="rec-item pending">
+    <div class="rec-item-body">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge status-pending">予約済み</span>
+        <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));">あと 2 日</span>
+      </div>
+      <span style="font-size:0.9375rem;font-weight:700;line-height:1.3;">NHKスペシャル「宇宙の謎」</span>
+      <div style="display:flex;gap:12px;align-items:center;font-size:0.75rem;color:hsl(var(--muted-foreground));">
+        <span>NHK総合 · Ch.1</span>
+        <span>2026-04-19 22:00–23:30</span>
+      </div>
+    </div>
+    <div class="rec-item-actions">
+      <button class="icon-btn danger" aria-label="予約をキャンセル" title="キャンセル">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Pending item 2 -->
+  <div class="rec-item pending">
+    <div class="rec-item-body">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge status-pending">予約済み</span>
+        <span style="font-size:0.625rem;color:hsl(38 92% 65%);">明日</span>
+      </div>
+      <span style="font-size:0.9375rem;font-weight:700;line-height:1.3;">クローズアップ現代 × テクノロジー特集</span>
+      <div style="display:flex;gap:12px;align-items:center;font-size:0.75rem;color:hsl(var(--muted-foreground));">
+        <span>NHK総合 · Ch.1</span>
+        <span>2026-04-18 19:30–20:00</span>
+      </div>
+    </div>
+    <div class="rec-item-actions">
+      <button class="icon-btn danger" aria-label="予約をキャンセル" title="キャンセル">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Pending item 3 — same-day (tonight) -->
+  <div class="rec-item pending">
+    <div class="rec-item-body">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge status-pending">予約済み</span>
+        <span style="font-size:0.625rem;color:hsl(38 92% 65%);font-weight:700;">今夜 23:30</span>
+      </div>
+      <span style="font-size:0.9375rem;font-weight:700;line-height:1.3;">映画「千と千尋の神隠し」</span>
+      <div style="display:flex;gap:12px;align-items:center;font-size:0.75rem;color:hsl(var(--muted-foreground));">
+        <span>フジテレビ · Ch.8</span>
+        <span>2026-04-17 23:30–02:00</span>
+      </div>
+    </div>
+    <div class="rec-item-actions">
+      <button class="icon-btn danger" aria-label="予約をキャンセル" title="キャンセル">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Completed ── -->
+  <div style="padding:8px 16px 4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:hsl(var(--muted-foreground));">完了</div>
+
+  <!-- Completed item 1 — playable -->
+  <div class="rec-item completed">
+    <div class="rec-item-body">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge status-completed">完了</span>
+        <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));">3.4 GB · 90分</span>
+      </div>
+      <span style="font-size:0.9375rem;font-weight:700;line-height:1.3;">プロジェクトX「黒四ダムの男たち」</span>
+      <div style="display:flex;gap:12px;align-items:center;font-size:0.75rem;color:hsl(var(--muted-foreground));">
+        <span>NHK総合 · Ch.1</span>
+        <span>2026-04-16 20:00–21:30</span>
+      </div>
+    </div>
+    <div class="rec-item-actions">
+      <a href="/recordings/1" class="btn btn-primary" style="font-size:0.75rem;padding:5px 12px;text-decoration:none;" tabindex="0">
+        再生
+      </a>
+      <button class="icon-btn danger" aria-label="録画を削除" title="削除">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Completed item 2 -->
+  <div class="rec-item completed">
+    <div class="rec-item-body">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge status-completed">完了</span>
+        <span style="font-size:0.625rem;color:hsl(var(--muted-foreground));">1.8 GB · 45分</span>
+      </div>
+      <span style="font-size:0.9375rem;font-weight:700;line-height:1.3;">チコちゃんに叱られる！</span>
+      <div style="display:flex;gap:12px;align-items:center;font-size:0.75rem;color:hsl(var(--muted-foreground));">
+        <span>NHK総合 · Ch.1</span>
+        <span>2026-04-15 19:00–19:45</span>
+      </div>
+    </div>
+    <div class="rec-item-actions">
+      <a href="/recordings/2" class="btn btn-primary" style="font-size:0.75rem;padding:5px 12px;text-decoration:none;" tabindex="0">再生</a>
+      <button class="icon-btn danger" aria-label="削除">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Failed ── -->
+  <div style="padding:8px 16px 4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:hsl(var(--muted-foreground));">失敗</div>
+
+  <div class="rec-item failed">
+    <div class="rec-item-body">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge status-failed">失敗</span>
+        <span style="font-size:0.625rem;color:hsl(0 50% 60%);">チューナーエラー</span>
+      </div>
+      <span style="font-size:0.9375rem;font-weight:700;line-height:1.3;color:hsl(var(--muted-foreground));">大河ドラマ「光る君へ」第20話</span>
+      <div style="display:flex;gap:12px;align-items:center;font-size:0.75rem;color:hsl(var(--muted-foreground));">
+        <span>NHK総合 · Ch.1</span>
+        <span>2026-04-14 20:00–21:00</span>
+      </div>
+    </div>
+    <div class="rec-item-actions">
+      <button class="icon-btn danger" aria-label="削除">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div><!-- /max-width -->
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: MODAL — Reservation form (overlay)             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:6px 16px;background:hsl(var(--muted)/0.3);border-top:2px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));margin-top:16px;">
+  録画予約モーダル (「録画を予約」クリック時)
+</p>
+
+<div style="position:relative;max-width:900px;margin:0 auto;height:480px;border:1px solid hsl(var(--border));overflow:hidden;">
+  <!-- Dimmed list behind -->
+  <div style="padding:16px;opacity:0.35;pointer-events:none;">
+    <div class="rec-item completed" style="padding-left:16px;">
+      <div class="rec-item-body">
+        <span class="badge status-completed">完了</span>
+        <span style="font-size:0.9375rem;font-weight:700;">プロジェクトX</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal overlay -->
+  <div style="position:absolute;inset:0;background:hsl(0 0% 0% / 0.55);display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 id="modal-title" style="font-size:1rem;font-weight:700;margin:0;">録画を予約</h2>
+        <button class="icon-btn" aria-label="閉じる">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Channel select -->
+        <div class="field">
+          <label for="ch-select">チャンネル</label>
+          <select id="ch-select">
+            <option value="">チャンネルを選択...</option>
+            <option value="gr-1" selected>NHK総合 (Ch.1)</option>
+            <option value="gr-2">NHK Eテレ (Ch.2)</option>
+            <option value="gr-4">日本テレビ (Ch.4)</option>
+            <option value="gr-6">TBS (Ch.6)</option>
+            <option value="gr-8">フジテレビ (Ch.8)</option>
+            <option value="gr-10">テレビ朝日 (Ch.10)</option>
+          </select>
+        </div>
+
+        <!-- Program search -->
+        <div class="field">
+          <label for="prog-search">番組名で検索 (省略可)</label>
+          <input id="prog-search" type="text" placeholder="例: ニュースウォッチ" value="クローズアップ現代" />
+          <span class="field-hint">EPG から番組を検索して開始・終了時刻を自動入力できます</span>
+        </div>
+
+        <!-- Start / end time -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field">
+            <label for="start-at">開始日時</label>
+            <input id="start-at" type="datetime-local" value="2026-04-18T19:30" />
+          </div>
+          <div class="field">
+            <label for="end-at">終了日時</label>
+            <input id="end-at" type="datetime-local" value="2026-04-18T20:00" />
+          </div>
+        </div>
+
+        <!-- Duration preview -->
+        <div style="background:hsl(var(--muted)/0.4);border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.8125rem;color:hsl(var(--muted-foreground));">録画時間の目安</span>
+          <span style="font-size:0.875rem;font-weight:700;">30 分 · 約 0.8 GB</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost">キャンセル</button>
+        <button class="btn btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          予約を確定
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 3: Delete confirmation (destructive alert)         -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:6px 16px;background:hsl(var(--muted)/0.3);border-top:2px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));margin-top:16px;">
+  削除確認 AlertDialog
+</p>
+
+<div style="position:relative;max-width:900px;margin:0 auto;height:260px;border:1px solid hsl(var(--border));overflow:hidden;">
+  <div style="position:absolute;inset:0;background:hsl(0 0% 0% / 0.55);display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div class="modal" style="max-width:400px;" role="alertdialog" aria-modal="true" aria-labelledby="del-title">
+      <div class="modal-header">
+        <h2 id="del-title" style="font-size:1rem;font-weight:700;margin:0;color:hsl(var(--destructive));">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline;vertical-align:-2px;margin-right:6px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          録画ファイルを削除しますか？
+        </h2>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.875rem;color:hsl(var(--muted-foreground));margin:0;line-height:1.6;">
+          <strong style="color:hsl(var(--foreground));">「プロジェクトX〜黒四ダムの男たち〜」</strong> (3.4 GB) を削除します。この操作は取り消せません。
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost">キャンセル</button>
+        <button class="btn btn-destructive">削除する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 4: MOBILE list (390px)                             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:6px 16px;background:hsl(var(--muted)/0.3);border-top:2px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));margin-top:16px;">
+  Mobile (390px) — 録画リスト
+</p>
+
+<div style="max-width:390px;margin:0 auto;border:1px solid hsl(var(--border));border-top:none;">
+  <!-- Mobile app bar -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:48px;display:flex;align-items:center;padding:0 12px;gap:8px;">
+    <a href="/" style="color:hsl(var(--foreground));text-decoration:none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    </a>
+    <span style="font-weight:700;font-size:0.875rem;flex:1;text-align:center;">録画</span>
+    <button class="btn btn-primary" style="font-size:0.75rem;padding:4px 10px;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      予約
+    </button>
+  </div>
+
+  <!-- Status filter (horizontal scroll) -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));display:flex;overflow-x:auto;padding:6px 12px;gap:6px;" role="tablist">
+    <button role="tab" aria-selected="true" style="flex-shrink:0;padding:4px 10px;border-radius:4px;font-size:0.75rem;font-weight:700;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none;cursor:pointer;">すべて</button>
+    <button role="tab" aria-selected="false" style="flex-shrink:0;padding:4px 10px;border-radius:4px;font-size:0.75rem;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--muted-foreground));cursor:pointer;">予約済み</button>
+    <button role="tab" aria-selected="false" style="flex-shrink:0;padding:4px 10px;border-radius:4px;font-size:0.75rem;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--muted-foreground));cursor:pointer;">録画中</button>
+    <button role="tab" aria-selected="false" style="flex-shrink:0;padding:4px 10px;border-radius:4px;font-size:0.75rem;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--muted-foreground));cursor:pointer;">完了</button>
+  </div>
+
+  <!-- Compact mobile list items -->
+  <div class="rec-item recording" style="padding-left:3px;">
+    <div class="rec-item-body" style="padding:10px 12px;">
+      <div style="display:flex;align-items:center;gap:6px;justify-content:space-between;">
+        <span class="badge status-recording" style="font-size:0.6rem;">
+          <span style="width:4px;height:4px;border-radius:50%;background:currentColor;"></span>録画中
+        </span>
+        <span style="font-size:0.6875rem;font-weight:700;color:hsl(0 72% 70%);">残り23分</span>
+      </div>
+      <span style="font-size:0.875rem;font-weight:700;">日曜劇場「アンチヒーロー」</span>
+      <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">TBS · 21:00–23:00</span>
+      <div class="rec-progress"><div class="rec-progress-fill" style="width:37%;"></div></div>
+    </div>
+    <div class="rec-item-actions" style="padding-right:12px;">
+      <button class="icon-btn danger" aria-label="停止">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="rec-item pending" style="padding-left:3px;">
+    <div class="rec-item-body" style="padding:10px 12px;">
+      <div style="display:flex;align-items:center;gap:6px;justify-content:space-between;">
+        <span class="badge status-pending" style="font-size:0.6rem;">予約済み</span>
+        <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));">明日</span>
+      </div>
+      <span style="font-size:0.875rem;font-weight:700;">クローズアップ現代</span>
+      <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">NHK · 19:30–20:00</span>
+    </div>
+    <div class="rec-item-actions" style="padding-right:12px;">
+      <button class="icon-btn danger" aria-label="キャンセル">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="rec-item completed" style="padding-left:3px;">
+    <div class="rec-item-body" style="padding:10px 12px;">
+      <div style="display:flex;align-items:center;gap:6px;justify-content:space-between;">
+        <span class="badge status-completed" style="font-size:0.6rem;">完了</span>
+        <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));">3.4 GB</span>
+      </div>
+      <span style="font-size:0.875rem;font-weight:700;">プロジェクトX</span>
+      <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">NHK · 2026-04-16</span>
+    </div>
+    <div class="rec-item-actions" style="padding-right:12px;">
+      <a href="/recordings/1" class="btn btn-primary" style="font-size:0.7rem;padding:4px 10px;text-decoration:none;">再生</a>
+    </div>
+  </div>
+
+  <div class="rec-item failed" style="padding-left:3px;">
+    <div class="rec-item-body" style="padding:10px 12px;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="badge status-failed" style="font-size:0.6rem;">失敗</span>
+        <span style="font-size:0.625rem;color:hsl(0 50% 60%);">チューナーエラー</span>
+      </div>
+      <span style="font-size:0.875rem;font-weight:700;color:hsl(var(--muted-foreground));">大河ドラマ「光る君へ」</span>
+      <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">NHK · 2026-04-14</span>
+    </div>
+    <div class="rec-item-actions" style="padding-right:12px;">
+      <button class="icon-btn danger" aria-label="削除">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
