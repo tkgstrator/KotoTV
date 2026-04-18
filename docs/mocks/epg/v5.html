@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPG — v5 Mobile-native: single-channel + channel hopper</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+    }
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* Genre colours */
+    .g-news    { --g: 221 83% 55%; }
+    .g-sports  { --g: 142 70% 42%; }
+    .g-drama   { --g: 280 60% 52%; }
+    .g-variety { --g: 38 92% 48%; }
+    .g-anime   { --g: 320 70% 52%; }
+    .g-movie   { --g: 15 80% 48%; }
+    .g-docu    { --g: 190 70% 42%; }
+    .g-edu     { --g: 100 55% 42%; }
+    .g-other   { --g: 215 12% 48%; }
+
+    /* ── Mobile container: max-width 390px ── */
+    .mobile-frame {
+      max-width: 390px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: hsl(var(--background));
+      border-left: 1px solid hsl(var(--border));
+      border-right: 1px solid hsl(var(--border));
+    }
+
+    /* App bar */
+    .app-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      height: 48px;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    /* Channel hopper: horizontal pill strip */
+    .ch-hopper {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      padding: 8px 12px;
+      position: sticky;
+      top: 48px;
+      z-index: 40;
+    }
+    .ch-hopper-scroll {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .ch-hopper-scroll::-webkit-scrollbar { display: none; }
+
+    .ch-pill {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--background));
+      cursor: pointer;
+      scroll-snap-align: start;
+      transition: all 0.1s;
+      min-width: 52px;
+    }
+    .ch-pill.active {
+      background: hsl(var(--primary));
+      border-color: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+    .ch-pill:not(.active):hover { background: hsl(var(--muted) / 0.5); }
+    .ch-pill:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+    .ch-pill .ch-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .ch-pill .ch-name {
+      font-size: 0.5rem;
+      line-height: 1;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    .ch-pill.active .ch-name { color: hsl(var(--primary-foreground) / 0.8); }
+    .ch-pill:not(.active) .ch-num { color: hsl(var(--primary)); }
+    .ch-pill:not(.active) .ch-name { color: hsl(var(--muted-foreground)); }
+
+    /* ON AIR hero card at the top */
+    .hero-card {
+      margin: 12px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid hsl(var(--g) / 0.5);
+      background: hsl(var(--card));
+    }
+    .hero-genre-bar {
+      height: 4px;
+      background: hsl(var(--g));
+    }
+    .hero-body {
+      padding: 12px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: hsl(var(--destructive));
+      margin-bottom: 6px;
+    }
+    .hero-title {
+      font-size: 1.125rem;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+    .hero-time {
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 10px;
+    }
+    .hero-desc {
+      font-size: 0.7875rem;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.5;
+      margin-bottom: 12px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .progress-track {
+      height: 4px;
+      background: hsl(var(--border));
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: hsl(var(--g));
+      border-radius: 2px;
+    }
+    .progress-label {
+      font-size: 0.65rem;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-watch {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      font-size: 0.875rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      cursor: pointer;
+      transition: opacity 0.1s;
+    }
+    .btn-watch:hover { opacity: 0.9; }
+    .btn-watch:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    .btn-reserve {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      background: hsl(var(--destructive) / 0.12);
+      color: hsl(var(--destructive));
+      font-size: 0.875rem;
+      font-weight: 700;
+      border: 1px solid hsl(var(--destructive) / 0.35);
+      border-radius: 8px;
+      padding: 10px 16px;
+      cursor: pointer;
+    }
+    .btn-reserve:hover { background: hsl(var(--destructive) / 0.2); }
+    .btn-reserve:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* Section header */
+    .section-hdr {
+      padding: 8px 16px 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    /* Program list items */
+    .prog-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      padding: 10px 12px;
+      border-bottom: 1px solid hsl(var(--border) / 0.6);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .prog-item:hover { background: hsl(var(--muted) / 0.3); }
+    .prog-item:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+    }
+    .prog-item[tabindex] { cursor: pointer; }
+
+    .prog-time-col {
+      width: 48px;
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      font-variant-numeric: tabular-nums;
+      color: hsl(var(--muted-foreground));
+      padding-top: 2px;
+      line-height: 1.5;
+    }
+    .genre-bar {
+      width: 3px;
+      border-radius: 2px;
+      background: hsl(var(--g));
+      flex-shrink: 0;
+      align-self: stretch;
+      margin: 0 8px;
+    }
+    .prog-content { flex: 1; min-width: 0; }
+    .prog-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      line-height: 1.3;
+      margin-bottom: 2px;
+    }
+    .prog-genre {
+      font-size: 0.6rem;
+      color: hsl(var(--g));
+      font-weight: 600;
+    }
+
+    .prog-item-reserve {
+      display: flex;
+      align-items: center;
+      margin-top: 4px;
+      gap: 6px;
+    }
+    .mini-reserve {
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: hsl(var(--destructive) / 0.12);
+      color: hsl(var(--destructive));
+      border: 1px solid hsl(var(--destructive) / 0.25);
+      cursor: pointer;
+    }
+    .mini-reserve:hover { background: hsl(var(--destructive) / 0.22); }
+    .mini-reserve:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    .badge {
+      display: inline-flex; align-items: center;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+      padding: 1px 6px; border-radius: 3px;
+    }
+    .badge-live { background: hsl(0 72% 58% / 0.2); color: hsl(0 72% 70%); }
+
+    /* Date nav strip */
+    .date-strip {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding: 6px 12px;
+      scrollbar-width: none;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      position: sticky;
+      top: 102px;
+      z-index: 38;
+    }
+    .date-strip::-webkit-scrollbar { display: none; }
+    .date-pill {
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid hsl(var(--border));
+      cursor: pointer;
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+      transition: all 0.1s;
+    }
+    .date-pill.active {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      border-color: hsl(var(--primary));
+    }
+    .date-pill:not(.active):hover { background: hsl(var(--muted) / 0.4); }
+    .date-pill:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* Desktop layout override */
+    @media (min-width: 768px) {
+      body { display: flex; align-items: flex-start; gap: 24px; padding: 16px; }
+      .mobile-frame {
+        max-width: 390px;
+        border-radius: 24px;
+        border: 1px solid hsl(var(--border));
+        overflow: hidden;
+        min-height: unset;
+        height: 780px;
+        overflow-y: auto;
+        flex-shrink: 0;
+        position: sticky;
+        top: 16px;
+      }
+      .desktop-side {
+        flex: 1;
+        max-width: 600px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Banner -->
+<p style="font-size:0.7rem;color:hsl(var(--muted-foreground));padding:5px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));width:100%;box-sizing:border-box;">
+  EPG v5 · Mobile-native: single-channel view + channel hopper · dark mode
+</p>
+
+<!-- Mobile frame -->
+<div class="mobile-frame">
+
+  <!-- App bar -->
+  <div class="app-bar">
+    <a href="/" aria-label="ライブへ戻る" style="display:inline-flex;align-items:center;color:hsl(var(--foreground));text-decoration:none;padding:4px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    </a>
+    <div style="flex:1;text-align:center;">
+      <div style="font-weight:700;font-size:0.9375rem;">番組表</div>
+      <div style="font-size:0.6rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;margin-top:-1px;">2026年4月17日（木）21:13</div>
+    </div>
+    <span class="badge badge-live" style="font-size:0.55rem;">● LIVE</span>
+  </div>
+
+  <!-- Channel hopper strip -->
+  <div class="ch-hopper" aria-label="チャンネル選択">
+    <div class="ch-hopper-scroll" role="tablist" aria-label="チャンネル">
+      <div role="tab" aria-selected="true" class="ch-pill active" tabindex="0" aria-label="NHK総合">
+        <span class="ch-num">1</span>
+        <span class="ch-name">NHK総合</span>
+      </div>
+      <div role="tab" aria-selected="false" class="ch-pill" tabindex="0" aria-label="NHK Eテレ">
+        <span class="ch-num" style="color:hsl(142 70% 48%);">2</span>
+        <span class="ch-name">Eテレ</span>
+      </div>
+      <div role="tab" aria-selected="false" class="ch-pill" tabindex="0" aria-label="日本テレビ">
+        <span class="ch-num" style="color:hsl(38 92% 52%);">4</span>
+        <span class="ch-name">日テレ</span>
+      </div>
+      <div role="tab" aria-selected="false" class="ch-pill" tabindex="0" aria-label="テレビ朝日">
+        <span class="ch-num" style="color:hsl(190 70% 48%);">5</span>
+        <span class="ch-name">テレ朝</span>
+      </div>
+      <div role="tab" aria-selected="false" class="ch-pill" tabindex="0" aria-label="TBS">
+        <span class="ch-num" style="color:hsl(0 72% 58%);">6</span>
+        <span class="ch-name">TBS</span>
+      </div>
+      <div role="tab" aria-selected="false" class="ch-pill" tabindex="0" aria-label="テレビ東京">
+        <span class="ch-num" style="color:hsl(260 60% 55%);">7</span>
+        <span class="ch-name">テレ東</span>
+      </div>
+      <div role="tab" aria-selected="false" class="ch-pill" tabindex="0" aria-label="フジテレビ">
+        <span class="ch-num" style="color:hsl(38 92% 52%);">8</span>
+        <span class="ch-name">フジ</span>
+      </div>
+      <div role="tab" aria-selected="false" class="ch-pill" tabindex="0" aria-label="BS1">
+        <span class="ch-num" style="color:hsl(142 70% 48%);">BS1</span>
+        <span class="ch-name">NHK BS1</span>
+      </div>
+      <div role="tab" aria-selected="false" class="ch-pill" tabindex="0" aria-label="BSプレミアム">
+        <span class="ch-num" style="color:hsl(142 70% 48%);">BSP</span>
+        <span class="ch-name">BSプレミア</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date strip -->
+  <div class="date-strip" role="group" aria-label="日付選択">
+    <button class="date-pill" aria-label="4月15日">4/15火</button>
+    <button class="date-pill" aria-label="4月16日">4/16水</button>
+    <button class="date-pill active" aria-label="4月17日 今日">4/17木 今日</button>
+    <button class="date-pill" aria-label="4月18日">4/18金</button>
+    <button class="date-pill" aria-label="4月19日">4/19土</button>
+    <button class="date-pill" aria-label="4月20日">4/20日</button>
+    <button class="date-pill" aria-label="4月21日">4/21月</button>
+  </div>
+
+  <!-- ON AIR hero -->
+  <div class="hero-card g-news" aria-label="現在放送中: NHKニュース7">
+    <div class="hero-genre-bar g-news"></div>
+    <div class="hero-body">
+      <div class="hero-badge">
+        <span style="width:8px;height:8px;border-radius:50%;background:hsl(var(--destructive));display:inline-block;animation:blink 1s ease-in-out infinite;"></span>
+        ON AIR
+      </div>
+      <div class="hero-title">NHKニュース7</div>
+      <div class="hero-time">21:00 – 21:30（30分）</div>
+      <div class="hero-desc">
+        今日の国内外のニュースをお伝えします。政治・経済・社会から文化・スポーツまで幅広くカバー。
+      </div>
+      <div class="progress-track g-news"><div class="progress-fill g-news" style="width:43%;"></div></div>
+      <div class="progress-label">
+        <span>21:00</span>
+        <span>残り 17分</span>
+        <span>21:30</span>
+      </div>
+      <div class="hero-actions">
+        <button class="btn-watch" aria-label="NHKニュース7を今すぐ視聴">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          今すぐ視聴
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming section -->
+  <div class="section-hdr">これからの番組</div>
+
+  <div role="list" aria-label="NHK総合 これからの番組">
+
+    <div class="prog-item g-variety" role="listitem" tabindex="0" aria-label="ガッテン 21:30-22:15 バラエティ">
+      <div class="prog-time-col">21:30<br>22:15</div>
+      <div class="genre-bar g-variety"></div>
+      <div class="prog-content">
+        <div class="prog-title">ガッテン！特集</div>
+        <div class="prog-genre">バラエティ · 45分</div>
+        <div class="prog-item-reserve">
+          <button class="mini-reserve" onclick="event.stopPropagation()" aria-label="予約">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="display:inline;"><circle cx="12" cy="12" r="9"/></svg> 予約
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="prog-item g-drama" role="listitem" tabindex="0" aria-label="土曜ドラマ 22:15-23:00 ドラマ">
+      <div class="prog-time-col">22:15<br>23:00</div>
+      <div class="genre-bar g-drama"></div>
+      <div class="prog-content">
+        <div class="prog-title">土曜ドラマ「春の嵐」</div>
+        <div class="prog-genre">ドラマ · 45分</div>
+        <div class="prog-item-reserve">
+          <button class="mini-reserve" onclick="event.stopPropagation()" aria-label="予約">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="display:inline;"><circle cx="12" cy="12" r="9"/></svg> 予約
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="prog-item g-news" role="listitem" tabindex="0" aria-label="NHKニュース 23:00-23:30 報道">
+      <div class="prog-time-col">23:00<br>23:30</div>
+      <div class="genre-bar g-news"></div>
+      <div class="prog-content">
+        <div class="prog-title">NHKニュース</div>
+        <div class="prog-genre">報道 · 30分</div>
+        <div class="prog-item-reserve">
+          <button class="mini-reserve" onclick="event.stopPropagation()" aria-label="予約">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="display:inline;"><circle cx="12" cy="12" r="9"/></svg> 予約
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="prog-item g-docu" role="listitem" tabindex="0" aria-label="NHKスペシャル 23:30-00:30 ドキュメンタリー">
+      <div class="prog-time-col">23:30<br>00:30</div>
+      <div class="genre-bar g-docu"></div>
+      <div class="prog-content">
+        <div class="prog-title">NHKスペシャル「海洋汚染の真実」</div>
+        <div class="prog-genre">ドキュメンタリー · 60分</div>
+        <div class="prog-item-reserve">
+          <button class="mini-reserve" onclick="event.stopPropagation()" aria-label="予約">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="display:inline;"><circle cx="12" cy="12" r="9"/></svg> 予約
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="prog-item g-variety" role="listitem" tabindex="0" aria-label="トップランナー 00:30-01:20 バラエティ">
+      <div class="prog-time-col">00:30<br>01:20</div>
+      <div class="genre-bar g-variety"></div>
+      <div class="prog-content">
+        <div class="prog-title">トップランナー</div>
+        <div class="prog-genre">バラエティ · 50分</div>
+        <div class="prog-item-reserve">
+          <button class="mini-reserve" onclick="event.stopPropagation()" aria-label="予約">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style="display:inline;"><circle cx="12" cy="12" r="9"/></svg> 予約
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="prog-item g-other" role="listitem" tabindex="0" aria-label="放送休止 01:20-04:00">
+      <div class="prog-time-col" style="color:hsl(var(--muted-foreground) / 0.5);">01:20<br>04:00</div>
+      <div class="genre-bar g-other" style="opacity:0.3;"></div>
+      <div class="prog-content">
+        <div class="prog-title" style="color:hsl(var(--muted-foreground));">放送休止</div>
+        <div class="prog-genre" style="color:hsl(var(--muted-foreground)/0.6);">160分</div>
+      </div>
+    </div>
+
+    <!-- Earlier today section -->
+    <div class="section-hdr" style="position:static;">過去の番組（本日）</div>
+
+    <div class="prog-item g-news" role="listitem" tabindex="0" aria-label="おはよう日本 06:00-08:00 報道 終了" style="opacity:0.6;">
+      <div class="prog-time-col">06:00<br>08:00</div>
+      <div class="genre-bar g-news" style="opacity:0.5;"></div>
+      <div class="prog-content">
+        <div class="prog-title">おはよう日本</div>
+        <div class="prog-genre">報道 · 120分 · 放送終了</div>
+      </div>
+    </div>
+
+    <div class="prog-item g-edu" role="listitem" tabindex="0" aria-label="連続テレビ小説 08:00-08:30 終了" style="opacity:0.6;">
+      <div class="prog-time-col">08:00<br>08:30</div>
+      <div class="genre-bar g-edu" style="opacity:0.5;"></div>
+      <div class="prog-content">
+        <div class="prog-title">連続テレビ小説「おむすび」</div>
+        <div class="prog-genre">ドラマ · 15分 × 2 · 放送終了</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Desktop side panel note -->
+<div class="desktop-side" style="padding:16px;">
+  <p style="font-size:0.8rem;color:hsl(var(--muted-foreground));background:hsl(var(--muted)/0.3);border:1px dashed hsl(var(--border));border-radius:8px;padding:16px;line-height:1.7;">
+    <strong style="color:hsl(var(--foreground));">v5 Design note:</strong><br>
+    Mobile-native single-channel view. The channel hopper (pill strip) lets users jump between channels without leaving the page. Each channel shows: ON AIR hero with progress bar + watch CTA, then future programs listed vertically with time, then past programs (dimmed).<br><br>
+    On desktop ≥768px, the mobile frame appears as a phone-shaped card on the left. A future iteration could show this layout in a sidebar while the right panel shows a classic horizontal grid — bridging mobile and desktop UX.<br><br>
+    <strong>Trade-off:</strong> No cross-channel comparison possible (can't scan "what's on at 22:00 across all channels"). Best for users who have a preferred channel in mind.
+  </p>
+  <!-- States panel -->
+  <div style="margin-top:24px;">
+    <p style="font-size:0.7rem;font-weight:700;color:hsl(var(--muted-foreground));text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">States</p>
+    <!-- Loading -->
+    <div style="max-width:390px;background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:10px;padding:12px;margin-bottom:12px;">
+      <p style="font-size:0.6rem;color:hsl(var(--muted-foreground));margin-bottom:8px;">Loading skeleton</p>
+      <div style="height:16px;background:hsl(var(--muted)/0.6);border-radius:3px;width:60%;margin-bottom:6px;animation:pulse 1.4s ease-in-out infinite;"></div>
+      <div style="height:12px;background:hsl(var(--muted)/0.4);border-radius:3px;width:40%;animation:pulse 1.4s ease-in-out infinite;"></div>
+    </div>
+    <!-- Error -->
+    <div style="max-width:390px;background:hsl(var(--destructive)/0.08);border:1px solid hsl(var(--destructive)/0.25);border-radius:10px;padding:12px;">
+      <p style="font-size:0.8rem;font-weight:700;color:hsl(var(--destructive));margin:0 0 4px;">番組データを取得できません</p>
+      <p style="font-size:0.7rem;color:hsl(var(--muted-foreground));margin:0 0 8px;">サーバーに接続できませんでした</p>
+      <button style="font-size:0.7rem;font-weight:700;padding:5px 12px;border-radius:6px;background:hsl(var(--destructive)/0.15);color:hsl(var(--destructive));border:1px solid hsl(var(--destructive)/0.3);cursor:pointer;">再試行</button>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+</style>
+
+</body>
+</html>

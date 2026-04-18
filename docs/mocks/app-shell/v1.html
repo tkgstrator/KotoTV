@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App Shell — v1 Collapsible Sidebar + Bottom Tabs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+      --sidebar-bg: 222 18% 12%;
+      --sidebar-fg: 210 20% 82%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+      --sidebar-bg: 222 20% 8%;
+      --sidebar-fg: 210 20% 75%;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      min-height: 100dvh;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100dvh;
+      width: 240px;
+      background: hsl(var(--sidebar-bg));
+      color: hsl(var(--sidebar-fg));
+      border-right: 1px solid hsl(var(--border));
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease;
+      z-index: 40;
+      overflow: hidden;
+    }
+    .sidebar.collapsed { width: 56px; }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      height: 56px;
+      border-bottom: 1px solid hsl(var(--border) / 0.6);
+      flex-shrink: 0;
+    }
+    .sidebar-logo .icon-mark {
+      width: 28px;
+      height: 28px;
+      background: hsl(var(--primary));
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-weight: 800;
+      font-size: 13px;
+      color: hsl(var(--primary-foreground));
+    }
+    .sidebar-logo .wordmark {
+      font-size: 15px;
+      font-weight: 700;
+      color: hsl(210 20% 92%);
+      white-space: nowrap;
+      opacity: 1;
+      transition: opacity 0.15s;
+    }
+    .collapsed .sidebar-logo .wordmark { opacity: 0; pointer-events: none; }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 8px 0;
+      overflow-y: auto;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 6px;
+      margin: 1px 6px;
+      color: hsl(var(--sidebar-fg));
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: background 0.1s, color 0.1s;
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: calc(100% - 12px);
+      text-align: left;
+    }
+    .nav-item svg { flex-shrink: 0; }
+    .nav-item:hover { background: hsl(var(--muted) / 0.3); color: hsl(210 20% 94%); }
+    .nav-item.active {
+      background: hsl(var(--primary) / 0.15);
+      color: hsl(var(--primary));
+    }
+    .nav-item:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+    }
+    .nav-item .label {
+      opacity: 1;
+      transition: opacity 0.15s;
+      overflow: hidden;
+    }
+    .collapsed .nav-item .label { opacity: 0; width: 0; }
+
+    .sidebar-footer {
+      padding: 8px 6px 12px;
+      border-top: 1px solid hsl(var(--border) / 0.6);
+    }
+
+    .toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 36px;
+      border: none;
+      background: hsl(var(--muted) / 0.2);
+      color: hsl(var(--muted-foreground));
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .toggle-btn:hover { background: hsl(var(--muted) / 0.4); }
+    .toggle-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+
+    /* ── Main content ── */
+    .main-wrapper {
+      margin-left: 240px;
+      min-height: 100dvh;
+      transition: margin-left 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .main-wrapper.sidebar-collapsed { margin-left: 56px; }
+
+    .top-bar {
+      height: 56px;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .breadcrumb {
+      font-size: 14px;
+      color: hsl(var(--muted-foreground));
+    }
+    .breadcrumb span { color: hsl(var(--foreground)); font-weight: 600; }
+
+    .content-area {
+      flex: 1;
+      padding: 16px 20px;
+    }
+
+    /* ── Player mode overlay ── */
+    .player-mode-toggle {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Channel list stub ── */
+    .ch-stub { border-radius: 8px; overflow: hidden; border: 1px solid hsl(var(--border)); }
+    .ch-stub-header {
+      background: hsl(var(--card));
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .ch-row {
+      display: grid;
+      grid-template-columns: 52px 1fr 1fr;
+      align-items: stretch;
+      height: 50px;
+      border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+      padding-left: 4px;
+    }
+    .ch-row:last-child { border-bottom: none; }
+    .ch-row:hover { background: hsl(var(--muted) / 0.4); }
+    .ch-row:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; border-radius: 2px; z-index: 1; }
+    .ch-num {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: hsl(var(--muted-foreground));
+    }
+    .ch-cell {
+      padding: 0 10px;
+      display: flex; flex-direction: column; justify-content: center;
+      gap: 2px;
+      border-left: 1px solid hsl(var(--border));
+      position: relative;
+    }
+    .ch-name { font-size: 11px; font-weight: 600; }
+    .prog-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prog-time { font-size: 10px; color: hsl(var(--muted-foreground)); }
+    .prog-bar {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+      background: hsl(var(--muted));
+    }
+    .prog-fill { height: 100%; background: hsl(var(--primary)); border-radius: 0 1px 1px 0; }
+
+    /* ── Player mode state ── */
+    #player-mode-checkbox { display: none; }
+    #player-mode-checkbox:checked ~ * .sidebar { transform: translateX(-100%); }
+    #player-mode-checkbox:checked ~ * .main-wrapper { margin-left: 0 !important; }
+    #player-mode-checkbox:checked ~ * .player-overlay { display: flex; }
+    #player-mode-checkbox:checked ~ * .content-area { display: none; }
+    #player-mode-checkbox:checked ~ * .top-bar { display: none; }
+    #player-mode-checkbox:checked ~ * .sidebar-toggle-label { display: none; }
+
+    .player-overlay {
+      display: none;
+      width: 100%;
+      height: 100dvh;
+      background: hsl(222 25% 5%);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 50;
+    }
+    .player-video-area {
+      width: 100%; max-width: 1280px;
+      aspect-ratio: 16/9;
+      background: hsl(222 25% 8%);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: hsl(var(--muted-foreground));
+      font-size: 14px;
+      position: relative;
+    }
+    .player-back {
+      position: absolute;
+      top: 16px; left: 16px;
+      background: hsl(222 20% 10% / 0.8);
+      color: hsl(var(--foreground));
+      border: 1px solid hsl(var(--border));
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .player-back:hover { background: hsl(222 20% 16% / 0.9); }
+    .player-back:focus-visible { outline: 2px solid hsl(var(--ring)); }
+
+    /* ── Sidebar collapse toggle (CSS-only trick) ── */
+    #sidebar-toggle { display: none; }
+    #sidebar-toggle:checked ~ * .sidebar { width: 56px; }
+    #sidebar-toggle:checked ~ * .main-wrapper { margin-left: 56px; }
+
+    /* ── Mobile bottom tabs ── */
+    @media (max-width: 767px) {
+      .sidebar { display: none; }
+      .main-wrapper { margin-left: 0 !important; padding-bottom: 64px; }
+      .bottom-tabs { display: flex; }
+      .top-bar { padding: 0 12px; }
+    }
+    @media (min-width: 768px) {
+      .bottom-tabs { display: none; }
+    }
+
+    .bottom-tabs {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 64px;
+      background: hsl(var(--sidebar-bg));
+      border-top: 1px solid hsl(var(--border));
+      align-items: stretch;
+      z-index: 40;
+    }
+    .tab-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      color: hsl(var(--sidebar-fg));
+      font-size: 10px;
+      font-weight: 500;
+      text-decoration: none;
+      border: none;
+      background: none;
+      cursor: pointer;
+      transition: color 0.1s;
+      padding: 0;
+    }
+    .tab-item:hover { color: hsl(210 20% 90%); }
+    .tab-item.active { color: hsl(var(--primary)); }
+    .tab-item:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -3px;
+      border-radius: 4px;
+    }
+
+    /* Demo UI helpers */
+    .demo-label {
+      background: hsl(38 92% 52% / 0.15);
+      color: hsl(38 92% 62%);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid hsl(38 92% 52% / 0.3);
+    }
+  </style>
+</head>
+<body>
+
+<!-- CSS-only sidebar collapse -->
+<input type="checkbox" id="sidebar-toggle" />
+<!-- CSS-only player mode -->
+<input type="checkbox" id="player-mode-checkbox" />
+
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="icon-mark">K</div>
+    <span class="wordmark">KonomiTV</span>
+  </div>
+  <nav class="sidebar-nav" aria-label="メインナビゲーション">
+    <a href="#" class="nav-item active" aria-current="page">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <span class="label">チャンネル一覧</span>
+    </a>
+    <a href="#" class="nav-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <span class="label">番組表 (EPG)</span>
+    </a>
+    <a href="#" class="nav-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <span class="label">録画一覧</span>
+    </a>
+    <hr style="border: none; border-top: 1px solid hsl(var(--border) / 0.5); margin: 6px 12px;" />
+    <a href="#" class="nav-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M16.24 7.76a6 6 0 0 1 0 8.49M4.93 4.93a10 10 0 0 0 0 14.14M7.76 7.76a6 6 0 0 0 0 8.49"/>
+      </svg>
+      <span class="label">ライブ再生中</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="#" class="nav-item" style="margin: 0 0 2px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9 2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9 2.83-2.83"/>
+      </svg>
+      <span class="label">設定</span>
+    </a>
+  </div>
+</div>
+
+<!-- Main content area -->
+<div class="main-wrapper" id="main">
+  <header class="top-bar">
+    <label for="sidebar-toggle" class="sidebar-toggle-label toggle-btn" style="width:32px;height:32px;flex-shrink:0;cursor:pointer;" aria-label="サイドバー開閉">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </label>
+    <nav class="breadcrumb" aria-label="現在地">
+      現在: <span>チャンネル一覧</span>
+    </nav>
+    <div class="player-mode-toggle">
+      <span class="demo-label">DEMO</span>
+      <label for="player-mode-checkbox" style="cursor:pointer;background:hsl(var(--primary)/0.1);color:hsl(var(--primary));border:1px solid hsl(var(--primary)/0.3);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;">
+        ▶ プレイヤー表示
+      </label>
+    </div>
+  </header>
+  <main class="content-area">
+    <div style="margin-bottom:14px;display:flex;align-items:baseline;gap:12px;">
+      <h1 style="font-size:18px;font-weight:700;">チャンネル一覧</h1>
+      <span style="font-size:12px;color:hsl(var(--muted-foreground));">地上波 · BS · CS</span>
+    </div>
+    <!-- Channel list stub -->
+    <div class="ch-stub">
+      <div class="ch-stub-header">地上波 GR (8チャンネル)</div>
+      <a href="#" class="ch-row" tabindex="0">
+        <div class="ch-num">1</div>
+        <div class="ch-cell"><span class="ch-name">NHK総合</span></div>
+        <div class="ch-cell">
+          <span class="prog-name">ニュース7</span>
+          <span class="prog-time">19:00 – 20:00</span>
+          <div class="prog-bar"><div class="prog-fill" style="width:45%"></div></div>
+        </div>
+      </a>
+      <a href="#" class="ch-row" tabindex="0">
+        <div class="ch-num">3</div>
+        <div class="ch-cell"><span class="ch-name">NHK Eテレ</span></div>
+        <div class="ch-cell">
+          <span class="prog-name">ダーウィンが来た！</span>
+          <span class="prog-time">19:30 – 20:00</span>
+          <div class="prog-bar"><div class="prog-fill" style="width:72%"></div></div>
+        </div>
+      </a>
+      <a href="#" class="ch-row" tabindex="0">
+        <div class="ch-num">4</div>
+        <div class="ch-cell"><span class="ch-name">日本テレビ</span></div>
+        <div class="ch-cell">
+          <span class="prog-name">月曜から夜更かし</span>
+          <span class="prog-time">22:00 – 23:00</span>
+          <div class="prog-bar"><div class="prog-fill" style="width:20%"></div></div>
+        </div>
+      </a>
+      <a href="#" class="ch-row" tabindex="0">
+        <div class="ch-num">6</div>
+        <div class="ch-cell"><span class="ch-name">TBSテレビ</span></div>
+        <div class="ch-cell">
+          <span class="prog-name">CDTVライブ！ライブ！</span>
+          <span class="prog-time">23:00 – 01:28</span>
+          <div class="prog-bar"><div class="prog-fill" style="width:10%"></div></div>
+        </div>
+      </a>
+      <a href="#" class="ch-row" tabindex="0">
+        <div class="ch-num">8</div>
+        <div class="ch-cell"><span class="ch-name">フジテレビ</span></div>
+        <div class="ch-cell">
+          <span class="prog-name">VS魂</span>
+          <span class="prog-time">21:00 – 22:00</span>
+          <div class="prog-bar"><div class="prog-fill" style="width:60%"></div></div>
+        </div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<!-- Mobile bottom tabs -->
+<nav class="bottom-tabs" aria-label="メインナビゲーション">
+  <a href="#" class="tab-item active" aria-current="page">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+    </svg>
+    TV
+  </a>
+  <a href="#" class="tab-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    EPG
+  </a>
+  <a href="#" class="tab-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+    録画
+  </a>
+  <a href="#" class="tab-item">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9 2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9 2.83-2.83"/>
+    </svg>
+    設定
+  </a>
+</nav>
+
+<!-- Player overlay (activated by checkbox) -->
+<div class="player-overlay">
+  <div class="player-video-area" style="margin:0 20px;">
+    <label for="player-mode-checkbox" class="player-back" tabindex="0">
+      ← チャンネル一覧に戻る
+    </label>
+    <span>▶ NHK総合 ライブ映像エリア (16:9)</span>
+  </div>
+  <div style="color:hsl(var(--muted-foreground));font-size:12px;margin-top:12px;">
+    サイドバーは非表示 — 全画面モード。ESCキーまたは戻るボタンで復帰。
+  </div>
+</div>
+
+</body>
+</html>

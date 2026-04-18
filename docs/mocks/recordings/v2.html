@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recordings v2 — Calendar List + Side Drawer Form</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+    }
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* Status colors */
+    .s-pending   { --sc: hsl(38 92% 52%); --scl: hsl(38 92% 65%); }
+    .s-recording { --sc: hsl(0 72% 58%);  --scl: hsl(0 72% 70%); }
+    .s-completed { --sc: hsl(142 70% 40%);--scl: hsl(142 70% 58%); }
+    .s-failed    { --sc: hsl(0 50% 40%);  --scl: hsl(0 50% 60%); }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.625rem; font-weight: 700; letter-spacing: 0.05em;
+      padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+      background: color-mix(in srgb, var(--sc) 20%, transparent);
+      color: var(--scl);
+      border: 1px solid color-mix(in srgb, var(--sc) 40%, transparent);
+    }
+
+    /* Calendar grid */
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      border-left: 1px solid hsl(var(--border));
+      border-top: 1px solid hsl(var(--border));
+    }
+    .cal-day {
+      border-right: 1px solid hsl(var(--border));
+      border-bottom: 1px solid hsl(var(--border));
+      min-height: 100px;
+      padding: 6px;
+      font-size: 0.75rem;
+      position: relative;
+    }
+    .cal-day.today { background: hsl(var(--primary) / 0.06); }
+    .cal-day.other-month { opacity: 0.4; }
+    .cal-day-num {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      margin-bottom: 4px;
+    }
+    .cal-day.today .cal-day-num {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+    .cal-event {
+      font-size: 0.6875rem;
+      padding: 2px 5px;
+      border-radius: 3px;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      transition: filter 0.1s;
+    }
+    .cal-event:hover { filter: brightness(1.15); }
+    .cal-event:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 1px;
+    }
+    .cal-event.ev-pending   { background: hsl(38 92% 52% / 0.25); color: hsl(38 92% 70%); }
+    .cal-event.ev-recording { background: hsl(0 72% 58% / 0.3); color: hsl(0 72% 72%); }
+    .cal-event.ev-completed { background: hsl(142 70% 40% / 0.25); color: hsl(142 70% 60%); }
+    .cal-event.ev-failed    { background: hsl(0 50% 40% / 0.25); color: hsl(0 50% 62%); text-decoration: line-through; }
+
+    /* Drawer */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: hsl(222 20% 5% / 0.6);
+      z-index: 40;
+    }
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 380px;
+      background: hsl(var(--card));
+      border-left: 1px solid hsl(var(--border));
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -8px 0 40px hsl(222 20% 5% / 0.5);
+    }
+    .drawer-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .drawer-body {
+      padding: 20px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .drawer-footer {
+      padding: 12px 20px;
+      border-top: 1px solid hsl(var(--border));
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* Form elements */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 0.8125rem; font-weight: 600; }
+    .field input, .field select, .field textarea {
+      background: hsl(var(--background));
+      border: 1px solid hsl(var(--border));
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.875rem;
+      color: hsl(var(--foreground));
+      width: 100%;
+      transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: hsl(var(--ring));
+      box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+    }
+    .field-error {
+      font-size: 0.75rem;
+      color: hsl(var(--destructive));
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 16px; border-radius: 6px; font-size: 0.875rem; font-weight: 600;
+      cursor: pointer; transition: opacity 0.12s, filter 0.12s; border: none;
+    }
+    .btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-ghost  { background: transparent; border: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); }
+    .btn-ghost:hover { background: hsl(var(--muted)); }
+    .btn-sm { padding: 5px 12px; font-size: 0.8125rem; }
+
+    .icon-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 6px;
+      background: transparent; border: none;
+      color: hsl(var(--muted-foreground)); cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .icon-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .icon-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    /* Detail panel (clicked calendar event) */
+    .detail-panel {
+      background: hsl(var(--muted) / 0.35);
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 0 16px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:6px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));">
+  Recordings v2 · Calendar view list + Side Drawer reservation form — dark mode (desktop-first, 1440px)
+</p>
+
+<!-- ═══════════════════════════════════════ DESKTOP CALENDAR VIEW ═══════ -->
+<div style="max-width:1100px;margin:0 auto;padding-bottom:40px;">
+
+  <!-- App bar -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:52px;display:flex;align-items:center;gap:12px;padding:0 20px;position:sticky;top:0;z-index:20;">
+    <a href="/" tabindex="0" style="display:inline-flex;align-items:center;gap:6px;font-size:0.875rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 10px;border-radius:6px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+      ライブ
+    </a>
+    <span style="color:hsl(var(--border));">|</span>
+    <span style="font-weight:700;font-size:0.9375rem;">録画</span>
+    <div style="flex:1;"></div>
+    <!-- View toggle -->
+    <div style="display:flex;gap:2px;background:hsl(var(--muted));border-radius:6px;padding:3px;">
+      <button tabindex="0" style="padding:4px 10px;border-radius:4px;font-size:0.75rem;font-weight:700;background:hsl(var(--card));color:hsl(var(--foreground));border:none;cursor:pointer;display:flex;align-items:center;gap:5px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        カレンダー
+      </button>
+      <button tabindex="0" style="padding:4px 10px;border-radius:4px;font-size:0.75rem;font-weight:600;background:transparent;color:hsl(var(--muted-foreground));border:none;cursor:pointer;display:flex;align-items:center;gap:5px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        リスト
+      </button>
+    </div>
+    <button class="btn btn-primary btn-sm" tabindex="0" style="margin-left:8px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      録画を予約
+    </button>
+  </div>
+
+  <!-- Month nav -->
+  <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;">
+    <button class="icon-btn" tabindex="0" aria-label="前の月">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h2 style="font-size:1.125rem;font-weight:700;margin:0;">2026年 4月</h2>
+    <button class="icon-btn" tabindex="0" aria-label="次の月">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <div style="flex:1;"></div>
+    <div style="display:flex;gap:12px;font-size:0.75rem;align-items:center;">
+      <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:hsl(38 92% 52% / 0.4);"></span>予約済み</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:hsl(0 72% 58% / 0.4);"></span>録画中</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:hsl(142 70% 40% / 0.3);"></span>完了</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:hsl(0 50% 40% / 0.3);"></span>失敗</span>
+    </div>
+  </div>
+
+  <!-- Weekday headers -->
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);padding:0 20px;">
+    <div style="padding:6px 6px;font-size:0.75rem;font-weight:700;color:hsl(0 72% 65%);text-align:center;">日</div>
+    <div style="padding:6px 6px;font-size:0.75rem;font-weight:700;color:hsl(var(--muted-foreground));text-align:center;">月</div>
+    <div style="padding:6px 6px;font-size:0.75rem;font-weight:700;color:hsl(var(--muted-foreground));text-align:center;">火</div>
+    <div style="padding:6px 6px;font-size:0.75rem;font-weight:700;color:hsl(var(--muted-foreground));text-align:center;">水</div>
+    <div style="padding:6px 6px;font-size:0.75rem;font-weight:700;color:hsl(var(--muted-foreground));text-align:center;">木</div>
+    <div style="padding:6px 6px;font-size:0.75rem;font-weight:700;color:hsl(var(--muted-foreground));text-align:center;">金</div>
+    <div style="padding:6px 6px;font-size:0.75rem;font-weight:700;color:hsl(221 83% 65%);text-align:center;">土</div>
+  </div>
+
+  <!-- Calendar grid -->
+  <div style="padding:0 20px;">
+    <div class="cal-grid">
+      <!-- Row 1: Mar 29–Apr 4 -->
+      <div class="cal-day other-month"><div class="cal-day-num">29</div></div>
+      <div class="cal-day other-month"><div class="cal-day-num">30</div></div>
+      <div class="cal-day other-month"><div class="cal-day-num">31</div></div>
+      <div class="cal-day"><div class="cal-day-num">1</div></div>
+      <div class="cal-day"><div class="cal-day-num">2</div></div>
+      <div class="cal-day"><div class="cal-day-num">3</div></div>
+      <div class="cal-day"><div class="cal-day-num">4</div></div>
+
+      <!-- Row 2: Apr 5–11 -->
+      <div class="cal-day"><div class="cal-day-num">5</div></div>
+      <div class="cal-day"><div class="cal-day-num">6</div></div>
+      <div class="cal-day"><div class="cal-day-num">7</div></div>
+      <div class="cal-day"><div class="cal-day-num">8</div></div>
+      <div class="cal-day"><div class="cal-day-num">9</div></div>
+      <div class="cal-day">
+        <div class="cal-day-num">10</div>
+        <button tabindex="0" class="cal-event ev-completed" title="プロジェクトX 20:00">プロジェクトX</button>
+      </div>
+      <div class="cal-day">
+        <div class="cal-day-num">11</div>
+        <button tabindex="0" class="cal-event ev-completed" title="大河ドラマ 20:00">光る君へ 第19話</button>
+      </div>
+
+      <!-- Row 3: Apr 12–18 -->
+      <div class="cal-day">
+        <div class="cal-day-num">12</div>
+        <button tabindex="0" class="cal-event ev-completed" title="報道特集 17:30">報道特集</button>
+      </div>
+      <div class="cal-day"><div class="cal-day-num">13</div></div>
+      <div class="cal-day">
+        <div class="cal-day-num">14</div>
+        <button tabindex="0" class="cal-event ev-failed" title="光る君へ 20:00 — チューナーエラー">光る君へ 第20話</button>
+      </div>
+      <div class="cal-day"><div class="cal-day-num">15</div>
+        <button tabindex="0" class="cal-event ev-completed" title="チコちゃん 19:00">チコちゃん！</button>
+      </div>
+      <div class="cal-day"><div class="cal-day-num">16</div>
+        <button tabindex="0" class="cal-event ev-completed" title="プロジェクトX 20:00">プロジェクトX</button>
+      </div>
+      <div class="cal-day today">
+        <div class="cal-day-num">17</div>
+        <button tabindex="0" class="cal-event ev-recording" title="アンチヒーロー 21:00 録画中">● アンチヒーロー</button>
+        <button tabindex="0" class="cal-event ev-pending" title="千と千尋 23:30">千と千尋</button>
+      </div>
+      <div class="cal-day"><div class="cal-day-num">18</div>
+        <button tabindex="0" class="cal-event ev-pending" title="クローズアップ現代 19:30">クローズアップ現代</button>
+      </div>
+
+      <!-- Row 4: Apr 19–25 -->
+      <div class="cal-day">
+        <div class="cal-day-num">19</div>
+        <button tabindex="0" class="cal-event ev-pending" title="NHKスペシャル 22:00">NHKスペシャル</button>
+      </div>
+      <div class="cal-day"><div class="cal-day-num">20</div></div>
+      <div class="cal-day"><div class="cal-day-num">21</div></div>
+      <div class="cal-day"><div class="cal-day-num">22</div></div>
+      <div class="cal-day"><div class="cal-day-num">23</div></div>
+      <div class="cal-day"><div class="cal-day-num">24</div></div>
+      <div class="cal-day"><div class="cal-day-num">25</div></div>
+
+      <!-- Row 5: Apr 26–30 + May 1-2 -->
+      <div class="cal-day"><div class="cal-day-num">26</div></div>
+      <div class="cal-day"><div class="cal-day-num">27</div></div>
+      <div class="cal-day"><div class="cal-day-num">28</div></div>
+      <div class="cal-day"><div class="cal-day-num">29</div></div>
+      <div class="cal-day"><div class="cal-day-num">30</div></div>
+      <div class="cal-day other-month"><div class="cal-day-num">1</div></div>
+      <div class="cal-day other-month"><div class="cal-day-num">2</div></div>
+    </div>
+  </div>
+
+  <!-- Selected-event detail strip (appears when clicking a calendar event) -->
+  <div style="padding:16px 20px 0;">
+    <div class="detail-panel s-recording">
+      <span class="status-dot" style="background: hsl(0 72% 70%);"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:0.875rem;font-weight:700;">日曜劇場「アンチヒーロー」第12話</span>
+          <span class="badge s-recording">
+            <span style="width:5px;height:5px;border-radius:50%;background:currentColor;"></span>
+            録画中
+          </span>
+        </div>
+        <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin-top:2px;">
+          TBS · Ch.6 &ensp;·&ensp; 2026-04-17 21:00–23:00 &ensp;·&ensp; 残り 23分 &ensp;·&ensp; 2.1 GB
+        </div>
+      </div>
+      <button class="icon-btn" tabindex="0" aria-label="停止" style="color:hsl(0 72% 65%);" title="録画停止">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+<!-- END DESKTOP CALENDAR VIEW -->
+
+<!-- ═══════════════════════════════════════ DRAWER FORM ═══════════════ -->
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:6px 16px;background:hsl(var(--muted)/0.3);border-top:2px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));margin-top:8px;">
+  Side Drawer — 録画予約フォーム (「録画を予約」ボタン押下時)
+</p>
+
+<div style="position:relative;max-width:1100px;margin:0 auto;height:600px;border:1px solid hsl(var(--border));overflow:hidden;">
+  <!-- Dimmed calendar behind -->
+  <div style="opacity:0.25;pointer-events:none;padding:20px;">
+    <div class="cal-grid" style="font-size:0.7rem;opacity:0.5;">
+      <div class="cal-day today"><div class="cal-day-num" style="font-size:0.7rem;">17</div></div>
+      <div class="cal-day"><div class="cal-day-num" style="font-size:0.7rem;">18</div></div>
+      <div class="cal-day"><div class="cal-day-num" style="font-size:0.7rem;">19</div></div>
+      <div class="cal-day"><div class="cal-day-num" style="font-size:0.7rem;">20</div></div>
+      <div class="cal-day"><div class="cal-day-num" style="font-size:0.7rem;">21</div></div>
+      <div class="cal-day"><div class="cal-day-num" style="font-size:0.7rem;">22</div></div>
+      <div class="cal-day"><div class="cal-day-num" style="font-size:0.7rem;">23</div></div>
+    </div>
+  </div>
+  <!-- Overlay -->
+  <div class="drawer-overlay"></div>
+  <!-- Drawer -->
+  <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+    <div class="drawer-header">
+      <h2 id="drawer-title" style="font-size:1rem;font-weight:700;margin:0;">録画を予約</h2>
+      <button class="icon-btn" tabindex="0" aria-label="閉じる">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body">
+
+      <!-- Channel -->
+      <div class="field">
+        <label for="d-ch">チャンネル</label>
+        <select id="d-ch" tabindex="0">
+          <option value="">選択してください...</option>
+          <option value="1" selected>NHK総合 (Ch.1)</option>
+          <option value="2">NHK Eテレ (Ch.2)</option>
+          <option value="4">日本テレビ (Ch.4)</option>
+          <option value="6">TBS (Ch.6)</option>
+          <option value="8">フジテレビ (Ch.8)</option>
+          <option value="10">テレビ朝日 (Ch.10)</option>
+        </select>
+      </div>
+
+      <!-- Program name -->
+      <div class="field">
+        <label for="d-prog">番組名</label>
+        <div style="position:relative;">
+          <input id="d-prog" type="text" tabindex="0" placeholder="番組名を入力..." value="クローズアップ現代" />
+          <!-- Autocomplete dropdown -->
+          <div style="position:absolute;top:100%;left:0;right:0;background:hsl(var(--card));border:1px solid hsl(var(--border));border-top:none;border-radius:0 0 6px 6px;z-index:10;box-shadow:0 4px 12px hsl(222 20% 5% / 0.4);">
+            <button tabindex="0" style="width:100%;text-align:left;padding:8px 12px;background:hsl(var(--primary)/0.15);border:none;color:hsl(var(--foreground));cursor:pointer;font-size:0.8125rem;border-bottom:1px solid hsl(var(--border));">
+              <div style="font-weight:600;">クローズアップ現代 × テクノロジー特集</div>
+              <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));">2026-04-18 19:30–20:00</div>
+            </button>
+            <button tabindex="0" style="width:100%;text-align:left;padding:8px 12px;background:transparent;border:none;color:hsl(var(--foreground));cursor:pointer;font-size:0.8125rem;border-bottom:1px solid hsl(var(--border));">
+              <div style="font-weight:600;">クローズアップ現代 特別編</div>
+              <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));">2026-04-20 19:30–19:58</div>
+            </button>
+          </div>
+        </div>
+        <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">EPG から選ぶと日時が自動入力されます</span>
+      </div>
+
+      <!-- Date/time row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field">
+          <label for="d-start">開始日時</label>
+          <input id="d-start" type="datetime-local" tabindex="0" value="2026-04-18T19:30" />
+        </div>
+        <div class="field">
+          <label for="d-end">終了日時</label>
+          <input id="d-end" type="datetime-local" tabindex="0" value="2026-04-18T20:00" />
+          <!-- Validation error state -->
+          <span class="field-error">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            開始より後の時刻を指定してください
+          </span>
+        </div>
+      </div>
+
+      <!-- Duration estimate -->
+      <div style="background:hsl(var(--muted)/0.4);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:0.8125rem;color:hsl(var(--muted-foreground));">録画時間の目安</span>
+        <span style="font-size:0.875rem;font-weight:700;">30 分 · 約 0.8 GB</span>
+      </div>
+
+      <!-- Conflict warning -->
+      <div style="background:hsl(38 92% 52% / 0.12);border:1px solid hsl(38 92% 52% / 0.35);border-radius:8px;padding:10px 14px;display:flex;gap:8px;align-items:flex-start;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="hsl(38 92% 65%)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span style="font-size:0.8125rem;color:hsl(38 92% 65%);">この時間帯に「千と千尋の神隠し」(23:30–) の予約があります。チューナーを共有します。</span>
+      </div>
+
+    </div>
+    <div class="drawer-footer">
+      <button class="btn btn-ghost" tabindex="0">キャンセル</button>
+      <button class="btn btn-primary" tabindex="0">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        予約を確定
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ MOBILE (390px) ═══════════ -->
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:6px 16px;background:hsl(var(--muted)/0.3);border-top:2px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));margin-top:16px;">
+  Mobile (390px) — カレンダー月表示 (横スクロール週ビューに自動縮小)
+</p>
+
+<div style="max-width:390px;margin:0 auto;border:1px solid hsl(var(--border));border-top:none;">
+  <!-- Mobile header -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:48px;display:flex;align-items:center;padding:0 12px;gap:8px;">
+    <a href="/" tabindex="0" style="color:hsl(var(--foreground));text-decoration:none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    </a>
+    <span style="font-weight:700;font-size:0.875rem;flex:1;text-align:center;">録画</span>
+    <button class="btn btn-primary" tabindex="0" style="font-size:0.75rem;padding:4px 10px;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      予約
+    </button>
+  </div>
+
+  <!-- Month nav mobile -->
+  <div style="display:flex;align-items:center;padding:10px 12px;gap:8px;border-bottom:1px solid hsl(var(--border));">
+    <button class="icon-btn" tabindex="0" aria-label="前の月" style="width:28px;height:28px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span style="font-size:0.875rem;font-weight:700;flex:1;text-align:center;">2026年 4月</span>
+    <button class="icon-btn" tabindex="0" aria-label="次の月" style="width:28px;height:28px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </div>
+
+  <!-- Compact weekly row for mobile -->
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid hsl(var(--border));padding:4px 8px;">
+    <div style="text-align:center;font-size:0.625rem;font-weight:700;color:hsl(0 72% 65%);">日</div>
+    <div style="text-align:center;font-size:0.625rem;font-weight:700;color:hsl(var(--muted-foreground));">月</div>
+    <div style="text-align:center;font-size:0.625rem;font-weight:700;color:hsl(var(--muted-foreground));">火</div>
+    <div style="text-align:center;font-size:0.625rem;font-weight:700;color:hsl(var(--muted-foreground));">水</div>
+    <div style="text-align:center;font-size:0.625rem;font-weight:700;color:hsl(var(--muted-foreground));">木</div>
+    <div style="text-align:center;font-size:0.625rem;font-weight:700;color:hsl(var(--muted-foreground));">金</div>
+    <div style="text-align:center;font-size:0.625rem;font-weight:700;color:hsl(221 83% 65%);">土</div>
+  </div>
+
+  <!-- Mobile calendar (mini cells) -->
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);padding:4px 8px;gap:2px;">
+    <!-- Row showing Apr 13-19 as "current week" highlight -->
+    <div style="padding:4px 2px;text-align:center;font-size:0.75rem;">13</div>
+    <div style="padding:4px 2px;text-align:center;font-size:0.75rem;">14
+      <div style="width:6px;height:6px;border-radius:50%;background:hsl(0 50% 55%);margin:2px auto 0;"></div>
+    </div>
+    <div style="padding:4px 2px;text-align:center;font-size:0.75rem;">15
+      <div style="width:6px;height:6px;border-radius:50%;background:hsl(142 70% 45%);margin:2px auto 0;"></div>
+    </div>
+    <div style="padding:4px 2px;text-align:center;font-size:0.75rem;">16
+      <div style="width:6px;height:6px;border-radius:50%;background:hsl(142 70% 45%);margin:2px auto 0;"></div>
+    </div>
+    <div style="padding:4px 2px;text-align:center;border-radius:50%;background:hsl(var(--primary));color:hsl(var(--primary-foreground));font-size:0.75rem;font-weight:700;">17
+      <div style="display:flex;gap:1px;justify-content:center;margin-top:2px;">
+        <div style="width:4px;height:4px;border-radius:50%;background:hsl(0 72% 70%);"></div>
+        <div style="width:4px;height:4px;border-radius:50%;background:hsl(38 92% 65%);"></div>
+      </div>
+    </div>
+    <div style="padding:4px 2px;text-align:center;font-size:0.75rem;">18
+      <div style="width:6px;height:6px;border-radius:50%;background:hsl(38 92% 55%);margin:2px auto 0;"></div>
+    </div>
+    <div style="padding:4px 2px;text-align:center;font-size:0.75rem;">19
+      <div style="width:6px;height:6px;border-radius:50%;background:hsl(38 92% 55%);margin:2px auto 0;"></div>
+    </div>
+  </div>
+
+  <!-- Today's recordings detail list (below mini calendar) -->
+  <div style="padding:8px 12px;border-top:1px solid hsl(var(--border));">
+    <div style="font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:hsl(var(--muted-foreground));margin-bottom:8px;">4月17日 (今日)</div>
+
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid hsl(var(--border));">
+      <div style="width:3px;border-radius:2px;align-self:stretch;background:hsl(0 72% 60%);flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span class="badge s-recording" style="font-size:0.5625rem;">● 録画中</span>
+          <span style="font-size:0.6875rem;color:hsl(0 72% 70%);font-weight:700;">残り23分</span>
+        </div>
+        <div style="font-size:0.8125rem;font-weight:700;">アンチヒーロー</div>
+        <div style="font-size:0.6875rem;color:hsl(var(--muted-foreground));">TBS · 21:00–23:00</div>
+      </div>
+      <button class="icon-btn" tabindex="0" aria-label="停止" style="width:28px;height:28px;color:hsl(0 72% 65%);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+      </button>
+    </div>
+
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;">
+      <div style="width:3px;border-radius:2px;align-self:stretch;background:hsl(38 92% 55%);flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span class="badge s-pending" style="font-size:0.5625rem;">予約済み</span>
+          <span style="font-size:0.6875rem;color:hsl(38 92% 65%);font-weight:700;">今夜 23:30</span>
+        </div>
+        <div style="font-size:0.8125rem;font-weight:700;">千と千尋の神隠し</div>
+        <div style="font-size:0.6875rem;color:hsl(var(--muted-foreground));">フジ · 23:30–02:00</div>
+      </div>
+      <button class="icon-btn" tabindex="0" aria-label="キャンセル" style="width:28px;height:28px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

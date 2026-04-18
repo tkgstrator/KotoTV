@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — v2 Tabbed / Segmented (Desktop-friendly)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background:          'hsl(var(--background))',
+            foreground:          'hsl(var(--foreground))',
+            card:                'hsl(var(--card))',
+            'card-foreground':   'hsl(var(--card-foreground))',
+            muted:               'hsl(var(--muted))',
+            'muted-foreground':  'hsl(var(--muted-foreground))',
+            border:              'hsl(var(--border))',
+            primary:             'hsl(var(--primary))',
+            'primary-foreground':'hsl(var(--primary-foreground))',
+            ring:                'hsl(var(--ring))',
+            destructive:         'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background:         0 0% 96%;
+      --foreground:         222 14% 18%;
+      --card:               0 0% 100%;
+      --card-foreground:    222 14% 18%;
+      --muted:              210 10% 90%;
+      --muted-foreground:   215 10% 45%;
+      --border:             214 13% 84%;
+      --primary:            221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring:               221 83% 53%;
+      --destructive:        0 72% 58%;
+    }
+    .dark {
+      --background:         222 20% 10%;
+      --foreground:         210 20% 92%;
+      --card:               222 18% 14%;
+      --card-foreground:    210 20% 92%;
+      --muted:              222 16% 20%;
+      --muted-foreground:   215 12% 55%;
+      --border:             222 16% 22%;
+      --primary:            221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring:               221 83% 60%;
+      --destructive:        0 72% 58%;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+      min-height: 100dvh;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* ── Tabs system (CSS-only via :target) ── */
+    .tab-panel { display: none; }
+    #tab-appearance:target ~ .panels #panel-appearance,
+    #tab-quality:target ~ .panels #panel-quality,
+    #tab-diagnostics:target ~ .panels #panel-diagnostics,
+    #tab-about:target ~ .panels #panel-about {
+      display: block;
+    }
+    /* default: show appearance if nothing targeted */
+    .tab-panel.default-panel { display: block; }
+    #tab-quality:target ~ .panels .default-panel,
+    #tab-diagnostics:target ~ .panels .default-panel,
+    #tab-about:target ~ .panels .default-panel {
+      display: none;
+    }
+    #tab-appearance:target ~ .panels #panel-appearance { display: block; }
+
+    /* Tab button active state (via JS below) */
+    .tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+    .tab-btn.active {
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      box-shadow: 0 1px 3px hsl(0 0% 0% / 0.12), 0 0 0 1px hsl(var(--border));
+    }
+    .tab-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+
+    /* ── Radio option cards ── */
+    .radio-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 14px 10px;
+      border-radius: 8px;
+      border: 1.5px solid hsl(var(--border));
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      text-align: center;
+    }
+    .radio-card:has(input:checked) {
+      border-color: hsl(var(--primary));
+      background: hsl(var(--primary) / 0.08);
+    }
+    .radio-card:hover:not(:has(input:checked)) { background: hsl(var(--muted)); }
+    .radio-card input[type=radio] { position: absolute; opacity: 0; pointer-events: none; }
+
+    /* ── Diagnostic item ── */
+    .diag-item {
+      background: hsl(var(--muted) / 0.4);
+      border: 1px dashed hsl(var(--border));
+      border-radius: 8px;
+      padding: 12px 14px;
+      cursor: default;
+      user-select: none;
+    }
+
+    /* ── Progress bar ── */
+    .progress {
+      height: 6px;
+      border-radius: 999px;
+      background: hsl(var(--muted));
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: hsl(var(--primary));
+    }
+
+    /* ── Status dot ── */
+    .dot-up   { background: hsl(142 70% 50%); }
+    .dot-down { background: hsl(0 72% 58%); }
+
+    /* ── Select ── */
+    .select-native {
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      border: 1px solid hsl(var(--border));
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      width: 100%;
+    }
+    .select-native:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Demo toolbar ── -->
+<div style="position:sticky;top:0;z-index:50;background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));padding:8px 16px;display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:hsl(var(--muted-foreground))">
+  <span>v2 — Tabbed / Segmented</span>
+  <button onclick="document.documentElement.classList.toggle('dark');this.textContent=document.documentElement.classList.contains('dark')?'Light mode':'Dark mode'"
+    style="background:hsl(var(--muted));color:hsl(var(--muted-foreground));border:1px solid hsl(var(--border));border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;">
+    Light mode
+  </button>
+</div>
+
+<!-- ── Page ── -->
+<div style="max-width:760px;margin:0 auto;padding:24px 16px 64px;">
+
+  <h1 style="font-size:1.375rem;font-weight:700;margin:0 0 20px;">設定</h1>
+
+  <!-- ── Segmented tab bar ── -->
+  <div style="background:hsl(var(--muted));border-radius:10px;padding:4px;display:flex;gap:2px;margin-bottom:24px;overflow-x:auto;" role="tablist" aria-label="設定カテゴリ">
+    <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-appearance" id="tbtn-appearance" onclick="switchTab('appearance',this)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      テーマ
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-quality" id="tbtn-quality" onclick="switchTab('quality',this)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+      画質
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-diagnostics" id="tbtn-diagnostics" onclick="switchTab('diagnostics',this)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      診断
+    </button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-about" id="tbtn-about" onclick="switchTab('about',this)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      About
+    </button>
+  </div>
+
+  <!-- ── Tab panels ── -->
+  <div>
+
+    <!-- Panel: テーマ -->
+    <div id="panel-appearance" role="tabpanel" aria-labelledby="tbtn-appearance">
+      <div style="background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:10px;padding:20px;">
+        <div style="font-size:0.875rem;font-weight:600;margin-bottom:4px;">カラーテーマ</div>
+        <div style="font-size:0.8125rem;color:hsl(var(--muted-foreground));margin-bottom:16px;">アプリ全体の外観を選択します。</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <label class="radio-card">
+            <input type="radio" name="theme" value="light" />
+            <span style="font-size:1.5rem;">☀️</span>
+            <span style="font-size:0.875rem;font-weight:500;">ライト</span>
+            <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">明るい画面</span>
+          </label>
+          <label class="radio-card">
+            <input type="radio" name="theme" value="dark" checked />
+            <span style="font-size:1.5rem;">🌙</span>
+            <span style="font-size:0.875rem;font-weight:500;">ダーク</span>
+            <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">暗い画面</span>
+          </label>
+          <label class="radio-card">
+            <input type="radio" name="theme" value="system" />
+            <span style="font-size:1.5rem;">🖥️</span>
+            <span style="font-size:0.875rem;font-weight:500;">システム</span>
+            <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">OS に従う</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel: 画質 -->
+    <div id="panel-quality" role="tabpanel" aria-labelledby="tbtn-quality" style="display:none;">
+      <div style="background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:10px;padding:20px;">
+        <div style="font-size:0.875rem;font-weight:600;margin-bottom:4px;">ライブ画質プリセット</div>
+        <div style="font-size:0.8125rem;color:hsl(var(--muted-foreground));margin-bottom:16px;">映像ストリームの初期ビットレートを設定します。</div>
+        <select class="select-native" aria-label="ライブ画質プリセット">
+          <option value="auto">自動 — ネットワーク状況に応じて自動調整</option>
+          <option value="high" selected>高画質 — 約 8 Mbps</option>
+          <option value="medium">中画質 — 約 4 Mbps</option>
+          <option value="low">低画質 — 約 1.5 Mbps</option>
+        </select>
+        <div style="margin-top:10px;font-size:0.75rem;color:hsl(var(--muted-foreground));">視聴中でも変更できます。ここではデフォルト値のみ設定します。</div>
+      </div>
+    </div>
+
+    <!-- Panel: 診断 -->
+    <div id="panel-diagnostics" role="tabpanel" aria-labelledby="tbtn-diagnostics" style="display:none;">
+      <div style="margin-bottom:10px;font-size:0.8125rem;color:hsl(var(--muted-foreground));display:flex;align-items:center;gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        診断情報はすべて読み取り専用です。変更はできません。
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+
+        <!-- HW accel -->
+        <div class="diag-item">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:0.875rem;font-weight:500;">HW アクセラレーター</div>
+              <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin-top:1px;">バックエンドの FFmpeg エンコード方式</div>
+            </div>
+            <span style="font-family:monospace;font-size:0.875rem;font-weight:700;background:hsl(var(--muted));color:hsl(var(--muted-foreground));padding:4px 10px;border-radius:5px;letter-spacing:0.04em;">nvenc</span>
+          </div>
+        </div>
+
+        <!-- Storage -->
+        <div class="diag-item">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div>
+              <div style="font-size:0.875rem;font-weight:500;">録画ストレージ</div>
+              <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin-top:1px;">/recordings</div>
+            </div>
+            <span style="font-size:0.8125rem;color:hsl(var(--muted-foreground));">142 GB / 500 GB</span>
+          </div>
+          <div class="progress">
+            <div class="progress-fill" style="width:28%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:0.6875rem;color:hsl(var(--muted-foreground));">
+            <span>28% 使用中</span>
+            <span>358 GB 空き</span>
+          </div>
+        </div>
+
+        <!-- Server health -->
+        <div class="diag-item">
+          <div style="font-size:0.875rem;font-weight:500;margin-bottom:12px;">サーバー状態</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:hsl(var(--muted));border-radius:7px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:0.875rem;">mirakc</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;font-weight:600;color:hsl(142 70% 50%);">
+                <span style="width:7px;height:7px;border-radius:50%;display:inline-block;" class="dot-up"></span>
+                UP
+              </span>
+            </div>
+            <div style="background:hsl(var(--muted));border-radius:7px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:0.875rem;">Postgres</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;font-weight:600;color:hsl(142 70% 50%);">
+                <span style="width:7px;height:7px;border-radius:50%;display:inline-block;" class="dot-up"></span>
+                UP
+              </span>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:0.6875rem;color:hsl(var(--muted-foreground));">最終確認: 数秒前 — GET /api/health</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Panel: About -->
+    <div id="panel-about" role="tabpanel" aria-labelledby="tbtn-about" style="display:none;">
+      <div style="background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:10px;overflow:hidden;">
+        <div style="padding:20px;display:flex;align-items:center;gap:16px;">
+          <div style="width:48px;height:48px;border-radius:10px;background:hsl(var(--primary));display:flex;align-items:center;justify-content:center;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary-foreground))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          </div>
+          <div>
+            <div style="font-size:1rem;font-weight:700;">KonomiTV</div>
+            <div style="font-size:0.8125rem;color:hsl(var(--muted-foreground));">v0.1.0-alpha · Phase 1</div>
+          </div>
+        </div>
+        <div style="height:1px;background:hsl(var(--border));"></div>
+        <a href="#" tabindex="0" style="display:flex;align-items:center;justify-content:space-between;padding:13px 20px;text-decoration:none;color:hsl(var(--foreground));font-size:0.875rem;" onmouseover="this.style.background='hsl(var(--muted))'" onmouseout="this.style.background=''" onfocus="this.style.background='hsl(var(--muted))'" onblur="this.style.background=''">
+          <span>ソースコード (GitHub)</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+        <div style="height:1px;background:hsl(var(--border));"></div>
+        <div style="padding:13px 20px;font-size:0.8125rem;color:hsl(var(--muted-foreground));">MIT License — © 2025 contributors</div>
+      </div>
+    </div>
+
+  </div><!-- /panels -->
+</div><!-- /page -->
+
+<!-- ── Tab JS ── -->
+<script>
+  function switchTab(id, btn) {
+    // hide all panels
+    document.querySelectorAll('[role=tabpanel]').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+    // show target
+    const panel = document.getElementById('panel-' + id);
+    if (panel) panel.style.display = '';
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected','true');
+  }
+</script>
+
+<!-- ── Viewport indicator ── -->
+<div style="position:fixed;bottom:12px;right:12px;font-size:0.6875rem;color:hsl(var(--muted-foreground));background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:6px;padding:4px 10px;pointer-events:none;">
+  760px w / tabbed
+</div>
+
+</body>
+</html>

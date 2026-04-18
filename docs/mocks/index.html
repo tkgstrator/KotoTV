@@ -174,9 +174,93 @@
             { file: 'v2.html', label: 'v2 — persistent controls (tvOS-friendly)', vp: 'desktop' },
             { file: 'v3.html', label: 'v3 — mobile-first split', vp: 'mobile' }
           ]
+        },
+        {
+          slug: 'epg',
+          title: 'EPG 番組表',
+          phase: 'Phase 3',
+          picks: [],
+          recommend: 'v8.html',
+          variants: [
+            { file: 'v1.html', label: 'v1 — horizontal time grid (TV guide)', vp: 'desktop' },
+            { file: 'v2.html', label: 'v2 — vertical time grid (NHK+/TVer)', vp: 'desktop' },
+            { file: 'v3.html', label: 'v3 — agenda list (no grid)', vp: 'mobile' },
+            { file: 'v4.html', label: 'v4 — NOW strip + future grid', vp: 'desktop' },
+            { file: 'v5.html', label: 'v5 — single-channel + hopper', vp: 'mobile' },
+            { file: 'v6.html', label: 'v6 — magazine grid + drawer', vp: 'desktop' },
+            { file: 'v7.html', label: 'v7 — channel carousel (tvOS)', vp: 'desktop' },
+            { file: 'v8.html', label: 'v8 — responsive hybrid', vp: 'desktop' }
+          ]
+        },
+        {
+          slug: 'recordings',
+          title: '録画 一覧 + 予約',
+          phase: 'Phase 4',
+          picks: [],
+          recommend: 'v3.html',
+          variants: [
+            { file: 'v1.html', label: 'v1 — sectioned list + modal form', vp: 'desktop' },
+            { file: 'v2.html', label: 'v2 — calendar + side drawer', vp: 'desktop' },
+            { file: 'v3.html', label: 'v3 — filter tabs + bottom sheet (mobile)', vp: 'mobile' },
+            { file: 'v4.html', label: 'v4 — card grid + stepper form', vp: 'desktop' },
+            { file: 'v5.html', label: 'v5 — timeline + inline expand', vp: 'desktop' },
+            { file: 'v6.html', label: 'v6 — two-column + EPG palette', vp: 'desktop' }
+          ]
+        },
+        {
+          slug: 'recording-player',
+          title: '録画再生',
+          phase: 'Phase 5',
+          picks: [],
+          recommend: 'v1.html',
+          variants: [
+            { file: 'v1.html', label: 'v1 — live-v2 shell + chapter list', vp: 'desktop' },
+            { file: 'v2.html', label: 'v2 — theater + thumbnail rail', vp: 'desktop' },
+            { file: 'v3.html', label: 'v3 — full-bleed + overlay auto-hide', vp: 'desktop' },
+            { file: 'v4.html', label: 'v4 — top chrome + tabs + queue', vp: 'desktop' },
+            { file: 'v5.html', label: 'v5 — mobile-first single column', vp: 'mobile' }
+          ]
+        },
+        {
+          slug: 'app-shell',
+          title: 'アプリシェル / ナビ',
+          phase: 'Phase 6',
+          picks: [],
+          recommend: 'v2.html',
+          variants: [
+            { file: 'v1.html', label: 'v1 — collapsible sidebar + bottom tabs', vp: 'desktop' },
+            { file: 'v2.html', label: 'v2 — 56px icon rail (tvOS-friendly)', vp: 'desktop' },
+            { file: 'v3.html', label: 'v3 — top nav + hamburger drawer', vp: 'desktop' },
+            { file: 'v4.html', label: 'v4 — command palette + bottom tabs', vp: 'desktop' },
+            { file: 'v5.html', label: 'v5 — rail + persistent mini-player', vp: 'desktop' }
+          ]
+        },
+        {
+          slug: 'settings',
+          title: '設定',
+          phase: 'Phase 6',
+          picks: [],
+          recommend: 'v4.html',
+          variants: [
+            { file: 'v1.html', label: 'v1 — single-column scroll', vp: 'desktop' },
+            { file: 'v2.html', label: 'v2 — tabs / segmented', vp: 'desktop' },
+            { file: 'v3.html', label: 'v3 — left-nav + content pane', vp: 'desktop' },
+            { file: 'v4.html', label: 'v4 — card grid', vp: 'desktop' },
+            { file: 'v5.html', label: 'v5 — mobile sub-pages (iOS-ish)', vp: 'mobile' }
+          ]
+        },
+        {
+          slug: 'states',
+          title: '状態パターン (loading / error / empty / toast)',
+          phase: 'Phase 6',
+          picks: [],
+          recommend: 'v1.html',
+          variants: [
+            { file: 'v1.html', label: 'v1 — clinical minimal', vp: 'desktop' },
+            { file: 'v2.html', label: 'v2 — friendly conversational', vp: 'desktop' },
+            { file: 'v3.html', label: 'v3 — diagnostic dense', vp: 'desktop' }
+          ]
         }
-        // Additional screens (epg, recordings, recording-player, app-shell, settings, states)
-        // will be appended by the designer agent as they land.
       ]
 
       const el = (tag, cls, attrs = {}, children = []) => {

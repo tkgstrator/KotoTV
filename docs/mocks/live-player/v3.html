@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Player — v3 Mobile-First Minimal Split</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    /* Light mode override for metadata panel */
+    .light-meta {
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --foreground: 222 14% 18%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --muted: 210 10% 90%;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+    }
+
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 1px 6px;
+      border-radius: 3px;
+      line-height: 1.6;
+    }
+    .badge-gr   { background: hsl(221 83% 60% / 0.2); color: hsl(221 83% 72%); }
+    .badge-live { background: hsl(0 72% 58% / 0.2); color: hsl(0 72% 70%); }
+    .badge-soon { background: hsl(38 92% 52% / 0.2); color: hsl(38 92% 66%); }
+
+    /* ── Control button ── */
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+      color: hsl(var(--foreground));
+      cursor: pointer;
+      transition: background 0.12s;
+      flex-shrink: 0;
+    }
+    .ctrl-btn:hover  { background: hsl(var(--muted) / 0.5); }
+    .ctrl-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      background: hsl(var(--muted) / 0.4);
+    }
+    /* Demo focus highlight */
+    .ctrl-btn.demo-focus {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      background: hsl(var(--muted) / 0.5);
+    }
+
+    /* ── Progress bar ── */
+    .prog-track {
+      width: 100%;
+      height: 3px;
+      background: hsl(var(--muted));
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .prog-fill {
+      height: 100%;
+      background: hsl(var(--primary));
+      border-radius: 2px;
+    }
+
+    /* ── Skeleton ── */
+    .skeleton {
+      background: hsl(var(--muted));
+      border-radius: 4px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.45; }
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid hsl(var(--muted));
+      border-top-color: hsl(var(--primary));
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ════════════════════════════════════
+       PORTRAIT (default): full-width stack
+    ════════════════════════════════════ */
+    .portrait-shell {
+      max-width: 390px;
+      margin: 0 auto;
+    }
+
+    /* Video strip — fixed 16:9 */
+    .video-strip {
+      position: relative;
+      padding-top: 56.25%;
+      background: hsl(222 30% 6%);
+    }
+    .video-inner {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* Minimal top-of-video bar: back + channel only, no controls in video */
+    .vid-topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: linear-gradient(to bottom, hsl(222 30% 4% / 0.8) 0%, transparent 100%);
+    }
+
+    /* Info card — full width below video */
+    .info-card {
+      background: hsl(var(--card));
+      border-top: 1px solid hsl(var(--border));
+    }
+
+    /* Controls row — large tap targets, horizontally spread */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 4px 8px;
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+    }
+
+    /* Next program card */
+    .next-card {
+      background: hsl(var(--muted) / 0.4);
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    /* ════════════════════════════════════
+       LANDSCAPE / DESKTOP (≥ 768px)
+       Side-by-side: 60% video + 40% info
+    ════════════════════════════════════ */
+    @media (min-width: 768px) {
+      .portrait-shell {
+        max-width: 1280px;
+        height: 80vh;
+        min-height: 480px;
+        display: flex;
+        flex-direction: column;
+      }
+      .landscape-main {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+      .landscape-video {
+        flex: 3;
+        position: relative;
+      }
+      .video-strip {
+        padding-top: 0;
+        height: 100%;
+        position: absolute;
+        inset: 0;
+      }
+      /* No "position:relative;padding-top" in landscape */
+      .video-strip.landscape { position: absolute; inset: 0; padding-top: 0; }
+      .video-inner.landscape { position: absolute; inset: 0; }
+      .landscape-info {
+        flex: 2;
+        overflow-y: auto;
+        border-left: 1px solid hsl(var(--border));
+        background: hsl(var(--card));
+        min-width: 300px;
+        max-width: 420px;
+      }
+      .landscape-info::-webkit-scrollbar { width: 3px; }
+      .landscape-info::-webkit-scrollbar-track { background: transparent; }
+      .landscape-info::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+      /* Controls below video in landscape */
+      .landscape-ctrl-bar {
+        background: hsl(var(--card));
+        border-top: 1px solid hsl(var(--border));
+        padding: 8px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .show-landscape { display: flex !important; }
+      .hide-landscape { display: none !important; }
+    }
+    @media (max-width: 767px) {
+      .show-landscape { display: none !important; }
+      .hide-landscape { display: flex !important; }
+    }
+
+    /* Quality button */
+    .quality-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0 12px;
+      border-radius: 4px;
+      background: hsl(var(--muted) / 0.6);
+      color: hsl(var(--foreground));
+      border: 1px solid hsl(var(--border));
+      cursor: pointer;
+      height: 32px;
+      transition: background 0.12s;
+      flex-shrink: 0;
+    }
+    .quality-btn:hover  { background: hsl(var(--muted)); }
+    .quality-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: PLAYING — Portrait (default) + Landscape        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));">
+  v3 · Mobile-First Minimal Split — <strong style="color:hsl(var(--foreground))">Playing state</strong> · Portrait 390px shown; resize browser for landscape
+</p>
+
+<!-- ─── Portrait shell (also forms desktop via flex) ─── -->
+<div class="portrait-shell" style="border:1px solid hsl(var(--border));border-radius:0;margin:24px auto;">
+
+  <!-- ── PORTRAIT: video + minimal controls stacked ──────── -->
+  <!-- App bar (portrait only) -->
+  <div class="hide-landscape" style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:44px;display:flex;align-items:center;gap:10px;padding:0 12px;flex-shrink:0;">
+    <a href="/" aria-label="戻る"
+       style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;color:hsl(var(--foreground));text-decoration:none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    </a>
+    <span class="badge badge-gr">GR</span>
+    <span style="font-size:0.9375rem;font-weight:700;flex:1;">NHK総合・東京</span>
+    <span class="badge badge-live">● LIVE</span>
+  </div>
+
+  <!-- Portrait/landscape main split -->
+  <div class="landscape-main" style="flex:1;min-height:0;">
+
+    <!-- ── VIDEO COLUMN ── -->
+    <div class="landscape-video" style="position:relative;flex:3;min-height:0;">
+      <!-- Portrait: padding-top 56.25%; Landscape: absolute fill -->
+      <div style="position:relative;padding-top:56.25%;" class="hide-landscape">
+        <div style="position:absolute;inset:0;background:linear-gradient(155deg,hsl(215 40% 7%) 0%,hsl(230 30% 4%) 100%);">
+          <!-- Live dot -->
+          <div style="position:absolute;bottom:10px;right:10px;display:flex;align-items:center;gap:5px;background:hsl(var(--muted)/0.6);border-radius:4px;padding:3px 7px;">
+            <span style="width:5px;height:5px;border-radius:50%;background:hsl(0 72% 65%);display:inline-block;animation:pulse 1.5s ease-in-out infinite;"></span>
+            <span style="font-size:0.5625rem;font-weight:700;letter-spacing:0.08em;">LIVE</span>
+          </div>
+        </div>
+        <!-- Minimal top bar in video (portrait only) -->
+        <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:8px 10px;background:linear-gradient(to bottom,hsl(222 30% 4%/0.5) 0%,transparent 100%);">
+          <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));">Ch.1</span>
+        </div>
+      </div>
+
+      <!-- Landscape: video fills column height -->
+      <div class="show-landscape" style="position:absolute;inset:0;background:linear-gradient(155deg,hsl(215 40% 7%) 0%,hsl(230 30% 4%) 100%);">
+        <div style="position:absolute;bottom:14px;right:14px;display:flex;align-items:center;gap:5px;background:hsl(var(--muted)/0.6);border-radius:4px;padding:3px 7px;">
+          <span style="width:5px;height:5px;border-radius:50%;background:hsl(0 72% 65%);display:inline-block;animation:pulse 1.5s ease-in-out infinite;"></span>
+          <span style="font-size:0.5625rem;font-weight:700;letter-spacing:0.08em;">LIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INFO COLUMN (landscape: beside video) ── -->
+    <div class="landscape-info show-landscape" style="padding:20px 16px;display:none;flex-direction:column;gap:16px;">
+      <!-- App bar inside panel for landscape -->
+      <div style="display:flex;align-items:center;gap:10px;">
+        <a href="/" style="display:inline-flex;align-items:center;gap:6px;font-size:0.875rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 10px;border-radius:6px;background:hsl(var(--muted)/0.5);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+          戻る
+        </a>
+        <span class="badge badge-gr">GR</span>
+        <span style="font-size:0.9375rem;font-weight:700;">NHK総合・東京</span>
+      </div>
+      <!-- Current program -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:0.6875rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:hsl(var(--muted-foreground));">現在放送中</span>
+          <span class="badge badge-soon">まもなく終了</span>
+        </div>
+        <h2 style="font-size:1.0625rem;font-weight:700;margin:0 0 3px;">ニュース7</h2>
+        <p style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin:0 0 10px;">21:00 〜 21:30 · 残り 17 分</p>
+        <div class="prog-track" style="margin-bottom:10px;"><div class="prog-fill" style="width:44%;"></div></div>
+        <p style="font-size:0.8125rem;line-height:1.55;margin:0;">本日の主要ニュースをお伝えします。国内・海外のトップニュースを解説します。</p>
+      </div>
+      <!-- Next programs -->
+      <div>
+        <div style="font-size:0.6875rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:hsl(var(--muted-foreground));margin-bottom:10px;">次の番組</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div class="next-card" style="background:hsl(var(--muted)/0.4);border:1px solid hsl(var(--border));border-radius:8px;padding:10px 12px;display:flex;gap:10px;">
+            <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;min-width:36px;padding-top:1px;">21:30</div>
+            <div><div style="font-size:0.875rem;font-weight:600;">首都圏ニュース845</div><div style="font-size:0.75rem;color:hsl(var(--muted-foreground));">30分</div></div>
+          </div>
+          <div class="next-card" style="background:hsl(var(--muted)/0.25);border:1px solid hsl(var(--border)/0.6);border-radius:8px;padding:10px 12px;display:flex;gap:10px;">
+            <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;min-width:36px;padding-top:1px;">22:00</div>
+            <div><div style="font-size:0.875rem;font-weight:600;">クローズアップ現代</div><div style="font-size:0.75rem;color:hsl(var(--muted-foreground));">30分</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Controls bar (desktop: below video; portrait: separate row) ── -->
+  <!-- Landscape controls bar -->
+  <div class="landscape-ctrl-bar show-landscape" style="display:none;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;">21:00</span>
+      <div class="prog-track" style="flex:1;"><div class="prog-fill" style="width:44%;"></div></div>
+      <span style="font-size:0.6875rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;">21:30</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button class="ctrl-btn" aria-label="ミュート" style="width:40px;height:40px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      </button>
+      <button class="ctrl-btn demo-focus" aria-label="一時停止" style="width:44px;height:44px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      <div style="flex:1;"></div>
+      <button class="quality-btn" aria-label="画質変更">1080p <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></button>
+      <button class="ctrl-btn" aria-label="フルスクリーン" style="width:40px;height:40px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── PORTRAIT: controls + info + next stacked ──────────── -->
+  <!-- Controls row (portrait) -->
+  <div class="controls-row hide-landscape" role="toolbar" aria-label="再生コントロール">
+    <button class="ctrl-btn" aria-label="ミュート" style="width:44px;height:48px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+    </button>
+    <button class="ctrl-btn demo-focus" aria-label="一時停止" style="width:52px;height:52px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+    </button>
+    <div style="flex:1;display:flex;flex-direction:column;gap:4px;padding:0 8px;">
+      <div class="prog-track"><div class="prog-fill" style="width:44%;"></div></div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;">21:00</span>
+        <span style="font-size:0.5625rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;">21:30</span>
+      </div>
+    </div>
+    <button class="quality-btn" aria-label="画質変更" style="height:36px;font-size:0.6875rem;padding:0 10px;">
+      1080p
+    </button>
+    <button class="ctrl-btn" aria-label="フルスクリーン" style="width:44px;height:48px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+    </button>
+  </div>
+
+  <!-- Info card (portrait) -->
+  <div class="info-card hide-landscape" style="padding:16px 14px 12px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;">
+      <h2 style="font-size:1.0625rem;font-weight:700;margin:0;">ニュース7</h2>
+      <span class="badge badge-soon">まもなく終了</span>
+    </div>
+    <p style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin:0 0 8px;">21:00 〜 21:30 · 残り 17 分</p>
+    <p style="font-size:0.8125rem;line-height:1.55;margin:0;color:hsl(var(--foreground));">本日の主要ニュースをお伝えします。</p>
+  </div>
+
+  <!-- Next program card (portrait) — prominent single card -->
+  <div class="hide-landscape" style="padding:0 14px 16px;background:hsl(var(--card));border-top:1px solid hsl(var(--border)/0.5);">
+    <div style="font-size:0.6875rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:hsl(var(--muted-foreground));padding:12px 0 8px;">次の番組</div>
+    <!-- Prominent "next" card -->
+    <div style="background:hsl(var(--muted)/0.4);border:1px solid hsl(var(--border));border-radius:8px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;">
+      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;width:44px;height:44px;border-radius:6px;background:hsl(var(--muted));font-size:0.8125rem;font-weight:700;color:hsl(var(--foreground));font-variant-numeric:tabular-nums;line-height:1.2;">
+        <span>21</span><span style="font-size:0.625rem;color:hsl(var(--muted-foreground));">:30</span>
+      </div>
+      <div>
+        <div style="font-size:0.9375rem;font-weight:600;">首都圏ニュース845</div>
+        <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin-top:2px;">NHK総合 · 30分</div>
+      </div>
+    </div>
+    <!-- Subsequent items as compact list -->
+    <div style="margin-top:8px;display:flex;flex-direction:column;gap:0;">
+      <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid hsl(var(--border)/0.5);">
+        <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;min-width:36px;padding-top:1px;">22:00</div>
+        <div style="font-size:0.875rem;font-weight:500;">クローズアップ現代</div>
+      </div>
+      <div style="display:flex;gap:10px;padding:8px 0;">
+        <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums;white-space:nowrap;min-width:36px;padding-top:1px;">22:30</div>
+        <div style="font-size:0.875rem;font-weight:500;">ドキュメント72時間</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: LOADING STATE (portrait 390px)                  -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));margin-top:32px;">
+  v3 · <strong style="color:hsl(var(--foreground))">Loading state</strong>
+</p>
+
+<div style="max-width:390px;margin:24px auto;border:1px solid hsl(var(--border));border-radius:0;overflow:hidden;background:hsl(var(--background));">
+  <!-- App bar -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:44px;display:flex;align-items:center;gap:10px;padding:0 12px;">
+    <a href="/" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;color:hsl(var(--foreground));text-decoration:none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    </a>
+    <div class="skeleton" style="height:16px;width:140px;"></div>
+  </div>
+  <!-- Video -->
+  <div style="position:relative;padding-top:56.25%;background:hsl(222 30% 6%);">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;">
+      <div class="spinner"></div>
+      <div style="text-align:center;">
+        <div style="font-size:0.875rem;font-weight:600;">ストリーム接続中…</div>
+        <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin-top:3px;">最大 10 秒かかる場合があります</div>
+      </div>
+    </div>
+  </div>
+  <!-- Controls skeleton -->
+  <div style="background:hsl(var(--card));border-top:1px solid hsl(var(--border));padding:14px;display:flex;align-items:center;gap:10px;">
+    <div class="skeleton" style="width:40px;height:40px;border-radius:6px;flex-shrink:0;"></div>
+    <div class="skeleton" style="width:48px;height:48px;border-radius:6px;flex-shrink:0;"></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+      <div class="skeleton" style="height:3px;width:100%;"></div>
+      <div style="display:flex;justify-content:space-between;">
+        <div class="skeleton" style="height:8px;width:28px;"></div>
+        <div class="skeleton" style="height:8px;width:28px;"></div>
+      </div>
+    </div>
+    <div class="skeleton" style="width:52px;height:32px;border-radius:4px;flex-shrink:0;"></div>
+    <div class="skeleton" style="width:40px;height:40px;border-radius:6px;flex-shrink:0;"></div>
+  </div>
+  <!-- Info skeleton -->
+  <div style="background:hsl(var(--card));padding:16px 14px 12px;">
+    <div class="skeleton" style="height:20px;width:180px;margin-bottom:8px;"></div>
+    <div class="skeleton" style="height:12px;width:130px;margin-bottom:10px;"></div>
+    <div class="skeleton" style="height:12px;width:100%;margin-bottom:4px;"></div>
+    <div class="skeleton" style="height:12px;width:70%;"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SECTION 3: ERROR STATE (portrait 390px)                    -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<p style="font-size:0.75rem;color:hsl(var(--muted-foreground));padding:8px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));margin-top:32px;">
+  v3 · <strong style="color:hsl(var(--foreground))">Error state</strong>
+</p>
+
+<div style="max-width:390px;margin:24px auto;border:1px solid hsl(var(--border));overflow:hidden;background:hsl(var(--background));">
+  <!-- App bar -->
+  <div style="background:hsl(var(--card));border-bottom:1px solid hsl(var(--border));height:44px;display:flex;align-items:center;gap:10px;padding:0 12px;">
+    <a href="/" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;color:hsl(var(--foreground));text-decoration:none;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    </a>
+    <span style="font-size:0.9375rem;font-weight:700;">NHK総合・東京</span>
+  </div>
+  <!-- Video error -->
+  <div style="position:relative;padding-top:56.25%;background:hsl(222 30% 6%);">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px;text-align:center;">
+        <div style="width:48px;height:48px;border-radius:50%;background:hsl(var(--destructive)/0.15);display:flex;align-items:center;justify-content:center;color:hsl(var(--destructive));">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        </div>
+        <div>
+          <div style="font-size:0.9375rem;font-weight:700;">接続できませんでした</div>
+          <div style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin-top:4px;line-height:1.5;">チューナーへの接続に失敗しました</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:2px;">
+          <a href="/" style="display:inline-flex;align-items:center;gap:5px;font-size:0.8125rem;font-weight:600;padding:7px 14px;border-radius:6px;background:hsl(var(--muted));color:hsl(var(--foreground));text-decoration:none;border:1px solid hsl(var(--border));">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+            戻る
+          </a>
+          <button style="display:inline-flex;align-items:center;gap:5px;font-size:0.8125rem;font-weight:600;padding:7px 14px;border-radius:6px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border:none;cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+            再試行
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:48px;"></div>
+</body>
+</html>

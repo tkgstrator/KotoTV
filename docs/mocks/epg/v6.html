@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPG — v6 Dense TV Guide magazine print style with side-drawer detail</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 1px;
+      border-radius: 2px;
+    }
+
+    /* Genre colours */
+    .g-news    { --g: 221 83% 55%; }
+    .g-sports  { --g: 142 70% 42%; }
+    .g-drama   { --g: 280 60% 52%; }
+    .g-variety { --g: 38 92% 48%; }
+    .g-anime   { --g: 320 70% 52%; }
+    .g-movie   { --g: 15 80% 48%; }
+    .g-docu    { --g: 190 70% 42%; }
+    .g-edu     { --g: 100 55% 42%; }
+    .g-other   { --g: 215 12% 48%; }
+
+    /* App bar */
+    .app-bar {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      height: 44px;
+      flex-shrink: 0;
+      z-index: 50;
+    }
+
+    /* Main content: grid + optional drawer */
+    .main-layout {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ─── DENSE GRID ─── */
+    /* This is a "magazine" style: rows = 30min time slots, columns = channels */
+    /* Very compact: 26px row height, no wasted space */
+    .grid-area {
+      flex: 1;
+      overflow: auto;
+      position: relative;
+    }
+    .grid-area::-webkit-scrollbar { width: 4px; height: 4px; }
+    .grid-area::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 2px; }
+
+    /* Time-major grid: rows = 30-min slots, columns = channels */
+    .mag-grid {
+      display: grid;
+      /* col 0 = time label (sticky left), then N channel cols */
+      grid-template-columns: 42px repeat(8, minmax(110px, 1fr));
+      min-width: max-content;
+    }
+
+    /* Time label cells: sticky left */
+    .time-cell {
+      position: sticky;
+      left: 0;
+      z-index: 20;
+      background: hsl(var(--card));
+      border-right: 2px solid hsl(var(--border));
+      border-bottom: 1px solid hsl(var(--border) / 0.5);
+      font-size: 0.6rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: hsl(var(--muted-foreground));
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2px 3px;
+      line-height: 1.2;
+    }
+    .time-cell.now-slot {
+      color: hsl(var(--destructive));
+      background: hsl(var(--destructive) / 0.08);
+    }
+
+    /* Channel header row: sticky top */
+    .ch-header-cell {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: hsl(var(--card));
+      border-bottom: 2px solid hsl(var(--border));
+      border-right: 1px solid hsl(var(--border) / 0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 6px;
+      cursor: pointer;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      gap: 1px;
+    }
+    .ch-header-cell:hover { background: hsl(var(--muted) / 0.5); }
+    .ch-header-cell:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+    .ch-header-cell.corner {
+      position: sticky;
+      left: 0;
+      top: 0;
+      z-index: 40;
+      font-size: 0.55rem;
+    }
+
+    /* Program slot cell */
+    .prog-slot {
+      border-right: 1px solid hsl(var(--border) / 0.4);
+      border-bottom: 1px solid hsl(var(--border) / 0.4);
+      padding: 1px 2px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* A cell spans N rows based on duration */
+
+    .prog-slot-inner {
+      height: 100%;
+      background: hsl(var(--g) / 0.12);
+      border-left: 2px solid hsl(var(--g));
+      border-radius: 2px;
+      padding: 2px 4px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .prog-slot-inner:hover { background: hsl(var(--g) / 0.22); }
+    .prog-slot-inner:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -1px;
+    }
+
+    .slot-title {
+      font-size: 0.6rem;
+      font-weight: 700;
+      line-height: 1.3;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+    .slot-time {
+      font-size: 0.5rem;
+      color: hsl(var(--muted-foreground));
+      font-variant-numeric: tabular-nums;
+      margin-top: 1px;
+    }
+
+    /* On-air highlight */
+    .prog-slot-inner.on-air {
+      background: hsl(var(--g) / 0.22);
+      border-left-width: 3px;
+    }
+
+    /* Now indicator: red horizontal line at the current slot */
+    .now-indicator-row {
+      background: hsl(var(--destructive) / 0.06);
+    }
+    .now-time-cell {
+      background: hsl(var(--destructive) / 0.15);
+      color: hsl(var(--destructive));
+      font-weight: 900;
+    }
+
+    /* Reserve badge overlay */
+    .reserved-dot {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: hsl(var(--destructive));
+    }
+
+    /* ─── SIDE DRAWER ─── */
+    /* Opens when a cell is "selected" */
+    .side-drawer {
+      width: 280px;
+      flex-shrink: 0;
+      background: hsl(var(--card));
+      border-left: 1px solid hsl(var(--border));
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .drawer-header {
+      padding: 12px 14px 8px;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+    .drawer-genre-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: hsl(var(--g) / 0.15);
+      color: hsl(var(--g));
+      margin-bottom: 6px;
+    }
+    .drawer-title {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+    .drawer-meta {
+      font-size: 0.7rem;
+      color: hsl(var(--muted-foreground));
+      font-variant-numeric: tabular-nums;
+    }
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+    }
+    .drawer-desc {
+      font-size: 0.7875rem;
+      color: hsl(var(--muted-foreground));
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    .drawer-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .drawer-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-size: 0.875rem;
+      font-weight: 700;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.1s;
+    }
+    .drawer-btn:hover { opacity: 0.88; }
+    .drawer-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+    .btn-watch { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .btn-reserve { background: hsl(var(--destructive) / 0.12); color: hsl(var(--destructive)); border: 1px solid hsl(var(--destructive) / 0.3); }
+
+    .drawer-section-hdr {
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin: 16px 0 8px;
+    }
+    .drawer-ch-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 5px;
+      background: hsl(var(--muted) / 0.5);
+    }
+
+    /* Light/dark toggle */
+    .badge {
+      display: inline-flex; align-items: center;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+      padding: 1px 6px; border-radius: 3px;
+    }
+    .badge-live { background: hsl(0 72% 58% / 0.2); color: hsl(0 72% 70%); }
+    .tab-btn {
+      font-size: 0.7rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 4px;
+      border: none; cursor: pointer;
+    }
+    .tab-btn.active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .tab-btn:not(.active) { background: transparent; color: hsl(var(--muted-foreground)); }
+    .tab-btn:not(.active):hover { background: hsl(var(--muted) / 0.5); }
+    .tab-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    .icon-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 6px;
+      border: 1px solid hsl(var(--border));
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+    }
+    .icon-btn:hover { background: hsl(var(--muted)/0.5); }
+    .icon-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- Banner -->
+<p style="font-size:0.7rem;color:hsl(var(--muted-foreground));padding:5px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));flex-shrink:0;">
+  EPG v6 · Dense magazine grid (time rows × channel cols) + side drawer detail panel · dark mode
+</p>
+
+<!-- App bar -->
+<div class="app-bar">
+  <a href="/" style="display:inline-flex;align-items:center;gap:5px;font-size:0.875rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 8px;border-radius:6px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    ライブ
+  </a>
+  <span style="color:hsl(var(--border));">|</span>
+  <span style="font-weight:700;font-size:0.9375rem;">番組表</span>
+  <span class="badge badge-live">● LIVE</span>
+  <div style="flex:1;"></div>
+  <div role="tablist" style="display:flex;gap:2px;">
+    <button role="tab" aria-selected="true" class="tab-btn active">すべて</button>
+    <button role="tab" aria-selected="false" class="tab-btn">GR</button>
+    <button role="tab" aria-selected="false" class="tab-btn">BS</button>
+    <button role="tab" aria-selected="false" class="tab-btn">CS</button>
+  </div>
+  <div style="width:1px;height:18px;background:hsl(var(--border));"></div>
+  <button class="icon-btn" aria-label="前日">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <span style="font-size:0.8rem;font-weight:600;padding:0 4px;font-variant-numeric:tabular-nums;">4月17日（木）</span>
+  <button class="icon-btn" aria-label="翌日">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+  <button class="tab-btn active" style="font-size:0.7rem;margin-left:6px;">今すぐ</button>
+</div>
+
+<!-- Main: grid + drawer -->
+<div class="main-layout">
+
+  <!-- Dense magazine grid -->
+  <div class="grid-area" role="region" aria-label="番組表グリッド">
+    <div class="mag-grid" role="grid" aria-label="番組表">
+
+      <!-- ── Header row: channels ── -->
+      <div class="ch-header-cell corner" role="columnheader" style="height:36px;">
+        <span style="font-size:0.55rem;color:hsl(var(--muted-foreground));">時刻</span>
+      </div>
+      <div class="ch-header-cell g-news" role="columnheader" tabindex="0" aria-label="NHK総合へジャンプ" style="height:36px;">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(221 83% 60%);">1</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));">NHK総合</span>
+      </div>
+      <div class="ch-header-cell" role="columnheader" tabindex="0" style="height:36px;">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(142 70% 48%);">2</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));">Eテレ</span>
+      </div>
+      <div class="ch-header-cell" role="columnheader" tabindex="0" style="height:36px;">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(38 92% 52%);">4</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));">日テレ</span>
+      </div>
+      <div class="ch-header-cell" role="columnheader" tabindex="0" style="height:36px;">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(190 70% 48%);">5</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));">テレ朝</span>
+      </div>
+      <div class="ch-header-cell" role="columnheader" tabindex="0" style="height:36px;">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(0 72% 58%);">6</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));">TBS</span>
+      </div>
+      <div class="ch-header-cell" role="columnheader" tabindex="0" style="height:36px;">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(260 60% 55%);">7</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));">テレ東</span>
+      </div>
+      <div class="ch-header-cell" role="columnheader" tabindex="0" style="height:36px;">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(38 92% 52%);">8</span>
+        <span style="font-size:0.6rem;color:hsl(var(--muted-foreground));">フジ</span>
+      </div>
+      <div class="ch-header-cell" role="columnheader" tabindex="0" style="height:36px;">
+        <span style="font-size:0.6rem;font-weight:700;color:hsl(142 70% 42%);">BS1</span>
+        <span style="font-size:0.55rem;color:hsl(var(--muted-foreground));">NHK BS1</span>
+      </div>
+
+      <!-- ── 19:00 row ── -->
+      <div class="time-cell" role="rowheader" style="height:52px;grid-row:span 2;">19:00</div>
+      <!-- NHK総合: ニュース 19:00-19:30 -->
+      <div class="prog-slot g-news" style="grid-row:span 1;height:26px;" role="gridcell">
+        <div class="prog-slot-inner g-news" tabindex="0" aria-label="NHKニュース 19:00-19:30 報道">
+          <div class="slot-title">NHKニュース</div>
+          <div class="slot-time">19:00–19:30</div>
+        </div>
+      </div>
+      <!-- Eテレ: 19:00 -->
+      <div class="prog-slot g-edu" style="grid-row:span 1;height:26px;" role="gridcell">
+        <div class="prog-slot-inner g-edu" tabindex="0" aria-label="理科の実験 19:00-19:30">
+          <div class="slot-title">理科の実験</div>
+        </div>
+      </div>
+      <!-- 日テレ: 19:00 -->
+      <div class="prog-slot g-variety" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-variety" tabindex="0" aria-label="ザ!鉄腕!DASH!! 19:00-20:00">
+          <div class="slot-title">ザ!鉄腕!DASH!!</div>
+          <div class="slot-time">19:00–20:00</div>
+        </div>
+      </div>
+      <!-- テレ朝: sports 19:00 -->
+      <div class="prog-slot g-sports" style="grid-row:span 6;height:156px;" role="gridcell">
+        <div class="prog-slot-inner g-sports" tabindex="0" aria-label="熱闘甲子園SP 19:00-22:00">
+          <div class="slot-title">熱闘甲子園SP 2026</div>
+          <div class="slot-time">19:00–22:00</div>
+        </div>
+      </div>
+      <!-- TBS: 19:00 -->
+      <div class="prog-slot g-variety" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-variety" tabindex="0" aria-label="マツコの知らない世界 19:00-20:00">
+          <div class="slot-title">マツコの知らない世界</div>
+          <div class="slot-time">19:00–20:00</div>
+        </div>
+      </div>
+      <!-- テレ東: 19:00 -->
+      <div class="prog-slot g-anime" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-anime" tabindex="0" aria-label="ポケモン 19:00-20:00">
+          <div class="slot-title">ポケモン</div>
+          <div class="slot-time">19:00–20:00</div>
+        </div>
+      </div>
+      <!-- フジ: 19:00 -->
+      <div class="prog-slot g-variety" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-variety" tabindex="0" aria-label="IPPON グランプリ 19:00-20:00">
+          <div class="slot-title">IPPONグランプリ</div>
+          <div class="slot-time">19:00–20:00</div>
+        </div>
+      </div>
+      <!-- BS1: 19:00 -->
+      <div class="prog-slot g-sports" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-sports" tabindex="0" aria-label="BSスポーツ 19:00-20:00">
+          <div class="slot-title">BSスポーツ</div>
+          <div class="slot-time">19:00–20:00</div>
+        </div>
+      </div>
+
+      <!-- ── 19:30 row (sub-row) ── -->
+      <!-- NHK総合 19:30 -->
+      <div class="prog-slot g-drama" style="grid-row:span 1;height:26px;" role="gridcell">
+        <div class="prog-slot-inner g-drama" tabindex="0" aria-label="歴史探偵 19:30-20:15">
+          <div class="slot-title">歴史探偵</div>
+        </div>
+      </div>
+      <!-- Eテレ 19:30 -->
+      <div class="prog-slot g-anime" style="grid-row:span 1;height:26px;" role="gridcell">
+        <div class="prog-slot-inner g-anime" tabindex="0" aria-label="クインテット 19:30-20:00">
+          <div class="slot-title">クインテット</div>
+        </div>
+      </div>
+
+      <!-- ── 20:00 row ── -->
+      <div class="time-cell" role="rowheader" style="height:52px;grid-row:span 2;">20:00</div>
+      <!-- NHK総合: 大河前枠 20:00-20:45 -->
+      <div class="prog-slot g-variety" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-variety" tabindex="0" aria-label="ダーウィンが来た 20:00-20:45">
+          <div class="slot-title">ダーウィンが来た！</div>
+          <div class="slot-time">20:00–20:45</div>
+        </div>
+      </div>
+      <!-- Eテレ 20:00 -->
+      <div class="prog-slot g-edu" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-edu" tabindex="0" aria-label="趣味の園芸 20:00-20:30">
+          <div class="slot-title">趣味の園芸</div>
+          <div class="slot-time">20:00–20:30</div>
+        </div>
+      </div>
+      <!-- 日テレ: 20:00 -->
+      <div class="prog-slot g-variety" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-variety" tabindex="0" aria-label="有吉ゼミ 20:00-21:00">
+          <div class="slot-title">有吉ゼミ</div>
+          <div class="slot-time">20:00–21:00</div>
+        </div>
+      </div>
+      <!-- TBS: 20:00 -->
+      <div class="prog-slot g-docu" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-docu" tabindex="0" aria-label="所さんの目がテン 20:00-20:54">
+          <div class="slot-title">所さんの目がテン</div>
+          <div class="slot-time">20:00–20:54</div>
+        </div>
+      </div>
+      <!-- テレ東: 20:00 -->
+      <div class="prog-slot g-variety" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-variety" tabindex="0" aria-label="孤独のグルメ再 20:00-21:00">
+          <div class="slot-title">孤独のグルメ 再</div>
+          <div class="slot-time">20:00–21:00</div>
+        </div>
+      </div>
+      <!-- フジ: 20:00 -->
+      <div class="prog-slot g-news" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-news" tabindex="0" aria-label="FNNニュース 20:00-21:00">
+          <div class="slot-title">FNNニュース</div>
+          <div class="slot-time">20:00–21:00</div>
+        </div>
+      </div>
+      <!-- BS1: 20:00 -->
+      <div class="prog-slot g-docu" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-docu" tabindex="0" aria-label="BS世界のドキュメンタリー 20:00-21:00">
+          <div class="slot-title">BS世界のドキュメンタリー</div>
+          <div class="slot-time">20:00–21:00</div>
+        </div>
+      </div>
+
+      <!-- 20:30 sub-row (Eテレ only split) -->
+      <!-- nothing new from other channels mid-20:xx -->
+
+      <!-- ── 21:00 row — NOW ── -->
+      <div class="time-cell now-slot now-indicator-row" role="rowheader" style="height:52px;grid-row:span 2;border-top:2px solid hsl(var(--destructive));">
+        21:00
+        <span style="display:block;font-size:0.45rem;color:hsl(var(--destructive));">▼NOW</span>
+      </div>
+      <!-- NHK総合: ニュース7 ON AIR -->
+      <div class="prog-slot g-news now-indicator-row" style="grid-row:span 1;height:26px;border-top:2px solid hsl(var(--destructive));" role="gridcell">
+        <div class="prog-slot-inner g-news on-air" tabindex="0" aria-label="NHKニュース7 ON AIR 21:00-21:30" aria-current="true"
+             style="border-left-color:hsl(var(--destructive));background:hsl(var(--destructive)/0.12);">
+          <div class="slot-title" style="color:hsl(var(--destructive));">● NHKニュース7</div>
+          <div class="slot-time">21:00–21:30</div>
+        </div>
+      </div>
+      <!-- Eテレ 21:00 -->
+      <div class="prog-slot g-edu" style="grid-row:span 1;height:26px;border-top:2px solid hsl(var(--destructive));" role="gridcell">
+        <div class="prog-slot-inner g-edu on-air" tabindex="0" aria-label="にほんごであそぼ ON AIR">
+          <div class="slot-title">● にほんごであそぼ</div>
+        </div>
+      </div>
+      <!-- 日テレ 21:00 (spans 3.6 rows ≈ 4 rows = 104px) -->
+      <div class="prog-slot g-drama" style="grid-row:span 4;height:104px;border-top:2px solid hsl(var(--destructive));" role="gridcell">
+        <div class="prog-slot-inner g-drama on-air" tabindex="0" aria-label="あなたの番です ON AIR 21:00-22:54">
+          <div class="slot-title">● あなたの番です SP</div>
+          <div class="slot-time">21:00–22:54</div>
+        </div>
+      </div>
+      <!-- テレ朝: sports (already spanning) -->
+      <!-- TBS 21:00 -->
+      <div class="prog-slot g-news" style="grid-row:span 2;height:52px;border-top:2px solid hsl(var(--destructive));" role="gridcell">
+        <div class="prog-slot-inner g-news on-air" tabindex="0" aria-label="報道特集 ON AIR 21:00-22:00">
+          <div class="slot-title">● 報道特集</div>
+          <div class="slot-time">21:00–22:00</div>
+        </div>
+      </div>
+      <!-- テレ東 21:00 -->
+      <div class="prog-slot g-movie" style="grid-row:span 5;height:130px;border-top:2px solid hsl(var(--destructive));" role="gridcell">
+        <div class="prog-slot-inner g-movie on-air" tabindex="0" aria-label="木曜洋画劇場 ON AIR 21:00-23:30">
+          <div class="slot-title">● 木曜洋画「インターステラー」</div>
+          <div class="slot-time">21:00–23:30</div>
+        </div>
+      </div>
+      <!-- フジ 21:00 -->
+      <div class="prog-slot g-variety" style="grid-row:span 2;height:52px;border-top:2px solid hsl(var(--destructive));" role="gridcell">
+        <div class="prog-slot-inner g-variety on-air" tabindex="0" aria-label="VS魂 ON AIR 21:00-21:54">
+          <div class="slot-title">● VS魂</div>
+          <div class="slot-time">21:00–21:54</div>
+        </div>
+      </div>
+      <!-- BS1 21:00 -->
+      <div class="prog-slot g-sports" style="grid-row:span 2;height:52px;border-top:2px solid hsl(var(--destructive));" role="gridcell">
+        <div class="prog-slot-inner g-sports on-air" tabindex="0" aria-label="BS1スポーツ ON AIR 21:00-22:00">
+          <div class="slot-title">● BSプロ野球</div>
+          <div class="slot-time">21:00–22:00</div>
+        </div>
+      </div>
+
+      <!-- 21:30 sub-slot -->
+      <!-- NHK総合 21:30 -->
+      <div class="prog-slot g-variety" style="height:26px;" role="gridcell">
+        <div class="prog-slot-inner g-variety" tabindex="0" aria-label="ガッテン 21:30-22:15">
+          <div class="slot-title">ガッテン！</div>
+        </div>
+      </div>
+      <!-- Eテレ 21:30 -->
+      <div class="prog-slot g-anime" style="height:26px;" role="gridcell">
+        <div class="prog-slot-inner g-anime" tabindex="0" aria-label="アニメ ゆるキャン 21:25-21:55">
+          <div class="slot-title">ゆるキャン△</div>
+        </div>
+      </div>
+
+      <!-- ── 22:00 row ── -->
+      <div class="time-cell" role="rowheader" style="height:52px;grid-row:span 2;">22:00</div>
+      <div class="prog-slot g-drama" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-drama" tabindex="0" aria-label="土曜ドラマ 22:15-23:00">
+          <div class="slot-title">土曜ドラマ「春の嵐」</div>
+          <div class="slot-time">22:15–23:00</div>
+        </div>
+      </div>
+      <div class="prog-slot g-other" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-other" tabindex="0" aria-label="放送休止">
+          <div class="slot-title" style="opacity:0.5;">放送休止</div>
+        </div>
+      </div>
+      <!-- 日テレ already spanning -->
+      <!-- テレ朝: 22:00 -->
+      <div class="prog-slot g-news" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-news" tabindex="0" aria-label="報道ステーション 22:00-22:54">
+          <div class="slot-title">報道ステーション</div>
+          <div class="slot-time">22:00–22:54</div>
+        </div>
+      </div>
+      <!-- TBS: 22:00 -->
+      <div class="prog-slot g-drama" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-drama" tabindex="0" aria-label="日曜劇場 22:00-23:00" style="position:relative;">
+          <div class="slot-title">日曜劇場「フォールガイ」</div>
+          <div class="slot-time">22:00–23:00</div>
+          <div class="reserved-dot" aria-label="録画予約済み"></div>
+        </div>
+      </div>
+      <!-- テレ東 already spanning -->
+      <!-- フジ: 22:00 -->
+      <div class="prog-slot g-drama" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-drama" tabindex="0" aria-label="月9ドラマ 21:54-22:48">
+          <div class="slot-title">月9「嘘解きレトリック」</div>
+          <div class="slot-time">21:54–22:48</div>
+        </div>
+      </div>
+      <!-- BS1: 22:00 -->
+      <div class="prog-slot g-docu" style="grid-row:span 2;height:52px;" role="gridcell">
+        <div class="prog-slot-inner g-docu" tabindex="0" aria-label="BS世界遺産 22:00-23:00">
+          <div class="slot-title">BS世界遺産</div>
+          <div class="slot-time">22:00–23:00</div>
+        </div>
+      </div>
+
+    </div><!-- end mag-grid -->
+  </div><!-- end grid-area -->
+
+  <!-- ─── SIDE DRAWER: selected cell detail ─── -->
+  <div class="side-drawer" role="complementary" aria-label="番組詳細">
+    <div class="drawer-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:0.65rem;font-weight:600;color:hsl(var(--muted-foreground));">選択中の番組</span>
+        <button class="icon-btn" aria-label="閉じる" style="width:22px;height:22px;border-radius:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="drawer-genre-tag g-drama">
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="hsl(var(--g))"><circle cx="12" cy="12" r="9"/></svg>
+        ドラマ
+      </div>
+      <div class="drawer-title">日曜劇場「フォールガイ」</div>
+      <div class="drawer-meta">TBS (ch.6) · 22:00 – 23:00（60分）</div>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-section-hdr">あらすじ</div>
+      <div class="drawer-desc">
+        スタントマンとして働く主人公が、ある日突然行方不明になった友人を追って真相に迫る社会派ミステリー。スピード感溢れる展開と豪華キャストが話題。
+      </div>
+
+      <div class="drawer-section-hdr">放送チャンネル</div>
+      <div class="drawer-ch-badge g-news" style="background:hsl(0 72% 58%/0.12);">
+        <span style="font-size:0.75rem;font-weight:700;color:hsl(0 72% 58%);">6</span>
+        <span style="font-size:0.75rem;font-weight:600;">TBS</span>
+      </div>
+
+      <div class="drawer-actions" style="margin-top:16px;">
+        <button class="drawer-btn btn-reserve" aria-label="日曜劇場を録画予約">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+          録画予約する
+        </button>
+        <button class="drawer-btn" style="background:hsl(var(--muted)/0.5);color:hsl(var(--muted-foreground));border:1px solid hsl(var(--border));" aria-label="閉じる">
+          閉じる
+        </button>
+      </div>
+
+      <div style="margin-top:20px;padding:10px;background:hsl(var(--muted)/0.3);border-radius:6px;border:1px dashed hsl(var(--border));">
+        <p style="font-size:0.65rem;color:hsl(var(--muted-foreground));margin:0;line-height:1.6;">
+          <strong>Design note:</strong> The drawer replaces a modal/tooltip. It's always visible on desktop (≥1024px). On mobile, the drawer slides in from the bottom as a sheet (Shadcn Sheet). Focus moves to the drawer on open; Escape closes it and returns focus to the triggering cell.
+        </p>
+      </div>
+
+      <!-- States in drawer -->
+      <div style="margin-top:16px;">
+        <div class="drawer-section-hdr">Loading state (drawer)</div>
+        <div style="height:14px;background:hsl(var(--muted)/0.5);border-radius:3px;width:70%;margin-bottom:6px;animation:pulse 1.4s ease-in-out infinite;"></div>
+        <div style="height:10px;background:hsl(var(--muted)/0.4);border-radius:3px;width:50%;animation:pulse 1.4s ease-in-out infinite;"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end main-layout -->
+
+<style>
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+</style>
+
+</body>
+</html>

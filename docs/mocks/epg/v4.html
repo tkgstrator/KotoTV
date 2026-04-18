@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPG — v4 Split: Now-Row pinned top + scrollable future grid</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            'card-foreground': 'hsl(var(--card-foreground))',
+            muted: 'hsl(var(--muted))',
+            'muted-foreground': 'hsl(var(--muted-foreground))',
+            border: 'hsl(var(--border))',
+            primary: 'hsl(var(--primary))',
+            'primary-foreground': 'hsl(var(--primary-foreground))',
+            ring: 'hsl(var(--ring))',
+            destructive: 'hsl(var(--destructive))',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --background: 0 0% 96%;
+      --foreground: 222 14% 18%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 14% 18%;
+      --muted: 210 10% 90%;
+      --muted-foreground: 215 10% 45%;
+      --border: 214 13% 84%;
+      --primary: 221 83% 53%;
+      --primary-foreground: 210 40% 98%;
+      --ring: 221 83% 53%;
+      --destructive: 0 72% 58%;
+    }
+    .dark {
+      --background: 222 20% 10%;
+      --foreground: 210 20% 92%;
+      --card: 222 18% 14%;
+      --card-foreground: 210 20% 92%;
+      --muted: 222 16% 20%;
+      --muted-foreground: 215 12% 55%;
+      --border: 222 16% 22%;
+      --primary: 221 83% 60%;
+      --primary-foreground: 222 20% 10%;
+      --ring: 221 83% 60%;
+      --destructive: 0 72% 58%;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      margin: 0;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    :focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* Genre colours */
+    .g-news    { --g: 221 83% 55%; }
+    .g-sports  { --g: 142 70% 42%; }
+    .g-drama   { --g: 280 60% 52%; }
+    .g-variety { --g: 38 92% 48%; }
+    .g-anime   { --g: 320 70% 52%; }
+    .g-movie   { --g: 15 80% 48%; }
+    .g-docu    { --g: 190 70% 42%; }
+    .g-edu     { --g: 100 55% 42%; }
+    .g-other   { --g: 215 12% 48%; }
+
+    /* App bar */
+    .app-bar {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      height: 48px;
+      flex-shrink: 0;
+      z-index: 40;
+    }
+
+    /* === NOW ROW === */
+    /* Horizontally scrollable strip of NOW cards, pinned below app-bar */
+    .now-strip {
+      background: hsl(var(--card));
+      border-bottom: 2px solid hsl(var(--border));
+      flex-shrink: 0;
+      padding: 8px 0;
+      z-index: 35;
+    }
+    .now-strip-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: hsl(var(--destructive));
+      letter-spacing: 0.08em;
+      padding: 0 16px 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .now-strip-scroll {
+      display: flex;
+      gap: 8px;
+      padding: 0 16px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .now-strip-scroll::-webkit-scrollbar { display: none; }
+
+    .now-card {
+      flex-shrink: 0;
+      width: 160px;
+      background: hsl(var(--background));
+      border: 1px solid hsl(var(--g) / 0.4);
+      border-left: 3px solid hsl(var(--g));
+      border-radius: 6px;
+      padding: 8px 10px;
+      scroll-snap-align: start;
+      cursor: pointer;
+      transition: border-color 0.1s, background 0.1s;
+    }
+    .now-card:hover { background: hsl(var(--g) / 0.08); }
+    .now-card:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+
+    .now-card .ch-name {
+      font-size: 0.6rem;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 3px;
+      font-weight: 600;
+    }
+    .now-card .prog-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      line-height: 1.3;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      margin-bottom: 4px;
+    }
+    .now-card .prog-time {
+      font-size: 0.6rem;
+      color: hsl(var(--muted-foreground));
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 6px;
+    }
+    .progress-track {
+      height: 3px;
+      background: hsl(var(--border));
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: hsl(var(--g));
+      border-radius: 2px;
+    }
+
+    .watch-btn {
+      width: 100%;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      background: hsl(var(--g));
+      color: hsl(var(--primary-foreground));
+      font-size: 0.65rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 4px;
+      padding: 4px;
+      cursor: pointer;
+      transition: opacity 0.1s;
+    }
+    .watch-btn:hover { opacity: 0.85; }
+    .watch-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+
+    /* === FUTURE SCHEDULE: horizontal time × vertical channel grid === */
+    /* Small-scale version of v1 but restricted to the future window only */
+    .schedule-area {
+      flex: 1;
+      overflow: auto;
+      position: relative;
+    }
+    .schedule-area::-webkit-scrollbar { width: 5px; height: 5px; }
+    .schedule-area::-webkit-scrollbar-track { background: hsl(var(--muted) / 0.2); }
+    .schedule-area::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+
+    /* Section header pinned inside scroll */
+    .sched-section {
+      padding: 4px 12px;
+      background: hsl(var(--muted) / 0.5);
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: 0.06em;
+      position: sticky;
+      top: 0;
+      z-index: 15;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+
+    /* Grid: ch-label col sticky left, time rows */
+    .sched-grid {
+      display: grid;
+      grid-template-columns: 68px repeat(6, 160px);
+      min-width: max-content;
+    }
+
+    .sched-time-header {
+      background: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      border-right: 1px solid hsl(var(--border) / 0.5);
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: hsl(var(--muted-foreground));
+      padding: 6px 8px;
+      font-variant-numeric: tabular-nums;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .sched-time-header.corner {
+      position: sticky;
+      left: 0;
+      top: 0;
+      z-index: 25;
+      border-right: 2px solid hsl(var(--border));
+      font-size: 0.6rem;
+      text-align: center;
+      background: hsl(var(--card));
+    }
+
+    .sched-ch-label {
+      position: sticky;
+      left: 0;
+      background: hsl(var(--card));
+      border-right: 2px solid hsl(var(--border));
+      border-bottom: 1px solid hsl(var(--border));
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 4px 2px;
+      z-index: 15;
+      cursor: pointer;
+    }
+    .sched-ch-label:hover { background: hsl(var(--muted) / 0.6); }
+    .sched-ch-label:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+    }
+
+    .sched-cell {
+      border-right: 1px solid hsl(var(--border) / 0.35);
+      border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--background));
+      padding: 5px 6px;
+      cursor: pointer;
+      transition: filter 0.1s;
+    }
+    .sched-cell:hover { filter: brightness(1.07); }
+    .sched-cell:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: -2px;
+    }
+
+    .sched-cell-inner {
+      background: hsl(var(--g) / 0.15);
+      border-left: 3px solid hsl(var(--g));
+      border-radius: 2px;
+      padding: 3px 5px;
+      height: 100%;
+    }
+    .sched-title {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      line-height: 1.3;
+    }
+    .sched-time-label {
+      font-size: 0.55rem;
+      color: hsl(var(--muted-foreground));
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+    }
+
+    .reserve-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: hsl(var(--destructive) / 0.15);
+      color: hsl(var(--destructive));
+      border: 1px solid hsl(var(--destructive) / 0.3);
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .reserve-btn:hover { background: hsl(var(--destructive) / 0.25); }
+    .reserve-btn:focus-visible {
+      outline: 2px solid hsl(var(--ring));
+      outline-offset: 2px;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex; align-items: center;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+      padding: 1px 6px; border-radius: 3px;
+    }
+    .badge-live { background: hsl(0 72% 58% / 0.2); color: hsl(0 72% 70%); }
+    .tab-btn {
+      font-size: 0.7rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 4px;
+      border: none; cursor: pointer;
+    }
+    .tab-btn.active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+    .tab-btn:not(.active) { background: transparent; color: hsl(var(--muted-foreground)); }
+    .tab-btn:not(.active):hover { background: hsl(var(--muted) / 0.5); }
+    .tab-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    .nav-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.75rem; font-weight: 600;
+      padding: 4px 10px; border-radius: 6px;
+      background: transparent;
+      border: 1px solid hsl(var(--border));
+      color: hsl(var(--muted-foreground));
+      cursor: pointer;
+    }
+    .nav-btn:hover { background: hsl(var(--muted) / 0.4); }
+    .nav-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+    .primary-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.75rem; font-weight: 700;
+      padding: 4px 12px; border-radius: 6px;
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      border: none; cursor: pointer;
+    }
+    .primary-btn:hover { opacity: 0.9; }
+    .primary-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- Banner -->
+<p style="font-size:0.7rem;color:hsl(var(--muted-foreground));padding:5px 16px;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));flex-shrink:0;">
+  EPG v4 · Split: pinned NOW-strip (horizontal scroll) + future schedule grid · dark mode
+</p>
+
+<!-- App bar -->
+<div class="app-bar">
+  <a href="/" aria-label="ライブへ戻る" style="display:inline-flex;align-items:center;gap:5px;font-size:0.875rem;font-weight:600;color:hsl(var(--foreground));text-decoration:none;padding:4px 8px;border-radius:6px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+    ライブ
+  </a>
+  <span style="color:hsl(var(--border));">|</span>
+  <span style="font-weight:700;font-size:0.9375rem;">番組表</span>
+  <span class="badge badge-live">● LIVE</span>
+  <div style="flex:1;"></div>
+  <div role="tablist" aria-label="チャンネル種別" style="display:flex;gap:2px;">
+    <button role="tab" aria-selected="true" class="tab-btn active">すべて</button>
+    <button role="tab" aria-selected="false" class="tab-btn">GR</button>
+    <button role="tab" aria-selected="false" class="tab-btn">BS</button>
+  </div>
+  <div style="width:1px;height:18px;background:hsl(var(--border));"></div>
+  <button class="nav-btn" aria-label="前日">← 前日</button>
+  <span style="font-size:0.8rem;font-weight:600;font-variant-numeric:tabular-nums;padding:0 2px;">4月17日（木）</span>
+  <button class="nav-btn" aria-label="翌日">翌日 →</button>
+  <button class="primary-btn" aria-label="今すぐ">今すぐ</button>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<!-- NOW STRIP: pinned                -->
+<!-- ═══════════════════════════════ -->
+<div class="now-strip" aria-label="現在放送中の番組" role="region">
+  <div class="now-strip-label">
+    <span style="width:8px;height:8px;border-radius:50%;background:hsl(var(--destructive));display:inline-block;animation:blink 1s ease-in-out infinite;"></span>
+    ON AIR NOW — 21:13
+  </div>
+  <div class="now-strip-scroll" role="list" aria-label="現在放送中">
+
+    <div class="now-card g-news" role="listitem" tabindex="0" aria-label="NHK総合 NHKニュース7 視聴する">
+      <div class="ch-name">1 NHK総合</div>
+      <div class="prog-title">NHKニュース7</div>
+      <div class="prog-time">21:00 – 21:30 · 残り17分</div>
+      <div class="progress-track g-news"><div class="progress-fill g-news" style="width:43%;"></div></div>
+      <button class="watch-btn g-news" onclick="event.stopPropagation()" aria-label="NHKニュース7を視聴">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        今すぐ視聴
+      </button>
+    </div>
+
+    <div class="now-card g-edu" role="listitem" tabindex="0" aria-label="NHK Eテレ にほんごであそぼ">
+      <div class="ch-name">2 NHK Eテレ</div>
+      <div class="prog-title">にほんごであそぼ</div>
+      <div class="prog-time">21:00 – 21:25 · 残り12分</div>
+      <div class="progress-track g-edu"><div class="progress-fill g-edu" style="width:52%;"></div></div>
+      <button class="watch-btn g-edu" onclick="event.stopPropagation()">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        今すぐ視聴
+      </button>
+    </div>
+
+    <div class="now-card g-variety" role="listitem" tabindex="0" aria-label="フジテレビ VS魂">
+      <div class="ch-name">8 フジテレビ</div>
+      <div class="prog-title">VS魂</div>
+      <div class="prog-time">21:00 – 21:54 · 残り41分</div>
+      <div class="progress-track g-variety"><div class="progress-fill g-variety" style="width:22%;"></div></div>
+      <button class="watch-btn g-variety" onclick="event.stopPropagation()">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        今すぐ視聴
+      </button>
+    </div>
+
+    <div class="now-card g-news" role="listitem" tabindex="0" aria-label="TBS 報道特集">
+      <div class="ch-name">6 TBS</div>
+      <div class="prog-title">報道特集</div>
+      <div class="prog-time">21:00 – 22:00 · 残り47分</div>
+      <div class="progress-track g-news"><div class="progress-fill g-news" style="width:21%;"></div></div>
+      <button class="watch-btn g-news" onclick="event.stopPropagation()">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        今すぐ視聴
+      </button>
+    </div>
+
+    <div class="now-card g-sports" role="listitem" tabindex="0" aria-label="テレ朝 スポーツ中継">
+      <div class="ch-name">5 テレビ朝日</div>
+      <div class="prog-title">熱闘甲子園スペシャル</div>
+      <div class="prog-time">19:00 – 22:00 · 残り47分</div>
+      <div class="progress-track g-sports"><div class="progress-fill g-sports" style="width:74%;"></div></div>
+      <button class="watch-btn g-sports" onclick="event.stopPropagation()">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        今すぐ視聴
+      </button>
+    </div>
+
+    <div class="now-card g-drama" role="listitem" tabindex="0" aria-label="日本テレビ ドラマ">
+      <div class="ch-name">4 日本テレビ</div>
+      <div class="prog-title">あなたの番です SP</div>
+      <div class="prog-time">21:00 – 22:54 · 残り101分</div>
+      <div class="progress-track g-drama"><div class="progress-fill g-drama" style="width:10%;"></div></div>
+      <button class="watch-btn g-drama" onclick="event.stopPropagation()">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        今すぐ視聴
+      </button>
+    </div>
+
+    <div class="now-card g-movie" role="listitem" tabindex="0" aria-label="テレ東 映画">
+      <div class="ch-name">7 テレビ東京</div>
+      <div class="prog-title">木曜洋画劇場「インターステラー」</div>
+      <div class="prog-time">21:00 – 23:30 · 残り137分</div>
+      <div class="progress-track g-movie"><div class="progress-fill g-movie" style="width:8%;"></div></div>
+      <button class="watch-btn g-movie" onclick="event.stopPropagation()">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        今すぐ視聴
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ -->
+<!-- FUTURE SCHEDULE GRID            -->
+<!-- ═══════════════════════════════ -->
+<div class="schedule-area" role="region" aria-label="これからの番組">
+  <div class="sched-section" aria-label="今後の放送スケジュール">
+    これからの番組（21:30 〜 翌 03:00）
+  </div>
+
+  <div class="sched-grid" role="grid" aria-label="これからの番組グリッド">
+    <!-- Header row -->
+    <div class="sched-time-header corner" role="columnheader">CH</div>
+    <div class="sched-time-header" role="columnheader">21:30</div>
+    <div class="sched-time-header" role="columnheader">22:00</div>
+    <div class="sched-time-header" role="columnheader">22:30</div>
+    <div class="sched-time-header" role="columnheader">23:00</div>
+    <div class="sched-time-header" role="columnheader">00:00</div>
+    <div class="sched-time-header" role="columnheader">01:00</div>
+
+    <!-- NHK総合 -->
+    <div class="sched-ch-label" role="rowheader" tabindex="0" aria-label="NHK総合">
+      <span style="font-size:0.65rem;font-weight:700;color:hsl(221 83% 60%);">1</span>
+      <span style="font-size:0.55rem;color:hsl(var(--muted-foreground));text-align:center;line-height:1.2;">NHK<br>総合</span>
+    </div>
+    <div class="sched-cell g-variety" tabindex="0" role="gridcell" aria-label="ガッテン 21:30-22:15" style="grid-column:span 2;">
+      <div class="sched-cell-inner g-variety">
+        <div class="sched-title">ガッテン！特集</div>
+        <div class="sched-time-label">21:30–22:15</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()" aria-label="予約"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+    <div class="sched-cell g-drama" tabindex="0" role="gridcell" aria-label="土曜ドラマ 22:15-23:00" style="grid-column:span 2;">
+      <div class="sched-cell-inner g-drama">
+        <div class="sched-title">土曜ドラマ「春の嵐」</div>
+        <div class="sched-time-label">22:15–23:00</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+    <div class="sched-cell g-news" tabindex="0" role="gridcell" aria-label="NHKニュース 23:00-24:00">
+      <div class="sched-cell-inner g-news">
+        <div class="sched-title">NHKニュース</div>
+        <div class="sched-time-label">23:00–24:00</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+    <div class="sched-cell g-other" tabindex="0" role="gridcell" style="grid-column:span 2;">
+      <div class="sched-cell-inner g-other">
+        <div class="sched-title" style="opacity:0.5;">深夜放送</div>
+      </div>
+    </div>
+
+    <!-- フジテレビ -->
+    <div class="sched-ch-label" role="rowheader" tabindex="0" aria-label="フジテレビ">
+      <span style="font-size:0.65rem;font-weight:700;color:hsl(38 92% 52%);">8</span>
+      <span style="font-size:0.55rem;color:hsl(var(--muted-foreground));text-align:center;line-height:1.2;">フジ<br>TV</span>
+    </div>
+    <div class="sched-cell g-drama" tabindex="0" role="gridcell" aria-label="月9ドラマ 21:54-22:48" style="grid-column:span 3;">
+      <div class="sched-cell-inner g-drama">
+        <div class="sched-title">月9ドラマ「嘘解きレトリック」</div>
+        <div class="sched-time-label">21:54–22:48</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+    <div class="sched-cell g-news" tabindex="0" role="gridcell" aria-label="FNNニュース 22:48-23:40">
+      <div class="sched-cell-inner g-news">
+        <div class="sched-title">FNNプライムニュース</div>
+        <div class="sched-time-label">22:48–23:40</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+    <div class="sched-cell g-variety" tabindex="0" role="gridcell" style="grid-column:span 2;">
+      <div class="sched-cell-inner g-variety">
+        <div class="sched-title">バイキングMORE 深夜版</div>
+        <div class="sched-time-label">23:40–01:00</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+
+    <!-- TBS -->
+    <div class="sched-ch-label" role="rowheader" tabindex="0" aria-label="TBS">
+      <span style="font-size:0.65rem;font-weight:700;color:hsl(0 72% 58%);">6</span>
+      <span style="font-size:0.55rem;color:hsl(var(--muted-foreground));text-align:center;line-height:1.2;">TBS</span>
+    </div>
+    <div class="sched-cell g-drama" tabindex="0" role="gridcell" aria-label="日曜劇場 22:00-23:00" style="grid-column:span 3;">
+      <div class="sched-cell-inner g-drama">
+        <div class="sched-title">日曜劇場「フォールガイ」</div>
+        <div class="sched-time-label">22:00–23:00</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+    <div class="sched-cell g-news" tabindex="0" role="gridcell" style="grid-column:span 2;">
+      <div class="sched-cell-inner g-news">
+        <div class="sched-title">Nスタ 夜</div>
+        <div class="sched-time-label">23:00–23:48</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+    <div class="sched-cell g-other" tabindex="0" role="gridcell" style="grid-column:span 2;">
+      <div class="sched-cell-inner g-other">
+        <div class="sched-title" style="opacity:0.5;">深夜バラエティ</div>
+      </div>
+    </div>
+
+    <!-- テレビ朝日 -->
+    <div class="sched-ch-label" role="rowheader" tabindex="0" aria-label="テレビ朝日">
+      <span style="font-size:0.65rem;font-weight:700;color:hsl(190 70% 48%);">5</span>
+      <span style="font-size:0.55rem;color:hsl(var(--muted-foreground));text-align:center;line-height:1.2;">テレ朝</span>
+    </div>
+    <div class="sched-cell g-sports" tabindex="0" role="gridcell" aria-label="熱闘甲子園 継続中 〜22:00">
+      <div class="sched-cell-inner g-sports" style="position:relative;">
+        <div class="sched-title">熱闘甲子園SP（続き）</div>
+        <div class="sched-time-label">〜22:00</div>
+      </div>
+    </div>
+    <div class="sched-cell g-news" tabindex="0" role="gridcell" style="grid-column:span 2;">
+      <div class="sched-cell-inner g-news">
+        <div class="sched-title">報道ステーション</div>
+        <div class="sched-time-label">22:00–22:54</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+    <div class="sched-cell g-drama" tabindex="0" role="gridcell">
+      <div class="sched-cell-inner g-drama">
+        <div class="sched-title">木曜ドラマ</div>
+        <div class="sched-time-label">22:54–23:48</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+    <div class="sched-cell g-variety" tabindex="0" role="gridcell" style="grid-column:span 2;">
+      <div class="sched-cell-inner g-variety">
+        <div class="sched-title">ミュージックステーション</div>
+        <div class="sched-time-label">23:48–01:00</div>
+        <button class="reserve-btn" onclick="event.stopPropagation()"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>予約</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+</style>
+
+</body>
+</html>
