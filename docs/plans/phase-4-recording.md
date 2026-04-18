@@ -59,7 +59,7 @@ Recording.thumbnailUrl: string | null   # ← 独立フィールド。status の
 - [ ] 予約作成時に Mirakc クライアント経由で番組存在確認 (past-in-time は 400) — `packages/server/src/routes/recordings.ts`
 - [ ] recordings ルートを `app.ts` にマウントし `AppType` を更新 — `packages/server/src/app.ts`
 - [ ] `Recording` モデルに `thumbnailUrl String?` フィールドを追加 (status の sub-state ではなく独立カラム) — `packages/server/src/prisma/schema.prisma`
-- [ ] `GET /api/recordings/events` (または `/api/recordings/:id/events`) を SSE で実装。イベント形式 `{ type: 'thumbnail-ready', recordingId, thumbnailUrl }` ほか将来の状態遷移通知 — `packages/server/src/routes/recordings.ts`
+- [ ] `GET /api/recordings/events` を **Global SSE** で実装 (per-recording ストリームは実装しない。決定 2026-04-17)。イベント形式 `{ type: 'thumbnail-ready', recordingId, thumbnailUrl }` / `{ type: 'status-changed', recordingId, status }` ほか将来の状態遷移通知。一覧ページ + 詳細ページ両方がこの 1 本を subscribe し、詳細ページ側で `recordingId === currentId` を filter — `packages/server/src/routes/recordings.ts`
 - [ ] SSE ルートのクライアント切断検知 (`c.req.raw.signal`) と in-memory subscriber リストのクリーンアップ
 
 ### streaming
