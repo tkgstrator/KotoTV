@@ -37,7 +37,7 @@ import { cn } from '@/lib/utils'
 // Match the settings page tab styling so the tab bar height + typography
 // are consistent across the app (border-bottom active marker, mono uppercase).
 const REC_TAB_CLASS =
-  'rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.75rem] font-bold text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+  '!h-full rounded-none border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none'
 
 type TabValue = 'pending' | 'completed' | 'failed'
 
@@ -455,7 +455,7 @@ function RecordingsPage() {
           className='flex flex-1 flex-col overflow-hidden'
         >
           <div className='sticky top-0 z-10 border-b border-border bg-background'>
-            <TabsList className='h-auto w-full justify-start rounded-none bg-transparent p-0'>
+            <TabsList className='!h-page-header w-full justify-start rounded-none bg-transparent p-0'>
               <TabsTrigger value='pending' className={cn(REC_TAB_CLASS, 'flex-1')}>
                 録画待ち
                 {pendingItems.length > 0 && (

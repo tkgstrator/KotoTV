@@ -16,7 +16,7 @@ export const Route = createFileRoute('/settings')({
 })
 
 const TAB_TRIGGER_CLASS =
-  'rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+  '!h-full rounded-none border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none'
 
 function HealthStrip() {
   const { data } = useHealth()
@@ -74,7 +74,7 @@ function SettingsPage() {
 
       <Tabs defaultValue='status' className='flex flex-1 flex-col'>
         <div className='sticky top-[calc(var(--page-header-h)+48px)] z-10 shrink-0 overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-          <TabsList className='h-auto w-full justify-start rounded-none bg-transparent p-0'>
+          <TabsList className='!h-page-header w-full justify-start rounded-none bg-transparent p-0'>
             <TabsTrigger value='status' className={TAB_TRIGGER_CLASS}>
               ステータス
             </TabsTrigger>
