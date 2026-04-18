@@ -78,7 +78,18 @@ A `2px` vertical (horizontal-time grid) or horizontal (vertical-time / carousel)
 
 ---
 
-## Recommendation
+## Chosen variant
+
+**v4 — Split: pinned NOW-strip + scrollable future grid** (confirmed by user 2026-04-17).
+
+Designer's recommendation was v8 (responsive hybrid) for implementation efficiency, but the user went with v4 for its stronger "now" affordance — the NOW-strip is the first thing a returning user sees and it answers "今やってる番組は？" in zero scrolls. Implementation implications:
+
+- Two stacked scroll regions on desktop: pinned NOW-strip (horizontal scroll) + future grid (2-axis virtualization).
+- Mobile adaptation still needed — v4 is desktop-first. Most likely fall back to v3-style agenda on `<md` breakpoint; document this before EPGGrid PR starts.
+- `@tanstack/react-virtual` strategy: NOW-strip = 1-axis horizontal virtualizer; future grid = 2-axis virtualizer. Two instances in the same route.
+- Now-line indicator is redundant inside the NOW-strip (by definition), but must still appear in the future grid at its leading edge.
+
+## Designer recommendation (not picked)
 
 **v8** — Responsive hybrid.
 
