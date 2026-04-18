@@ -128,6 +128,76 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
     v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + seconds))
   }
 
+  const adjustVolume = useCallback(
+    (delta: number) => {
+      const v = videoRef.current
+      if (!v) return
+      // Unmute if user presses volume — mirrors YouTube / native player behavior.
+      if (v.muted) v.muted = false
+      v.volume = Math.max(0, Math.min(1, v.volume + delta))
+    },
+    [videoRef]
+  )
+
+  // Global keyboard shortcuts — mirror YouTube-style conventions so users
+  // don't have to learn app-specific bindings. Skipped when focus is in a
+  // form control to avoid swallowing text input.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null
+      if (target) {
+        const tag = target.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return
+      }
+      // Let the seek bar handle its own arrow keys when it's focused (±5s).
+      if (target === seekBarRef.current && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return
+
+      const v = videoRef.current
+      if (!v) return
+
+      switch (e.key) {
+        case ' ':
+        case 'k':
+          e.preventDefault()
+          if (v.paused) v.play().catch(() => {})
+          else v.pause()
+          break
+        case 'm':
+          e.preventDefault()
+          v.muted = !v.muted
+          break
+        case 'f':
+          e.preventDefault()
+          if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+          else v.requestFullscreen().catch(() => {})
+          break
+        case 'ArrowLeft':
+          if (!isLive) {
+            e.preventDefault()
+            skip(-10)
+          }
+          break
+        case 'ArrowRight':
+          if (!isLive) {
+            e.preventDefault()
+            skip(10)
+          }
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          adjustVolume(0.05)
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          adjustVolume(-0.05)
+          break
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+    // `skip` is a stable closure over isLive + videoRef; only adjustVolume / isLive matter.
+  }, [adjustVolume, isLive, videoRef])
+
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isLive) return
     const v = videoRef.current
