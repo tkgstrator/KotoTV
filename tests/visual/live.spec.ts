@@ -8,7 +8,11 @@ import { expect, test } from '@playwright/test'
  */
 test('live page — loading state baseline', async ({ page }) => {
   await page.goto('/live/GR0')
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('domcontentloaded')
+  // wait for the HlsPlayer + diag sidebar to mount (hls.js keeps the network
+  // busy forever retrying the stub 503 playlist, so networkidle never settles)
+  await page.waitForSelector('aside[aria-label="診断情報パネル"]', { timeout: 5000 })
+  await page.waitForTimeout(400)
   // Mask the ticking clock + dynamically-rendered session id so the
   // snapshot is stable.
   await expect(page).toHaveScreenshot('live-loading.png', {
