@@ -9,7 +9,7 @@
 
 ## 全体フロー
 
-1. `devops` が Dockerfile に FFmpeg 同梱、`docker-compose.yml` に tmpfs + HW accel device 定義を追加
+1. `devops` が Dockerfile に FFmpeg 同梱、`compose.yaml` に tmpfs + HW accel device 定義を追加
 2. `designer` がライブプレイヤー画面のモック 2-3 案 → ユーザー選定
 3. `backend` が `/api/streams/*` ルート (Zod schema + delegation)
 4. `streaming` が `ffmpeg.ts` / `transcoder.ts` / `stream-manager.ts`
@@ -31,8 +31,8 @@
 ### devops
 - [ ] Dockerfile の runtime stage に `apk add --no-cache ffmpeg` を追加 — `Dockerfile`
 - [ ] HW accel 用のバリアント (NVIDIA: `nvidia/cuda:*-base` ベース、Intel: `intel-media-driver`、VAAPI: `libva-drm` + `mesa-va-gallium`) を build arg で切替可能に — `Dockerfile`
-- [ ] `docker-compose.yml` の app サービスに `tmpfs: /app/data/hls:size=512M` を追加 — `docker-compose.yml`
-- [ ] HW accel 別の compose overlay を用意 (`docker-compose.nvenc.yml`、`docker-compose.vaapi.yml`) — root dir
+- [ ] `compose.yaml` の app サービスに `tmpfs: /app/data/hls:size=512M` を追加 — `compose.yaml`
+- [ ] HW accel 別の compose overlay を用意 (`compose.nvenc.yaml`、`compose.vaapi.yaml`) — root dir
 - [ ] `.env.example` に `HW_ACCEL_TYPE`、`HLS_DIR`、`HLS_IDLE_KILL_MS` を追記 — `.env.example`
 
 ### backend

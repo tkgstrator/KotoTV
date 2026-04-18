@@ -85,7 +85,7 @@ services:
 telemax/
 ├── package.json                  # Bun workspace root
 ├── tsconfig.base.json
-├── docker-compose.yml
+├── compose.yaml
 ├── Dockerfile
 ├── .env.example
 ├── biome.json                    # 設定済み

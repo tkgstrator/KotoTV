@@ -20,7 +20,7 @@ A KonomiTV-style clone: live TV via HLS with FFmpeg HW-transcoding, EPG, and rec
 | `backend` | Hono routes, services, Prisma schemas, Hono RPC types |
 | `frontend` | Implements the picked design: Vite + React SPA, routes, hooks, UI components |
 | `streaming` | FFmpeg command builder, `Bun.spawn` lifecycle, HLS session manager, Mirakc client |
-| `devops` | Dockerfile, `docker-compose.yml`, HW accel wiring, tmpfs, runtime config |
+| `devops` | Dockerfile, `compose.yaml`, HW accel wiring, tmpfs, runtime config |
 | `qa` | Type check, Biome, commitlint-format commit |
 | `visual-qa` | Playwright-driven mock parity, UX audit (overflow/scroll/wrap/focus), E2E scenarios. Reports regressions — does not fix |
 | `Explore` (built-in) | Broad codebase research when the answer isn't obvious |

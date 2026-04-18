@@ -42,7 +42,7 @@ KonomiTV クローン。Bun + Hono (Prisma + Postgres) / Vite + React + TanStack
 | [`backend`](.claude/agents/backend.md) | `packages/server/**` 以外 transcoder/stream-manager/ffmpeg.ts。Hono / Prisma / Mirakc クライアント |
 | [`frontend`](.claude/agents/frontend.md) | `packages/client/**`。選ばれたモックを React / TanStack Router / Shadcn / hls.js で実装 |
 | [`streaming`](.claude/agents/streaming.md) | FFmpeg コマンド、`Bun.spawn`、HLS セッション管理、ストリーム HTTP |
-| [`devops`](.claude/agents/devops.md) | `Dockerfile` / `docker-compose.yml` / CI / HW accel 配線 |
+| [`devops`](.claude/agents/devops.md) | `Dockerfile` / `compose.yaml` / CI / HW accel 配線 |
 | [`qa`](.claude/agents/qa.md) | 型チェック + biome + commitlint フォーマットでコミット |
 | [`visual-qa`](.claude/agents/visual-qa.md) | Playwright でモック整合 / UX（折返し・スクロール・フォーカス）/ E2E をチェック。修正はしない |
 
@@ -122,7 +122,7 @@ Biome ルール = [`biome.json`](biome.json)。コミット規約 = [`.commitlin
 - `tsconfig.base.json`, `packages/*/tsconfig.json`
 - `packages/client/components.json`, `packages/client/vite.config.ts`
 - `packages/server/prisma/schema.prisma` と `migrations/`
-- `Dockerfile`, `docker-compose.yml`, `config/mirakc/config.yml`
+- `Dockerfile`, `compose.yaml`, `config/mirakc/config.yml`
 - `.env.example`
 - `.github/workflows/ci.yml`
 
