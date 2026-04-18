@@ -1,10 +1,26 @@
 /**
- * TIER-1 health bar (32px). Wordmark left, status chips right.
- * Data is stubbed — wire to useHealth (Phase 6) when the contract exists.
+ * TIER-1 health bar (32px). Wordmark left, subsystem chips right.
+ * Shares the ['health'] query with the Settings status tab — single fetch,
+ * 15s polling, both surfaces stay in sync automatically.
  */
 import { StatusChip } from '@/components/shared/status-chip'
+import { useHealth } from '@/hooks/useHealth'
+
+type SubStatus = 'ok' | 'warn' | 'err'
+
+function worstStatus(statuses: SubStatus[]): SubStatus {
+  if (statuses.includes('err')) return 'err'
+  if (statuses.includes('warn')) return 'warn'
+  return 'ok'
+}
 
 export function HealthBar() {
+  const { data } = useHealth()
+
+  const overall: SubStatus = data
+    ? worstStatus([data.mirakc.status, data.postgres.status, data.ffmpeg.status, data.tuners.status, data.disk.status])
+    : 'ok'
+
   return (
     <div
       role='status'
@@ -21,9 +37,8 @@ export function HealthBar() {
         <span className='font-mono text-[0.625rem] font-bold uppercase tracking-[0.1em] text-muted-foreground'>
           health
         </span>
-        {/* TODO: replace with useHealth() data in Phase 6 */}
-        <StatusChip variant='ok' size='sm'>
-          OK
+        <StatusChip variant={overall} size='sm'>
+          {overall.toUpperCase()}
         </StatusChip>
       </div>
 
