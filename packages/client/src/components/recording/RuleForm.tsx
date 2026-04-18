@@ -183,9 +183,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
         <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-5 p-4'>
           {/* ── 1. ルール名 */}
           <div className='flex flex-col gap-1.5'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              RULE NAME
-            </Label>
+            <Label className='text-[0.6875rem] font-semibold text-muted-foreground'>ルール名</Label>
             <Input
               {...register('name', { required: true })}
               className='h-8 font-mono text-[0.8125rem]'
@@ -197,9 +195,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
           {/* ── 3. キーワード */}
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between gap-2'>
-              <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-                KEYWORD
-              </Label>
+              <Label className='text-[0.6875rem] font-semibold text-muted-foreground'>キーワード</Label>
               <span
                 className={cn(
                   'font-mono tabular-nums text-[0.625rem] text-muted-foreground',
@@ -223,9 +219,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             )}
             <div className='flex flex-wrap gap-2'>
               <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
-                <span className='font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
-                  MODE
-                </span>
+                <span className='text-[0.6875rem] font-semibold text-muted-foreground'>モード</span>
                 <ToggleGroup
                   type='single'
                   value={keywordMode}
@@ -234,22 +228,20 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                 >
                   <ToggleGroupItem
                     value='literal'
-                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
+                    className='h-7 flex-1 px-2.5 text-[0.75rem] font-semibold sm:flex-none'
                   >
-                    LITERAL
+                    完全一致
                   </ToggleGroupItem>
                   <ToggleGroupItem
                     value='regex'
-                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
+                    className='h-7 flex-1 px-2.5 text-[0.75rem] font-semibold sm:flex-none'
                   >
-                    REGEX
+                    正規表現
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
               <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
-                <span className='font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
-                  TARGET
-                </span>
+                <span className='text-[0.6875rem] font-semibold text-muted-foreground'>対象</span>
                 <ToggleGroup
                   type='single'
                   value={keywordTarget}
@@ -258,15 +250,15 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                 >
                   <ToggleGroupItem
                     value='title'
-                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
+                    className='h-7 flex-1 px-2.5 text-[0.75rem] font-semibold sm:flex-none'
                   >
-                    TITLE
+                    タイトル
                   </ToggleGroupItem>
                   <ToggleGroupItem
                     value='title_description'
-                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
+                    className='h-7 flex-1 px-2.5 text-[0.75rem] font-semibold sm:flex-none'
                   >
-                    TITLE+DESC
+                    タイトル+説明
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
@@ -275,9 +267,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 4. 除外キーワード */}
           <div className='flex flex-col gap-1.5'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              EXCLUDE KEYWORD
-            </Label>
+            <Label className='text-[0.6875rem] font-semibold text-muted-foreground'>除外キーワード</Label>
             <Input
               {...register('excludeKeyword')}
               className={cn(
@@ -295,16 +285,14 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
           {/* ── 5. チャンネルピッカー */}
           <div className='flex flex-col gap-2'>
             <div className='flex items-center gap-2'>
-              <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-                CHANNELS
-              </Label>
+              <Label className='text-[0.6875rem] font-semibold text-muted-foreground'>チャンネル</Label>
               {channelIds.length === 0 ? (
                 <StatusChip variant='muted' size='sm'>
-                  ALL
+                  全て
                 </StatusChip>
               ) : (
                 <StatusChip variant='info' size='sm'>
-                  {channelIds.length} CH
+                  {channelIds.length} 局
                 </StatusChip>
               )}
             </div>
@@ -315,9 +303,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 6. ジャンル */}
           <div className='flex flex-col gap-2'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              GENRES
-            </Label>
+            <Label className='text-[0.6875rem] font-semibold text-muted-foreground'>ジャンル</Label>
             <div className='flex flex-wrap gap-1.5'>
               {ARIB_GENRES.map((g) => {
                 const active = genres.includes(g.value)
@@ -354,9 +340,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 7. 曜日 */}
           <div className='flex flex-col gap-2'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              DAY OF WEEK
-            </Label>
+            <Label className='text-[0.6875rem] font-semibold text-muted-foreground'>曜日</Label>
             <div className='flex gap-1.5'>
               {DOW_LABELS.map((label, idx) => {
                 const active = dayOfWeek.includes(idx)
@@ -390,9 +374,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 8. 時刻範囲 */}
           <div className='flex flex-col gap-2'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              TIME RANGE
-            </Label>
+            <Label className='text-[0.6875rem] font-semibold text-muted-foreground'>時刻範囲</Label>
             <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap'>
               {TIME_PRESETS.map((p) => {
                 const isActive = activePreset?.label === p.label
@@ -450,7 +432,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     setValue('timeEndMinutes', null)
                   }}
                 >
-                  CLEAR
+                  クリア
                 </button>
               )}
             </div>
@@ -458,9 +440,9 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 9. 優先度 */}
           <div className='flex flex-col gap-1.5'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              PRIORITY
-              <span className='ml-1.5 normal-case text-[0.5rem]'>(1=低 100=高、デフォルト50)</span>
+            <Label className='text-[0.6875rem] font-semibold text-muted-foreground'>
+              優先度
+              <span className='ml-1.5 text-[0.625rem] font-normal'>(1=低 100=高、デフォルト50)</span>
             </Label>
             <Input
               type='number'
@@ -478,8 +460,8 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
               checked={avoidDuplicates}
               onCheckedChange={(v) => setValue('avoidDuplicates', v)}
             />
-            <Label htmlFor='avoidDuplicates' className='cursor-pointer font-mono text-[0.75rem] text-foreground'>
-              AVOID DUPLICATES
+            <Label htmlFor='avoidDuplicates' className='cursor-pointer text-[0.8125rem] text-foreground'>
+              重複を回避
             </Label>
           </div>
 
@@ -537,9 +519,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
       {/* Preview pane */}
       <div className='flex w-full flex-col lg:min-w-0 lg:overflow-hidden'>
         <div className='border-b border-border px-4 py-2'>
-          <span className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-            PREVIEW (今週のヒット)
-          </span>
+          <span className='text-[0.6875rem] font-semibold text-muted-foreground'>プレビュー (今週のヒット)</span>
         </div>
         <div className='flex-1 overflow-hidden'>
           <RulePreviewPane rule={previewRule} />
