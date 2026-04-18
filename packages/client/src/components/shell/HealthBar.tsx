@@ -20,7 +20,9 @@ export function HealthBar() {
           health
         </span>
         {/* TODO: replace with useHealth() data in Phase 6 */}
-        <StatusChip variant='ok'>OK</StatusChip>
+        <StatusChip variant='ok' size='sm'>
+          OK
+        </StatusChip>
       </div>
 
       <div className='flex-1' />
