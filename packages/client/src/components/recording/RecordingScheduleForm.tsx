@@ -291,7 +291,7 @@ export function RecordingScheduleForm({ open, onOpenChange }: RecordingScheduleF
                   className='font-mono text-[0.75rem]'
                   onClick={() => handleClose(false)}
                 >
-                  CANCEL
+                  キャンセル
                 </Button>
               </div>
             </div>

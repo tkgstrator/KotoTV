@@ -64,7 +64,7 @@ function DeleteScheduleButton({ scheduleId }: { scheduleId: string }) {
           aria-label='予約キャンセル'
         >
           <Trash2 className='size-3' />
-          CANCEL
+          予約取消
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -73,12 +73,13 @@ function DeleteScheduleButton({ scheduleId }: { scheduleId: string }) {
           <AlertDialogDescription>この操作は元に戻せません。</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className='font-mono text-[0.75rem]'>CANCEL</AlertDialogCancel>
+          <AlertDialogCancel className='font-mono text-[0.75rem]'>キャンセル</AlertDialogCancel>
           <AlertDialogAction
-            className='bg-destructive font-mono text-[0.75rem] text-destructive-foreground hover:bg-destructive/90'
+            variant='destructive'
+            className='font-mono text-[0.75rem]'
             onClick={() => mutate(scheduleId)}
           >
-            DELETE
+            削除
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
