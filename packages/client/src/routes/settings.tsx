@@ -88,7 +88,7 @@ function SettingsPage() {
           value={tab}
           onChange={setTab}
           ariaLabel='設定タブ'
-          heightClass='h-10'
+          heightClass='h-page-header'
           className='bg-card'
         />
       </div>
