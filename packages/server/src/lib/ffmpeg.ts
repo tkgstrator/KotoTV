@@ -286,7 +286,11 @@ export type DummyLiveArgsOptions = {
  * so hls.js treats both identically.
  */
 export function buildDummyLiveArgs(opts: DummyLiveArgsOptions): string[] {
-  const { outputDir, quality = 'auto', codec = 'avc', segmentSeconds = 2, listSize = 6, inputFile } = opts
+  // 4s default segment → hls.js polls the playlist at ~2s instead of ~1s,
+  // roughly halving the request rate for live streams that don't need
+  // sub-second latency (which is all of them until a real Mirakc source
+  // arrives and we opt into LL-HLS).
+  const { outputDir, quality = 'auto', codec = 'avc', segmentSeconds = 4, listSize = 6, inputFile } = opts
   const { w, h, videoBitrate } = QUALITY_TO_RES[quality]
 
   // Input: either loop a real clip (public-domain MP4) with -stream_loop -1
