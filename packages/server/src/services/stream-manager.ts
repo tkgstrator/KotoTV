@@ -3,6 +3,7 @@ import type { Subprocess } from 'bun'
 import { env } from '../lib/config'
 import { buildDummyLiveArgs, type LiveCodec, type LiveQuality } from '../lib/ffmpeg'
 import { logger } from '../lib/logger'
+import { getDummyVideoPath } from './dummy-source'
 import { waitForPlaylist } from './transcoder'
 
 const IDLE_KILL_MS = 15_000
@@ -54,7 +55,16 @@ export async function acquireLive(req: LiveSessionRequest): Promise<{ sessionId:
   const outputDir = `${env.HLS_DIR}/${sessionId}`
   await mkdir(outputDir, { recursive: true })
 
-  const args = buildDummyLiveArgs({ outputDir, quality: req.quality, codec: req.codec })
+  // Prefer a cached public-domain sample as the source when available;
+  // fall back to lavfi testsrc when the download hasn't completed yet or
+  // we're offline. Either way the client sees a real HLS playlist.
+  const sampleFile = await getDummyVideoPath()
+  const args = buildDummyLiveArgs({
+    outputDir,
+    quality: req.quality,
+    codec: req.codec,
+    ...(sampleFile ? { inputFile: sampleFile } : {})
+  })
   const proc = Bun.spawn(['ffmpeg', ...args], { stdout: 'pipe', stderr: 'pipe' })
 
   // Drain stderr so the pipe doesn't block. Log at debug so we can tail issues

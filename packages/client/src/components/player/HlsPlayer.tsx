@@ -41,10 +41,15 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
 
       let retryCount = 0
 
-      // iOS Safari: native HLS — skip hls.js entirely
+      // iOS Safari: native HLS — skip hls.js entirely.
+      // Mute before autoplay — modern browsers block playback with audio
+      // unless the user has interacted with the document first.
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = playlistUrl
-        if (autoPlay) video.play().catch(() => {})
+        if (autoPlay) {
+          video.muted = true
+          video.play().catch(() => {})
+        }
         onReadyRef.current?.()
         return
       }
@@ -87,7 +92,10 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         onReadyRef.current?.()
-        if (autoPlay) video.play().catch(() => {})
+        if (autoPlay) {
+          video.muted = true
+          video.play().catch(() => {})
+        }
       })
 
       hls.loadSource(playlistUrl)

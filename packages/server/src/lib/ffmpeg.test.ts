@@ -462,4 +462,21 @@ describe('buildDummyLiveArgs', () => {
     const args = buildDummyLiveArgs({ outputDir: '/x', segmentSeconds: 2 })
     expect(flagValue(args, '-g')).toBe('60') // 2s * 30fps
   })
+
+  test('inputFile path uses -stream_loop for infinite replay', () => {
+    const args = buildDummyLiveArgs({ outputDir: '/x', inputFile: '/samples/bbb.mp4' })
+    expect(flagValue(args, '-stream_loop')).toBe('-1')
+    expect(flagValue(args, '-i')).toBe('/samples/bbb.mp4')
+    // lavfi generators are not used on this path.
+    expect(args.some((a) => a.startsWith('testsrc2='))).toBe(false)
+    expect(args.some((a) => a.startsWith('sine='))).toBe(false)
+  })
+
+  test('inputFile path scales to the requested quality preset', () => {
+    const args = buildDummyLiveArgs({ outputDir: '/x', inputFile: '/samples/bbb.mp4', quality: 'low' })
+    const vf = flagValue(args, '-vf')
+    expect(vf).toContain('scale=854:480')
+    // letterbox pad so the aspect-preserved scale still fills the preset box.
+    expect(vf).toContain('pad=854:480')
+  })
 })
