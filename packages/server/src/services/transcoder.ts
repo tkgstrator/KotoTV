@@ -89,12 +89,12 @@ export function startTranscoder(opts: StartTranscoderOpts): TranscoderHandle {
     while (true) {
       const m = STATS_RE.exec(line)
       if (m === null) break
-      if (Number.parseFloat(m[2]!) > 0) last = m
+      if (Number.parseFloat(m[2] ?? '0') > 0) last = m
     }
     if (last) {
       latestStats = {
-        frame: Number.parseInt(last[1]!, 10),
-        fps: Math.round(Number.parseFloat(last[2]!)),
+        frame: Number.parseInt(last[1] ?? '0', 10),
+        fps: Math.round(Number.parseFloat(last[2] ?? '0')),
         bitrateKbps: last[3] !== undefined ? Math.round(Number.parseFloat(last[3])) : latestStats.bitrateKbps,
         droppedFrames: last[4] !== undefined ? Number.parseInt(last[4], 10) : latestStats.droppedFrames,
         updatedAt: Date.now()

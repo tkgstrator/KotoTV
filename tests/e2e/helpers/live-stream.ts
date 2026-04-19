@@ -99,7 +99,7 @@ export async function releaseSession(request: APIRequestContext, sessionId: stri
  * Returns null if the session does not exist (404) or times out.
  */
 export async function fetchStreamInfoOnce(
-  request: APIRequestContext,
+  _request: APIRequestContext,
   sessionId: string,
   timeoutMs = 4000
 ): Promise<StreamInfo | null> {
