@@ -4,10 +4,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { type Chapter, SeekbarChapters } from '@/components/player/SeekbarChapters'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 const PLAYBACK_RATES = [0.5, 1.0, 1.25, 1.5, 2.0] as const
 const QUALITY_OPTIONS = ['auto', '高', '中', '低'] as const
+
+// Compact Shadcn-Select styling used by the three pickers in the control bar.
+// Matches the old native-select dimensions (tiny font-mono pill) so the bar
+// layout doesn't shift, while inheriting Shadcn's popover menu look.
+const PICKER_TRIGGER_CLS =
+  'h-7 px-2 py-0 min-w-0 gap-1 rounded border border-border bg-transparent font-mono text-[0.6875rem] text-foreground shadow-none [&_svg:not([class*=size-])]:size-3'
+const PICKER_CONTENT_CLS = 'font-mono text-[0.75rem] min-w-[4.5rem]'
+const PICKER_ITEM_CLS = 'font-mono text-[0.75rem] py-1 pr-6 pl-2'
 
 const QUALITY_LABEL_TO_VALUE: Record<string, 'low' | 'mid' | 'high'> = {
   auto: 'mid',
@@ -159,10 +168,10 @@ export function PlayerControls({
     else if (e.key === 'ArrowLeft') skip(-5)
   }
 
-  const handleRateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleRateChange = (value: string) => {
     const v = videoRef.current
     if (!v || isLive) return
-    const rate = Number(e.target.value)
+    const rate = Number(value)
     v.playbackRate = rate
     setPlaybackRate(rate)
   }
@@ -286,60 +295,58 @@ export function PlayerControls({
         <div className='flex-1' />
 
         {/* Playback rate — live: disabled */}
-        <select
-          aria-label='再生速度'
-          aria-disabled={isLive ? 'true' : undefined}
-          value={playbackRate}
-          onChange={handleRateChange}
-          disabled={isLive}
-          className={cn(
-            'rounded border border-border bg-transparent font-mono text-[0.6875rem] text-foreground px-1.5 py-0.5 cursor-pointer',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            disabledLiveClass
-          )}
-        >
-          {PLAYBACK_RATES.map((r) => (
-            <option key={r} value={r}>
-              {r === 1.0 ? '1.0×' : `${r}×`}
-            </option>
-          ))}
-        </select>
+        <Select value={String(playbackRate)} onValueChange={handleRateChange} disabled={isLive}>
+          <SelectTrigger
+            size='sm'
+            aria-label='再生速度'
+            className={cn(PICKER_TRIGGER_CLS, isLive && 'pointer-events-none opacity-50')}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className={PICKER_CONTENT_CLS}>
+            {PLAYBACK_RATES.map((r) => (
+              <SelectItem key={r} value={String(r)} className={PICKER_ITEM_CLS}>
+                {r === 1.0 ? '1.0×' : `${r}×`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* Quality picker — wires to onQualityChange when provided */}
-        <select
-          aria-label='画質'
+        <Select
           value={qualityLabel}
-          onChange={(e) => {
-            const label = e.target.value
+          onValueChange={(label) => {
             setQualityLabel(label)
             onQualityChange?.(QUALITY_LABEL_TO_VALUE[label] ?? 'mid')
           }}
-          className={cn(
-            'rounded border border-border bg-transparent font-mono text-[0.6875rem] text-foreground px-1.5 py-0.5 cursor-pointer',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-          )}
         >
-          {QUALITY_OPTIONS.map((q) => (
-            <option key={q} value={q}>
-              {q}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger size='sm' aria-label='画質' className={PICKER_TRIGGER_CLS}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className={PICKER_CONTENT_CLS}>
+            {QUALITY_OPTIONS.map((q) => (
+              <SelectItem key={q} value={q} className={PICKER_ITEM_CLS}>
+                {q}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* Codec picker — only rendered when parent opts in via onCodecChange */}
         {onCodecChange && (
-          <select
-            aria-label='コーデック'
-            value={codec ?? 'avc'}
-            onChange={(e) => onCodecChange(e.target.value as 'avc' | 'hevc')}
-            className={cn(
-              'rounded border border-border bg-transparent font-mono text-[0.6875rem] text-foreground px-1.5 py-0.5 cursor-pointer',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-            )}
-          >
-            <option value='avc'>AVC</option>
-            <option value='hevc'>HEVC</option>
-          </select>
+          <Select value={codec ?? 'avc'} onValueChange={(v) => onCodecChange(v as 'avc' | 'hevc')}>
+            <SelectTrigger size='sm' aria-label='コーデック' className={PICKER_TRIGGER_CLS}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className={PICKER_CONTENT_CLS}>
+              <SelectItem value='avc' className={PICKER_ITEM_CLS}>
+                AVC
+              </SelectItem>
+              <SelectItem value='hevc' className={PICKER_ITEM_CLS}>
+                HEVC
+              </SelectItem>
+            </SelectContent>
+          </Select>
         )}
 
         <div aria-hidden='true' className='mx-1 h-5 w-px bg-border shrink-0' />
