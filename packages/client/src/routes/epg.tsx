@@ -162,7 +162,7 @@ function EpgPage() {
 
 function EpgTypeBar({ type, onChange }: { type: FilterValue; onChange: (v: FilterValue) => void }) {
   return (
-    <div className='sticky top-page-header z-20 flex h-page-header shrink-0 border-b border-border bg-background'>
+    <div className='sticky top-page-header z-20'>
       <TypeFilter value={type} onChange={onChange} />
     </div>
   )
