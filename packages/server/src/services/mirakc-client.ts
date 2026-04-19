@@ -152,6 +152,57 @@ export const mirakcClient = {
     return filtered
   },
 
+  /**
+   * Open a live MPEG-TS stream for a service from Mirakc.
+   *
+   * The returned ReadableStream must be consumed by the transcoder's stdin pump.
+   * Call `cancel()` to abort both the stream reader and the underlying fetch.
+   *
+   * A 30-second connect timeout is applied automatically; the caller may
+   * supply an additional AbortSignal (e.g. session-level abort) which will be
+   * combined via AbortSignal.any().
+   */
+  async openLiveStream(
+    channelId: string,
+    signal?: AbortSignal
+  ): Promise<{ stream: ReadableStream<Uint8Array>; cancel: () => Promise<void> }> {
+    const timeoutSignal = AbortSignal.timeout(30_000)
+    const combinedSignal = signal ? AbortSignal.any([timeoutSignal, signal]) : timeoutSignal
+
+    const url = `${env.MIRAKC_URL}/api/services/${channelId}/stream?decode=1`
+    const res = await fetch(url, { signal: combinedSignal })
+
+    if (!res.ok) {
+      throw new MirakcError(res.status, `openLiveStream ${res.status} for channel ${channelId}`)
+    }
+
+    if (!res.body) {
+      throw new MirakcError(200, `openLiveStream: empty body for channel ${channelId}`)
+    }
+
+    const reader = res.body.getReader()
+
+    const stream = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        const { value, done } = await reader.read()
+        if (done) {
+          controller.close()
+        } else {
+          controller.enqueue(value)
+        }
+      },
+      cancel() {
+        reader.cancel()
+      }
+    })
+
+    const cancel = async (): Promise<void> => {
+      await reader.cancel()
+    }
+
+    return { stream, cancel }
+  },
+
   getLogoUrl(serviceId: number): string {
     return `${env.MIRAKC_URL}/api/services/${serviceId}/logo`
   },
