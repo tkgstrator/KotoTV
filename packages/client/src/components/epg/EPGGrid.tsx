@@ -205,7 +205,7 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
                     const left = dateToOffset(new Date(p.startAt), gridStart)
                     const width = programWidth(p, gridStart, gridEnd)
                     return (
-                      <div key={p.id} className='absolute top-[4px] bottom-[4px] px-[2px]' style={{ left, width }}>
+                      <div key={p.id} className='absolute inset-y-0' style={{ left, width }}>
                         <ProgramCell program={p} className='h-full' />
                       </div>
                     )
