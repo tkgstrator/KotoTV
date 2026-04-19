@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import { ChevronLeft } from 'lucide-react'
-import { useRef } from 'react'
+import type * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { HlsPlayer } from '@/components/player/HlsPlayer'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { StatusChip } from '@/components/shared/status-chip'
@@ -10,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import { useClock } from '@/hooks/useClock'
 import { useStream } from '@/hooks/useStream'
+import { useStreamInfo } from '@/hooks/useStreamInfo'
 import { formatTimeRange, getProgress } from '@/lib/program'
 import { cn } from '@/lib/utils'
 
@@ -106,14 +108,46 @@ function NowStrip({ channelId }: { channelId: string }) {
   )
 }
 
-function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | undefined; streamStatus: string }) {
+function DiagnosticSidebar({
+  sessionId,
+  streamStatus,
+  videoRef
+}: {
+  sessionId: string | undefined
+  streamStatus: string
+  videoRef: React.RefObject<HTMLVideoElement | null>
+}) {
   const nowDate = useClock()
   const now = format(nowDate, 'HH:mm:ss')
   const shortId = sessionId ? `${sessionId.slice(0, 8)}…` : '—'
+  const info = useStreamInfo(sessionId)
+
+  const [bufferSec, setBufferSec] = useState<number | null>(null)
+
+  // Client-side buffer measurement is more accurate than the server-estimated value.
+  useEffect(() => {
+    const tick = () => {
+      const v = videoRef.current
+      if (v && v.buffered.length > 0) {
+        setBufferSec(v.buffered.end(v.buffered.length - 1) - v.currentTime)
+      }
+    }
+    const id = setInterval(tick, 500)
+    return () => clearInterval(id)
+  }, [videoRef])
 
   const statusVariant = streamStatus === 'ready' ? 'ok' : streamStatus === 'error' ? 'err' : 'info'
   const statusLabel =
     streamStatus === 'ready' ? 'OK' : streamStatus === 'starting' ? 'INIT' : streamStatus === 'error' ? 'ERR' : 'IDLE'
+
+  const codecDisplay = info ? info.codec.toUpperCase() : '—'
+  const resolutionDisplay = info?.resolution ?? '—'
+  const bitrateDisplay = info ? `${(info.bitrate / 1000).toFixed(1)} Mbps` : '— Mbps'
+  const fpsDisplay = info ? info.fps.toFixed(0) : '—'
+  const hwAccelDisplay = info?.hwAccel ?? '—'
+  const viewersDisplay = info?.viewerCount ?? 1
+  const droppedDisplay = info?.droppedFrames ?? 0
+  const bufferDisplay = bufferSec !== null ? `${bufferSec.toFixed(1)}s` : '—'
 
   return (
     <aside
@@ -136,16 +170,19 @@ function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | un
           </StatusChip>
         </StatRow>
         <StatRow label='codec'>
-          <span className={STAT_VAL_CLS}>HEVC / 1080p60</span>
+          <span className={STAT_VAL_CLS}>{codecDisplay}</span>
+        </StatRow>
+        <StatRow label='resolution'>
+          <span className={STAT_VAL_CLS}>{resolutionDisplay}</span>
         </StatRow>
         <StatRow label='hw_accel'>
-          <span className={STAT_VAL_CLS}>FFmpeg → stub</span>
+          <span className={STAT_VAL_CLS}>{hwAccelDisplay}</span>
         </StatRow>
         <StatRow label='bitrate'>
-          <span className={STAT_VAL_CLS}>— Mbps</span>
+          <span className={STAT_VAL_CLS}>{bitrateDisplay}</span>
         </StatRow>
-        <StatRow label='latency'>
-          <span className={STAT_VAL_CLS}>—</span>
+        <StatRow label='fps'>
+          <span className={STAT_VAL_CLS}>{fpsDisplay}</span>
         </StatRow>
       </div>
 
@@ -156,10 +193,10 @@ function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | un
           <span className={STAT_VAL_CLS}>—</span>
         </StatRow>
         <StatRow label='buffer'>
-          <span className={STAT_VAL_CLS}>—</span>
+          <span className={STAT_VAL_CLS}>{bufferDisplay}</span>
         </StatRow>
         <StatRow label='dropped_f'>
-          <span className={STAT_VAL_CLS}>0</span>
+          <span className={STAT_VAL_CLS}>{droppedDisplay}</span>
         </StatRow>
       </div>
 
@@ -167,7 +204,7 @@ function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | un
       <div className='border-b border-border px-3 py-2.5'>
         <SidebarSectionLabel>SESSION</SidebarSectionLabel>
         <StatRow label='viewers'>
-          <span className={STAT_VAL_CLS}>1</span>
+          <span className={STAT_VAL_CLS}>{viewersDisplay}</span>
         </StatRow>
         <StatRow label='session_id'>
           <span className={cn(STAT_VAL_CLS, 'opacity-70')}>{shortId}</span>
@@ -242,7 +279,9 @@ function LogLine({ ts, level, children }: { ts: string; level: 'ok' | 'err' | 'i
 
 function LivePage() {
   const { channelId } = Route.useParams()
-  const stream = useStream({ type: 'live', channelId })
+  const [codec, setCodec] = useState<'avc' | 'hevc'>('avc')
+  const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('mid')
+  const stream = useStream({ type: 'live', channelId, codec, quality })
   const videoRef = useRef<HTMLVideoElement>(null)
   const clock = useClock()
 
@@ -365,6 +404,7 @@ function LivePage() {
               aria-label='ライブ映像プレイヤー'
             >
               <HlsPlayer
+                key={stream.sessionId}
                 ref={videoRef}
                 playlistUrl={stream.playlistUrl ?? ''}
                 ariaLabel={`${channel?.name ?? channelId} ライブ映像`}
@@ -375,11 +415,18 @@ function LivePage() {
           )}
 
           {/* Controls bar — always present below video */}
-          <PlayerControls isLive videoRef={videoRef} />
+          <PlayerControls
+            isLive
+            videoRef={videoRef}
+            codec={codec}
+            onCodecChange={setCodec}
+            quality={quality}
+            onQualityChange={setQuality}
+          />
         </div>
 
         {/* Diagnostic sidebar */}
-        <DiagnosticSidebar sessionId={stream.sessionId} streamStatus={stream.status} />
+        <DiagnosticSidebar sessionId={stream.sessionId} streamStatus={stream.status} videoRef={videoRef} />
       </div>
     </div>
   )

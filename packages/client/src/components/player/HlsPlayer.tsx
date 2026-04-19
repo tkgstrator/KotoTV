@@ -8,6 +8,7 @@ export interface HlsPlayerProps {
   onReady?: () => void
   className?: string
   autoPlay?: boolean
+  muted?: boolean
   ariaLabel?: string
   lowLatencyMode?: boolean
 }
@@ -23,7 +24,10 @@ const MAX_RETRIES = 3
  * call play() / pause() and read/write muted without prop-drilling.
  */
 export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
-  ({ playlistUrl, onError, onReady, className, autoPlay = true, ariaLabel, lowLatencyMode = true }, ref) => {
+  (
+    { playlistUrl, onError, onReady, className, autoPlay = true, muted = true, ariaLabel, lowLatencyMode = true },
+    ref
+  ) => {
     const internalRef = useRef<HTMLVideoElement>(null)
     const videoRef = (ref as React.RefObject<HTMLVideoElement>) ?? internalRef
 
@@ -96,6 +100,7 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
         className={cn('h-full w-full object-contain', className)}
         controls={false}
         playsInline
+        muted={muted}
         tabIndex={0}
         aria-label={ariaLabel ?? 'ライブ映像'}
       >
