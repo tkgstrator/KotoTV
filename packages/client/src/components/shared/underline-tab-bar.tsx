@@ -12,7 +12,7 @@ interface UnderlineTabBarProps<T extends string> {
   onChange: (v: T) => void
   /** Screen-reader label for the tablist (the page header already carries the title). */
   ariaLabel: string
-  /** Tailwind height for the bar. Default `h-page-header` (48px). */
+  /** Tailwind height for the bar. Default `h-10` (40px). */
   heightClass?: string
   className?: string
 }
@@ -31,7 +31,7 @@ export function UnderlineTabBar<T extends string>({
   value,
   onChange,
   ariaLabel,
-  heightClass = 'h-page-header',
+  heightClass = 'h-10',
   className
 }: UnderlineTabBarProps<T>) {
   const listRef = useRef<HTMLDivElement>(null)
