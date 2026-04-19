@@ -71,8 +71,22 @@ export function buildFfmpegArgs(opts: FfmpegArgsOptions): string[] {
   // Map first video and audio stream; ignore any additional PIDs in the TS
   const mapping = ['-map', '0:v:0', '-map', '0:a:0']
 
-  // Resolution and frame-rate scaling — common to all codecs
-  const scaleFlags = ['-s', `${preset.width}x${preset.height}`, '-r', String(preset.fps)]
+  // Resolution, frame-rate scaling, and keyframe interval — common to all codecs.
+  // GOP = fps means a keyframe every second, so HLS segments land within a
+  // segmentSeconds-sized window (otherwise libx264 defaults to GOP 250 ≈ 8s
+  // and hls.js has to buffer whole 8-second segments before playback starts).
+  const scaleFlags = [
+    '-s',
+    `${preset.width}x${preset.height}`,
+    '-r',
+    String(preset.fps),
+    '-g',
+    String(preset.fps),
+    '-keyint_min',
+    String(preset.fps),
+    '-sc_threshold',
+    '0'
+  ]
 
   const videoFlags = buildVideoFlags(hwAccel, codec, videoBitrate)
 
