@@ -1,9 +1,10 @@
 /**
- * AppShell wraps every route with the two-tier chrome (health bar + nav bar)
- * and reserves vertical space so child content is never obscured. The chrome
- * is IDENTICAL on every route — the live player and recording player do not
- * get to shrink it. That keeps layout gaps out of navigation transitions and
- * keeps diagnostic info visible while watching.
+ * AppShell wraps every route with chrome (single-tier nav bar on desktop,
+ * top health bar + bottom tabs on mobile) and reserves vertical space so
+ * child content is never obscured. The chrome is IDENTICAL on every route —
+ * the live player and recording player do not get to shrink it. That keeps
+ * layout gaps out of navigation transitions and keeps diagnostic info
+ * visible while watching.
  */
 import { HealthBar } from './HealthBar'
 import { NavBar } from './NavBar'
