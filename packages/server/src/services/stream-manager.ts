@@ -1,12 +1,24 @@
 import { mkdir, rm } from 'node:fs/promises'
-import type { Subprocess } from 'bun'
 import { env } from '../lib/config'
-import { buildDummyLiveArgs, type LiveCodec, type LiveQuality } from '../lib/ffmpeg'
+import { buildDummyLiveArgs, buildFfmpegArgs, type HwAccel, type LiveCodec, type LiveQuality } from '../lib/ffmpeg'
 import { logger } from '../lib/logger'
 import { getDummyVideoPath } from './dummy-source'
-import { waitForPlaylist } from './transcoder'
+import { mirakcClient } from './mirakc-client'
+import { startTranscoder, type TranscoderHandle, waitForPlaylist } from './transcoder'
 
 const IDLE_KILL_MS = 15_000
+const HW_ACCEL: HwAccel = (process.env.HW_ACCEL_TYPE as HwAccel) ?? 'none'
+
+// Resolve quality preset → target video bitrate in kbps. The dummy lavfi
+// path has its own internal mapping (quality → both resolution + bitrate),
+// but the Mirakc path decodes an upstream TS that's already at broadcast
+// resolution — we only control the re-encode bitrate.
+const QUALITY_BITRATE_KBPS: Record<LiveQuality, number> = {
+  auto: 2500,
+  high: 4500,
+  medium: 2500,
+  low: 900
+}
 
 export interface LiveSessionRequest {
   channelId: string
@@ -14,14 +26,20 @@ export interface LiveSessionRequest {
   codec: LiveCodec
 }
 
-interface LiveSession {
+/** Union type — real sessions wrap either a plain ffmpeg subprocess (dummy
+ *  path) or a transcoder handle (Mirakc pipe path). The shape divergence
+ *  means stop/cleanup has to branch, but sharing the Map keeps the rest of
+ *  the session bookkeeping (viewerCount, idleTimer) identical. */
+interface LiveSessionBase {
   sessionId: string
   key: string
   outputDir: string
-  proc: Subprocess
   viewerCount: number
   idleTimer: ReturnType<typeof setTimeout> | null
 }
+type LiveSession =
+  | (LiveSessionBase & { kind: 'dummy'; proc: Bun.Subprocess })
+  | (LiveSessionBase & { kind: 'mirakc'; handle: TranscoderHandle })
 
 type AcquireResult = { sessionId: string; playlistUrl: string }
 
@@ -36,14 +54,21 @@ function sessionKey(req: LiveSessionRequest): string {
   return `live:${req.channelId}:${req.quality}:${req.codec}`
 }
 
+function playlistUrl(sessionId: string): string {
+  return `/api/streams/${sessionId}/playlist.m3u8`
+}
+
 /**
  * Get or create a live HLS session. Subsequent callers with the same
  * (channelId, quality, codec) share the existing session and bump
  * viewerCount so one FFmpeg process serves N clients.
  *
- * For now the source is a lavfi dummy so the whole pipe is exercisable
- * without Mirakc. Swap the spawn source to a real Mirakc stream once
- * that integration lands — the session bookkeeping stays the same.
+ * Source selection:
+ * - Try `mirakcClient.openLiveStream(channelId)` first. If that returns a
+ *   stream, spawn a Mirakc-piped FFmpeg via `startTranscoder`.
+ * - Fall back to the dummy lavfi / Elephants Dream path when Mirakc is
+ *   offline (DNS fail, 503, etc.). Same playlist URL either way — the
+ *   client can't tell them apart.
  */
 export async function acquireLive(req: LiveSessionRequest): Promise<AcquireResult> {
   const key = sessionKey(req)
@@ -55,17 +80,14 @@ export async function acquireLive(req: LiveSessionRequest): Promise<AcquireResul
       existing.idleTimer = null
     }
     existing.viewerCount += 1
-    return { sessionId: existing.sessionId, playlistUrl: `/api/streams/${existing.sessionId}/playlist.m3u8` }
+    return { sessionId: existing.sessionId, playlistUrl: playlistUrl(existing.sessionId) }
   }
 
   const pending = inFlight.get(key)
   if (pending) {
-    // Attach to a spawn that's mid-flight. Bump viewerCount after it resolves.
     const result = await pending
     const session = sessions.get(key)
-    if (session) {
-      session.viewerCount += 1
-    }
+    if (session) session.viewerCount += 1
     return result
   }
 
@@ -74,9 +96,69 @@ export async function acquireLive(req: LiveSessionRequest): Promise<AcquireResul
     const outputDir = `${env.HLS_DIR}/${sessionId}`
     await mkdir(outputDir, { recursive: true })
 
-    // Prefer a cached public-domain sample as the source when available;
-    // fall back to lavfi testsrc when the download hasn't completed yet or
-    // we're offline. Either way the client sees a real HLS playlist.
+    // Try Mirakc first. openLiveStream resolves once the headers come back
+    // so a quick failure (404, network error) returns here fast — no need
+    // for an explicit timeout wrapper.
+    const mirakcAbort = new AbortController()
+    let mirakcSource: ReadableStream<Uint8Array> | null = null
+    try {
+      mirakcSource = await mirakcClient.openLiveStream(req.channelId, mirakcAbort.signal)
+    } catch (err) {
+      logger.info(
+        { module: 'stream-manager', sessionId, key, err: err instanceof Error ? err.message : String(err) },
+        'Mirakc openLiveStream failed, falling back to dummy source'
+      )
+    }
+
+    if (mirakcSource) {
+      // Mirakc pipe path — push the TS into buildFfmpegArgs's pipe:0 input.
+      try {
+        const handle = await startTranscoder({
+          sessionId,
+          source: mirakcSource,
+          abortController: mirakcAbort,
+          hwAccel: HW_ACCEL,
+          videoBitrate: QUALITY_BITRATE_KBPS[req.quality],
+          segmentSeconds: 4,
+          listSize: 6
+        })
+
+        const session: LiveSession = {
+          kind: 'mirakc',
+          sessionId,
+          key,
+          outputDir: handle.outputDir,
+          handle,
+          viewerCount: 1,
+          idleTimer: null
+        }
+        sessions.set(key, session)
+        logger.info(
+          { module: 'stream-manager', sessionId, key, source: 'mirakc', quality: req.quality, codec: req.codec },
+          'session started'
+        )
+
+        handle.exited.then(() => {
+          if (sessions.get(key) === session) {
+            sessions.delete(key)
+            logger.info({ module: 'stream-manager', sessionId, key }, 'mirakc transcoder exited, session removed')
+          }
+        })
+
+        return { sessionId, playlistUrl: playlistUrl(sessionId) }
+      } catch (err) {
+        // Mirakc gave us a stream but the transcoder couldn't turn it into
+        // HLS. Abort upstream + fall through to the dummy path so the user
+        // still gets video (likely a format the re-encoder rejects).
+        logger.warn(
+          { module: 'stream-manager', sessionId, key, err: err instanceof Error ? err.message : String(err) },
+          'Mirakc transcoder startup failed, falling back to dummy source'
+        )
+        mirakcAbort.abort()
+      }
+    }
+
+    // Dummy path — lavfi testsrc + sine or a looped Elephants Dream clip.
     const sampleFile = await getDummyVideoPath()
     const args = buildDummyLiveArgs({
       outputDir,
@@ -84,6 +166,9 @@ export async function acquireLive(req: LiveSessionRequest): Promise<AcquireResul
       codec: req.codec,
       ...(sampleFile ? { inputFile: sampleFile } : {})
     })
+    // buildFfmpegArgs (Mirakc path) is exported so it stays tree-shakable even
+    // when the dummy path is the only one that runs in dev.
+    void buildFfmpegArgs // keep reachable for callers wiring future recording paths
     const proc = Bun.spawn(['ffmpeg', ...args], { stdout: 'pipe', stderr: 'pipe' })
 
     // Drain stderr so the pipe doesn't block. Log at debug so we can tail issues
@@ -108,9 +193,20 @@ export async function acquireLive(req: LiveSessionRequest): Promise<AcquireResul
       throw err
     }
 
-    const session: LiveSession = { sessionId, key, outputDir, proc, viewerCount: 1, idleTimer: null }
+    const session: LiveSession = {
+      kind: 'dummy',
+      sessionId,
+      key,
+      outputDir,
+      proc,
+      viewerCount: 1,
+      idleTimer: null
+    }
     sessions.set(key, session)
-    logger.info({ module: 'stream-manager', sessionId, key, quality: req.quality, codec: req.codec }, 'session started')
+    logger.info(
+      { module: 'stream-manager', sessionId, key, source: 'dummy', quality: req.quality, codec: req.codec },
+      'session started'
+    )
 
     // Self-heal if FFmpeg dies — drop the registry entry so the next
     // acquire rebuilds.
@@ -122,7 +218,7 @@ export async function acquireLive(req: LiveSessionRequest): Promise<AcquireResul
       }
     })
 
-    return { sessionId, playlistUrl: `/api/streams/${sessionId}/playlist.m3u8` }
+    return { sessionId, playlistUrl: playlistUrl(sessionId) }
   })()
 
   inFlight.set(key, spawn)
@@ -130,6 +226,21 @@ export async function acquireLive(req: LiveSessionRequest): Promise<AcquireResul
     return await spawn
   } finally {
     inFlight.delete(key)
+  }
+}
+
+async function stopSession(session: LiveSession): Promise<void> {
+  if (session.idleTimer) clearTimeout(session.idleTimer)
+  if (session.kind === 'mirakc') {
+    await session.handle.abort().catch(() => {})
+  } else {
+    try {
+      session.proc.kill()
+      await session.proc.exited.catch(() => 0)
+    } catch {
+      // already dead
+    }
+    await rm(session.outputDir, { recursive: true, force: true }).catch(() => {})
   }
 }
 
@@ -146,13 +257,7 @@ export function release(sessionId: string): void {
   session.idleTimer = setTimeout(async () => {
     if (session.viewerCount > 0) return
     sessions.delete(session.key)
-    try {
-      session.proc.kill()
-      await session.proc.exited.catch(() => 0)
-    } catch {
-      // already exited
-    }
-    await rm(session.outputDir, { recursive: true, force: true }).catch(() => {})
+    await stopSession(session)
     logger.info({ module: 'stream-manager', sessionId: session.sessionId, key: session.key }, 'idle session stopped')
   }, IDLE_KILL_MS)
 }
@@ -162,18 +267,7 @@ export async function stopAllSessions(): Promise<void> {
   const current = [...sessions.values()]
   sessions.clear()
   inFlight.clear()
-  await Promise.all(
-    current.map(async (session) => {
-      if (session.idleTimer) clearTimeout(session.idleTimer)
-      try {
-        session.proc.kill()
-        await session.proc.exited.catch(() => 0)
-      } catch {
-        // already dead
-      }
-      await rm(session.outputDir, { recursive: true, force: true }).catch(() => {})
-    })
-  )
+  await Promise.all(current.map((s) => stopSession(s)))
 }
 
 /** Resolve a sessionId → filesystem outputDir for serving playlist/segments. */
