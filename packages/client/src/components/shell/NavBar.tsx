@@ -58,7 +58,7 @@ export function NavBar() {
         <Link
           to={SETTINGS_ITEM.to}
           className={cn(
-            'flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 border-l border-transparent border-l-border bg-transparent px-3.5 text-[0.8125rem] font-semibold text-muted-foreground whitespace-nowrap transition-colors',
+            'flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 text-[0.8125rem] font-semibold text-muted-foreground whitespace-nowrap transition-colors',
             'hover:bg-muted/20 hover:text-foreground',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm',
             isActive(SETTINGS_ITEM.to) && 'border-b-primary text-foreground'
