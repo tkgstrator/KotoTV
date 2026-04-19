@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '@/api/client'
+import { usePlaybackPrefs } from './usePlaybackPrefs'
 
 export type StreamStatus = 'idle' | 'starting' | 'ready' | 'error'
 
@@ -10,7 +11,17 @@ export interface StreamState {
   error?: Error
 }
 
+export type LiveCodecChoice = 'avc' | 'hevc' | 'vp9'
+export type LiveQualityChoice = 'auto' | 'high' | 'medium' | 'low'
+
 export type StreamSource = { type: 'live'; channelId: string } | { type: 'recording'; recordingId: string }
+
+function resolveLiveCodec(pref: 'auto' | 'avc' | 'hevc' | 'vp9'): LiveCodecChoice {
+  // `auto` → pick a sensible default the current backend always supports.
+  // In the future this should inspect navigator / MediaSource capabilities,
+  // but picking AVC is a safe starting point.
+  return pref === 'auto' ? 'avc' : pref
+}
 
 /**
  * Manages the HLS stream session lifecycle for a given source (live channel or recording).
@@ -25,10 +36,16 @@ export type StreamSource = { type: 'live'; channelId: string } | { type: 'record
 export function useStream(source: StreamSource): StreamState {
   const [state, setState] = useState<StreamState>({ status: 'idle' })
   const sessionIdRef = useRef<string | null>(null)
+  const { prefs } = usePlaybackPrefs()
+  const liveCodec = resolveLiveCodec(prefs.codec)
+  const liveQuality: LiveQualityChoice = prefs.quality
 
   // Depend on primitive identity, not object identity — callers inline
   // `{ type: 'live', channelId }` so `source` changes reference every render.
-  const sourceKey = source.type === 'live' ? `live:${source.channelId}` : `recording:${source.recordingId}`
+  // Include codec + quality so a pref change restarts the live session with
+  // the new settings.
+  const sourceKey =
+    source.type === 'live' ? `live:${source.channelId}:${liveQuality}:${liveCodec}` : `recording:${source.recordingId}`
 
   useEffect(() => {
     let cancelled = false
@@ -38,7 +55,10 @@ export function useStream(source: StreamSource): StreamState {
       try {
         let res: Response
         if (source.type === 'live') {
-          res = await api.api.streams.live[':channelId'].$post({ param: { channelId: source.channelId } })
+          res = await api.api.streams.live[':channelId'].$post({
+            param: { channelId: source.channelId },
+            query: { quality: liveQuality, codec: liveCodec }
+          })
         } else {
           res = await api.api.streams.recording[':recordingId'].$post({ param: { recordingId: source.recordingId } })
         }
