@@ -1,8 +1,9 @@
 import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
+import { streamSSE } from 'hono/streaming'
 import { z } from 'zod'
 import { logger } from '../lib/logger'
-import { type StartStreamResponse, StartStreamResponseSchema } from '../schemas/Stream.dto'
+import { StartStreamRequestSchema, type StartStreamResponse, StartStreamResponseSchema } from '../schemas/Stream.dto'
 import { streamManager } from '../services/stream-manager'
 
 const SegmentParamSchema = z.object({
@@ -25,29 +26,35 @@ const StartRecordingStreamParamSchema = z.object({
 const routeLogger = logger.child({ module: 'streams-route' })
 
 const streamsRoute = new Hono()
-  .post('/live/:channelId', zValidator('param', StartStreamParamSchema), async (c) => {
-    const { channelId } = c.req.valid('param')
+  .post(
+    '/live/:channelId',
+    zValidator('param', StartStreamParamSchema),
+    zValidator('json', StartStreamRequestSchema),
+    async (c) => {
+      const { channelId } = c.req.valid('param')
+      const { codec, quality } = c.req.valid('json')
 
-    try {
-      const { sessionId, playlistUrl } = await streamManager.acquireLive(channelId)
+      try {
+        const { sessionId, playlistUrl } = await streamManager.acquireLive(channelId, codec, quality)
 
-      const body = {
-        sessionId,
-        playlistUrl
-      } satisfies StartStreamResponse
+        const body = {
+          sessionId,
+          playlistUrl
+        } satisfies StartStreamResponse
 
-      StartStreamResponseSchema.parse(body)
+        StartStreamResponseSchema.parse(body)
 
-      return c.json(body, 201)
-    } catch (err) {
-      routeLogger.error({ channelId, err }, 'failed to start live stream')
-      return c.json(
-        { error: { code: 'STREAM_START_FAILED', message: err instanceof Error ? err.message : 'unknown error' } },
-        503,
-        { 'Retry-After': '2' }
-      )
+        return c.json(body, 201)
+      } catch (err) {
+        routeLogger.error({ channelId, codec, quality, err }, 'failed to start live stream')
+        return c.json(
+          { error: { code: 'STREAM_START_FAILED', message: err instanceof Error ? err.message : 'unknown error' } },
+          503,
+          { 'Retry-After': '2' }
+        )
+      }
     }
-  })
+  )
   .post('/recording/:recordingId', zValidator('param', StartRecordingStreamParamSchema), async (c) => {
     const { recordingId: _recordingId } = c.req.valid('param')
 
@@ -68,6 +75,45 @@ const streamsRoute = new Hono()
     const { sessionId } = c.req.valid('param')
     streamManager.release(sessionId)
     return new Response(null, { status: 204 })
+  })
+  .get('/:sessionId/info', zValidator('param', SessionParamSchema), async (c) => {
+    const { sessionId } = c.req.valid('param')
+
+    // Verify session exists before committing to SSE
+    const info = streamManager.getStreamInfo(sessionId)
+    if (info === null) {
+      return c.json({ error: { code: 'SESSION_NOT_FOUND', message: 'stream session not found' } }, 404)
+    }
+
+    return streamSSE(c, async (stream) => {
+      const signal = c.req.raw.signal
+
+      const send = async (): Promise<boolean> => {
+        if (signal.aborted) return false
+        const current = streamManager.getStreamInfo(sessionId)
+        if (current === null) return false
+        await stream.writeSSE({ data: JSON.stringify(current) })
+        return true
+      }
+
+      // Send an immediate snapshot, then every 1 s
+      if (!(await send())) return
+
+      const interval = setInterval(async () => {
+        const ok = await send()
+        if (!ok) clearInterval(interval)
+      }, 1_000)
+
+      // Clean up when the client disconnects
+      signal.addEventListener('abort', () => clearInterval(interval), { once: true })
+
+      // Keep the SSE connection alive until the client disconnects or session ends
+      await new Promise<void>((resolve) => {
+        signal.addEventListener('abort', () => resolve(), { once: true })
+      })
+
+      clearInterval(interval)
+    })
   })
   .get('/:sessionId/playlist.m3u8', zValidator('param', SessionParamSchema), async (c) => {
     const { sessionId } = c.req.valid('param')
