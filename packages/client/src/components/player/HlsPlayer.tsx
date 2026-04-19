@@ -25,7 +25,7 @@ const MAX_RETRIES = 3
  */
 export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
   (
-    { playlistUrl, onError, onReady, className, autoPlay = true, muted = true, ariaLabel, lowLatencyMode = true },
+    { playlistUrl, onError, onReady, className, autoPlay = true, muted = true, ariaLabel, lowLatencyMode = false },
     ref
   ) => {
     const internalRef = useRef<HTMLVideoElement>(null)
@@ -47,27 +47,28 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
 
       let retryCount = 0
 
-      // iOS Safari: native HLS — skip hls.js entirely
-      if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = playlistUrl
-        if (autoPlay) video.play().catch(() => {})
-        onReadyRef.current?.()
-        return
-      }
-
+      // Prefer hls.js wherever it is supported (all Chromium / Firefox). Only
+      // fall back to the native <video src> path for browsers that cannot
+      // run hls.js (iOS Safari). Testing canPlayType() first was wrong —
+      // Chromium returns "maybe" for application/vnd.apple.mpegurl even
+      // though it does NOT really play HLS, which sent the <video> into a
+      // tight playlist-polling retry loop (360 req/s).
       if (!Hls.isSupported()) {
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = playlistUrl
+          if (autoPlay) video.play().catch(() => {})
+          onReadyRef.current?.()
+          return
+        }
         onErrorRef.current?.(new Error('HLS not supported in this browser'))
         return
       }
 
-      // Configuration follows the official hls.js live-playback recipe.
-      // https://github.com/video-dev/hls.js/blob/master/docs/API.md
-      const hls = new Hls({
-        lowLatencyMode,
-        liveSyncDurationCount: 3,
-        maxLiveSyncPlaybackRate: 1.05,
-        enableWorker: true
-      })
+      // Use hls.js defaults — the official docs show `new Hls()` with no
+      // options as the recommended entry point. We keep the lowLatencyMode
+      // prop as an escape hatch for callers that know their server emits
+      // LL-HLS, but default to undefined so hls.js picks its own defaults.
+      const hls = new Hls(lowLatencyMode ? { lowLatencyMode: true } : {})
 
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (!data.fatal) return
