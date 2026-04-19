@@ -2,6 +2,7 @@ import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { type StartStreamResponse, StartStreamResponseSchema } from '../schemas/Stream.dto'
+import { resolveRecordingFile } from '../services/recording-service'
 
 const SegmentParamSchema = z.object({
   sessionId: z.string().uuid(),
@@ -38,9 +39,13 @@ const streamsRoute = new Hono()
     return c.json(body, 201)
   })
   .post('/recording/:recordingId', zValidator('param', StartRecordingStreamParamSchema), async (c) => {
-    const { recordingId: _recordingId } = c.req.valid('param')
+    const { recordingId } = c.req.valid('param')
 
-    // TODO(mirakc): replace with streamManager.acquireRecording(_recordingId, filePath)
+    // Verify the recording exists before minting a session. This 404s before
+    // Mirakc is wired up, so the client's error UI is already working.
+    const rec = await resolveRecordingFile(recordingId)
+
+    // TODO(mirakc): replace with streamManager.acquireRecording(rec.id, rec.filePath)
     const sessionId = crypto.randomUUID()
     const playlistUrl = `/api/streams/${sessionId}/playlist.m3u8`
 
