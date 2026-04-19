@@ -73,7 +73,7 @@ function SettingsPage() {
 
       <Tabs defaultValue='status' className='flex flex-1 flex-col'>
         <div className='sticky top-[calc(var(--page-header-h)+48px)] z-10 shrink-0 overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-          <TabsList className={TAB_LIST_CLASS}>
+          <TabsList className={cn(TAB_LIST_CLASS, '!h-10')}>
             <TabsTrigger value='status' className={TAB_TRIGGER_CLASS}>
               ステータス
             </TabsTrigger>
