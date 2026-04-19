@@ -23,7 +23,11 @@ const MAX_RETRIES = 3
  * call play() / pause() and read/write muted without prop-drilling.
  */
 export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
-  ({ playlistUrl, onError, onReady, className, autoPlay = true, ariaLabel, lowLatencyMode = true }, ref) => {
+  // Default lowLatencyMode=false — our dummy output is standard HLS (no
+  // #EXT-X-PART partial segments). lowLatencyMode=true makes hls.js poll the
+  // playlist harder looking for partial updates that never exist, which
+  // shows up in DevTools as a firehose of requests.
+  ({ playlistUrl, onError, onReady, className, autoPlay = true, ariaLabel, lowLatencyMode = false }, ref) => {
     const internalRef = useRef<HTMLVideoElement>(null)
     const videoRef = (ref as React.RefObject<HTMLVideoElement>) ?? internalRef
 
