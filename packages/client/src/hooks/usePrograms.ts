@@ -2,6 +2,19 @@ import type { Program } from '@kototv/server/src/schemas/Program.dto'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
 
+export function useProgramGrid(startAt: string, endAt: string) {
+  return useQuery({
+    queryKey: ['programs-grid', startAt, endAt] as const,
+    queryFn: async () => {
+      const res = await api.api.programs.grid.$get({ query: { startAt, endAt } })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return res.json()
+    },
+    staleTime: 5 * 60_000,
+    enabled: Boolean(startAt && endAt)
+  })
+}
+
 export type { Program }
 
 interface UseProgramsOptions {
