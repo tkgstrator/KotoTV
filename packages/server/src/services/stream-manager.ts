@@ -6,7 +6,11 @@ import { getDummyVideoPath } from './dummy-source'
 import { mirakcClient } from './mirakc-client'
 import { startTranscoder, type TranscoderHandle, waitForPlaylist } from './transcoder'
 
-const IDLE_KILL_MS = 15_000
+// Longer idle window (60s) so reloads / page navigations round-trip quickly:
+// the old session is still alive when the client re-acquires, so we skip a
+// fresh ffmpeg spawn + 15s playlist warmup. Shorter windows (<30s) caused
+// visible re-init black screens every time the user reloaded.
+const IDLE_KILL_MS = 60_000
 const HW_ACCEL: HwAccel = (process.env.HW_ACCEL_TYPE as HwAccel) ?? 'none'
 
 // Resolve quality preset → target video bitrate in kbps. The dummy lavfi
