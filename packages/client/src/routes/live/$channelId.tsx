@@ -117,7 +117,10 @@ function DiagnosticSidebar({
   streamStatus: string
   videoRef: React.RefObject<HTMLVideoElement | null>
 }) {
-  const shortId = sessionId ? `${sessionId.slice(0, 8)}…` : '—'
+  // 8-char prefix is enough to disambiguate sessions (UUIDv4 collision at
+  // that width is astronomically unlikely). Dropping the trailing ellipsis
+  // keeps the cell from wrapping in the narrow 240 px sidebar.
+  const shortId = sessionId ? sessionId.slice(0, 8) : '—'
   const info = useStreamInfo(sessionId)
 
   const [bufferSec, setBufferSec] = useState<number | null>(null)
@@ -281,9 +284,9 @@ function SidebarSectionLabel({ children }: { children: React.ReactNode }) {
 
 function StatRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className='flex items-center justify-between py-[3px]'>
-      <span className={STAT_LABEL_CLS}>{label}</span>
-      {children}
+    <div className='flex items-center justify-between gap-2 py-[3px]'>
+      <span className={cn(STAT_LABEL_CLS, 'shrink-0')}>{label}</span>
+      <span className='min-w-0 truncate text-right'>{children}</span>
     </div>
   )
 }
