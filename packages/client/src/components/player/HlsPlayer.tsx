@@ -79,7 +79,21 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
         lowLatencyMode,
         liveSyncDurationCount: 3,
         maxLiveSyncPlaybackRate: 1.05,
-        enableWorker: true
+        enableWorker: true,
+        // Force hls.js to start from the live edge — without this, playback
+        // can stall when currentTime=0 falls outside the first buffered
+        // segment's range (our rolling playlists start at media-sequence > 0).
+        startPosition: -1
+      })
+
+      // Snap to live edge on every level load. Covers the case where hls.js
+      // parsed the manifest but didn't auto-seek because the element already
+      // had a currentTime from a previous attachMedia.
+      hls.on(Hls.Events.LEVEL_LOADED, () => {
+        const sync = hls.liveSyncPosition
+        if (sync != null && Math.abs(video.currentTime - sync) > 2) {
+          video.currentTime = sync
+        }
       })
 
       hls.on(Hls.Events.ERROR, (_e, data) => {
