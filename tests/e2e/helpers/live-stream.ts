@@ -73,7 +73,8 @@ export async function startLiveSession(
   quality: 'low' | 'mid' | 'high'
 ): Promise<StartStreamResponse | null> {
   const res = await request.post(`/api/streams/live/${channelId}`, {
-    data: { codec, quality }
+    data: { codec, quality },
+    timeout: 60_000 // matches server-side waitForPlaylist + generous margin
   })
   if (res.status() === 503) return null
   if (!res.ok()) throw new Error(`POST /api/streams/live/${channelId} failed: ${res.status()}`)
