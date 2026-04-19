@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useChannels } from '@/hooks/useChannels'
-import { useProgramsForChannels } from '@/hooks/usePrograms'
+import { usePrograms } from '@/hooks/usePrograms'
 import { useCreateRecording } from '@/hooks/useRecordings'
 
 interface FormState {
@@ -125,20 +125,12 @@ export function RecordingScheduleForm({ open, onOpenChange }: RecordingScheduleF
 
   const { data: channelsData } = useChannels()
   const channels = channelsData?.channels ?? []
-  const channelIds = useMemo(() => channels.map((c) => c.id), [channels])
-
   const now = useMemo(() => new Date(), [])
   const startAtBound = now.toISOString()
   const endAtBound = useMemo(() => addDays(now, 7).toISOString(), [now])
 
-  const programQueries = useProgramsForChannels(channelIds, startAtBound, endAtBound)
-  const allPrograms: Program[] = useMemo(() => {
-    const out: Program[] = []
-    for (const q of programQueries) {
-      if (q.data?.programs) out.push(...q.data.programs)
-    }
-    return out
-  }, [programQueries])
+  const { data: programsData } = usePrograms({ startAt: startAtBound, endAt: endAtBound })
+  const allPrograms: Program[] = programsData?.programs ?? []
 
   function set(patch: Partial<FormState>) {
     setFields((prev) => ({ ...prev, ...patch }))
