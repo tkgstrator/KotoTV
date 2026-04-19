@@ -1,21 +1,12 @@
 /**
  * Single-tier chrome bar (40px desktop / bottom tabs mobile).
- * Desktop merges wordmark, nav tabs, settings, and the global health chip
- * into one row so watching pages don't lose ~32px to a second header.
+ * Desktop shows wordmark + Japanese nav labels + settings — HEALTH and
+ * version were moved out (they live in Settings now) so the bar reads as
+ * "タイトル + ナビ" only, no diagnostic chrome.
  * Active route detection uses TanStack Router's `useRouterState`.
  */
 import { Link, useRouterState } from '@tanstack/react-router'
-import { StatusChip } from '@/components/shared/status-chip'
-import { useHealth } from '@/hooks/useHealth'
 import { cn } from '@/lib/utils'
-
-type SubStatus = 'ok' | 'warn' | 'err'
-
-function worstStatus(statuses: SubStatus[]): SubStatus {
-  if (statuses.includes('err')) return 'err'
-  if (statuses.includes('warn')) return 'warn'
-  return 'ok'
-}
 
 const NAV_ITEMS = [
   { to: '/', label: 'チャンネル', short: 'CH', route: '/' },
@@ -28,17 +19,6 @@ const SETTINGS_ITEM = { to: '/settings', label: '設定', short: 'CFG', route: '
 export function NavBar() {
   const { location } = useRouterState()
   const path = location.pathname
-  const { data: health } = useHealth()
-
-  const overall: SubStatus = health
-    ? worstStatus([
-        health.mirakc.status,
-        health.postgres.status,
-        health.ffmpeg.status,
-        health.tuners.status,
-        health.disk.status
-      ])
-    : 'ok'
 
   function isActive(to: string) {
     return to === '/' ? path === '/' : path.startsWith(to)
@@ -59,7 +39,7 @@ export function NavBar() {
             key={item.to}
             to={item.to}
             className={cn(
-              'flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 font-mono text-[0.75rem] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap transition-colors',
+              'flex shrink-0 cursor-pointer items-center border-b-2 border-transparent bg-transparent px-3.5 text-[0.8125rem] font-bold text-muted-foreground whitespace-nowrap transition-colors',
               'hover:bg-muted/20 hover:text-foreground',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:-outline-offset-[3px] focus-visible:rounded-sm',
               isActive(item.to) && 'border-primary text-foreground'
@@ -67,58 +47,23 @@ export function NavBar() {
             aria-current={isActive(item.to) ? 'page' : undefined}
           >
             {item.label}
-            <span
-              className={cn(
-                'font-mono text-[0.625rem] tracking-[0.05em] text-muted-foreground',
-                isActive(item.to) && 'text-primary'
-              )}
-            >
-              {item.route}
-            </span>
           </Link>
         ))}
 
         <div className='flex-1' />
 
-        <div className='flex items-center gap-1.5 border-l border-border px-2.5'>
-          <Link
-            to={SETTINGS_ITEM.to}
-            className={cn(
-              'flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 border-transparent bg-transparent px-2 font-mono text-[0.75rem] font-bold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap transition-colors',
-              'hover:bg-muted/20 hover:text-foreground',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm',
-              isActive(SETTINGS_ITEM.to) && 'border-primary text-foreground'
-            )}
-            aria-current={isActive(SETTINGS_ITEM.to) ? 'page' : undefined}
-          >
-            {SETTINGS_ITEM.label}
-            <span
-              className={cn(
-                'font-mono text-[0.625rem] tracking-[0.05em] text-muted-foreground',
-                isActive(SETTINGS_ITEM.to) && 'text-primary'
-              )}
-            >
-              {SETTINGS_ITEM.route}
-            </span>
-          </Link>
-        </div>
-
-        <div
-          role='status'
-          aria-label='グローバルヘルス'
-          className='flex h-full shrink-0 items-center gap-2 border-l border-border px-3'
+        <Link
+          to={SETTINGS_ITEM.to}
+          className={cn(
+            'flex shrink-0 cursor-pointer items-center border-b-2 border-l border-transparent border-l-border bg-transparent px-3.5 text-[0.8125rem] font-bold text-muted-foreground whitespace-nowrap transition-colors',
+            'hover:bg-muted/20 hover:text-foreground',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm',
+            isActive(SETTINGS_ITEM.to) && 'border-b-primary text-foreground'
+          )}
+          aria-current={isActive(SETTINGS_ITEM.to) ? 'page' : undefined}
         >
-          <span className='font-mono text-[0.625rem] font-bold uppercase tracking-[0.1em] text-muted-foreground'>
-            health
-          </span>
-          <StatusChip variant={overall} size='sm'>
-            {overall.toUpperCase()}
-          </StatusChip>
-        </div>
-
-        <div className='flex h-full shrink-0 items-center border-l border-border/50 px-3'>
-          <span className='font-mono text-[0.625rem] tracking-[0.06em] text-muted-foreground'>v0.1.0</span>
-        </div>
+          {SETTINGS_ITEM.label}
+        </Link>
       </nav>
 
       {/* Mobile bottom tab bar */}
