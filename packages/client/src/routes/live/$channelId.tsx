@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { Activity, ChevronLeft } from 'lucide-react'
 import type * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { UpNextPanel } from '@/components/live/UpNextPanel'
 import { HlsPlayer } from '@/components/player/HlsPlayer'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { StatusChip } from '@/components/shared/status-chip'
@@ -378,10 +379,12 @@ function LivePage() {
       {/* NOW-strip */}
       <NowStrip channelId={channelId} />
 
-      {/* Main area: video column (diagnostic panel now lives behind a Sheet in the header) */}
-      <div className='flex flex-1 overflow-hidden flex-col'>
+      {/* Main area: video column + UpNext rail (YouTube-style). Keeps the
+          video from stretching to the full viewport width, which on a 16:9
+          monitor + app header would otherwise overflow vertically. */}
+      <div className='flex flex-1 overflow-hidden flex-col lg:flex-row'>
         {/* Video column */}
-        <div className='flex flex-1 flex-col overflow-hidden bg-[hsl(222_30%_6%)]'>
+        <div className='flex flex-1 flex-col overflow-hidden bg-[hsl(222_30%_6%)] lg:min-w-0'>
           {stream.status === 'error' ? (
             /* Fatal error state */
             <div className='flex flex-1 items-center justify-center p-6 bg-[hsl(222_30%_5%)]'>
@@ -453,6 +456,11 @@ function LivePage() {
             quality={quality}
             onQualityChange={setQuality}
           />
+        </div>
+
+        {/* Up-next rail for the current channel (lg+ only — stacks below on mobile) */}
+        <div className='hidden shrink-0 lg:block lg:w-[320px]'>
+          <UpNextPanel channelId={channelId} />
         </div>
       </div>
     </div>
