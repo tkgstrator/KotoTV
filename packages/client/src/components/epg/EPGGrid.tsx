@@ -22,6 +22,7 @@ import type { Program } from '@kototv/server/src/schemas/Program.dto'
 import { Link } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { addHours, format, startOfHour } from 'date-fns'
+import { CalendarPlus } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -53,6 +54,8 @@ interface EPGGridProps {
   gridStartAt: Date
   /** ISO string for the highlighted channel (from ?channel= search param). */
   highlightChannelId?: string | undefined
+  /** Opens the reservation dialog pre-filled with the selected program. */
+  onReserve?: ((program: Program) => void) | undefined
 }
 
 // ─── NOW-strip ────────────────────────────────────────────────────────────────
@@ -82,9 +85,18 @@ interface FutureGridProps {
   gridStart: Date
   gridEnd: Date
   now: Date
+  onReserve?: ((program: Program) => void) | undefined
 }
 
-function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart, gridEnd, now }: FutureGridProps) {
+function FutureGrid({
+  channels,
+  programsByChannel,
+  loadingChannelIds,
+  gridStart,
+  gridEnd,
+  now,
+  onReserve
+}: FutureGridProps) {
   const totalWidth = GRID_HOURS * 60 * PX_PER_MIN
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -206,7 +218,7 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
                     const width = programWidth(p, gridStart, gridEnd)
                     return (
                       <div key={p.id} className='absolute inset-y-0' style={{ left, width }}>
-                        <ProgramCell program={p} className='h-full' />
+                        <ProgramCell program={p} className='h-full' onReserve={onReserve} />
                       </div>
                     )
                   })
@@ -305,6 +317,7 @@ interface AgendaViewProps {
   /** Ref forwarded from the scrollable parent to wire the virtualizer. */
   scrollRef: React.RefObject<HTMLDivElement | null>
   onActiveSectionChange: (channelId: string | null) => void
+  onReserve?: ((program: Program) => void) | undefined
 }
 
 function AgendaView({
@@ -314,7 +327,8 @@ function AgendaView({
   now,
   windowEnd,
   scrollRef,
-  onActiveSectionChange
+  onActiveSectionChange,
+  onReserve
 }: AgendaViewProps) {
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -435,7 +449,7 @@ function AgendaView({
                     const isNow = new Date(p.startAt) <= now && new Date(p.endAt) > now
                     const accentColor = genreToColor(p.genres[0] ?? '')
                     return (
-                      <li key={p.id}>
+                      <li key={p.id} className='relative'>
                         <Link
                           to='/live/$channelId'
                           params={{ channelId: ch.id }}
@@ -465,7 +479,7 @@ function AgendaView({
                           </div>
 
                           {/* Title + chips */}
-                          <div className='flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-1.5'>
+                          <div className='flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-1.5 pr-10'>
                             <div className='flex items-center gap-1.5'>
                               {isNow && (
                                 <StatusChip variant='live' dot size='sm'>
@@ -477,15 +491,22 @@ function AgendaView({
                                   {p.genres[0]}
                                 </StatusChip>
                               )}
-                              {p.isRecordable && (
-                                <StatusChip variant='sched' size='sm'>
-                                  予約
-                                </StatusChip>
-                              )}
                             </div>
                             <span className='truncate text-[0.75rem] font-bold leading-[1.2]'>{p.title}</span>
                           </div>
                         </Link>
+                        {/* Reserve action — sits on top of the row's right edge so it
+                            stays tappable without competing with the main row click. */}
+                        {onReserve && (
+                          <button
+                            type='button'
+                            aria-label={`${p.title} を録画予約`}
+                            onClick={() => onReserve(p)}
+                            className='absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm border border-border/60 bg-card text-muted-foreground hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                          >
+                            <CalendarPlus className='size-3.5' aria-hidden />
+                          </button>
+                        )}
                       </li>
                     )
                   })}
@@ -506,7 +527,8 @@ export function EPGGrid({
   programsByChannel,
   loadingChannelIds,
   gridStartAt,
-  highlightChannelId
+  highlightChannelId,
+  onReserve
 }: EPGGridProps) {
   const now = useClock()
   const gridEnd = useMemo(() => addHours(gridStartAt, GRID_HOURS), [gridStartAt])
@@ -557,6 +579,7 @@ export function EPGGrid({
             gridStart={gridStartAt}
             gridEnd={gridEnd}
             now={now}
+            onReserve={onReserve}
           />
         </div>
       </div>
@@ -571,6 +594,7 @@ export function EPGGrid({
           windowEnd={gridEnd}
           scrollRef={agendaScrollRef}
           onActiveSectionChange={setActiveChannelId}
+          onReserve={onReserve}
         />
       </div>
     </div>

@@ -3,7 +3,7 @@ import type { Program } from '@kototv/server/src/schemas/Program.dto'
 import { CreateRecordingScheduleSchema } from '@kototv/server/src/schemas/Recording.dto'
 import { addDays } from 'date-fns'
 import { Search } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -114,14 +114,36 @@ function EpgResults({ channels, programs, query, onSelect }: EpgResultsProps) {
 interface RecordingScheduleFormProps {
   open: boolean
   onOpenChange: (v: boolean) => void
+  /** Pre-fill the form with this program (EPG → 予約 flow). Cleared on close. */
+  initialProgram?: Program | null
 }
 
-export function RecordingScheduleForm({ open, onOpenChange }: RecordingScheduleFormProps) {
+function programToFormState(program: Program): FormState {
+  return {
+    channelId: program.channelId,
+    programId: program.id,
+    title: program.title,
+    startAt: program.startAt,
+    endAt: program.endAt
+  }
+}
+
+export function RecordingScheduleForm({ open, onOpenChange, initialProgram }: RecordingScheduleFormProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [fields, setFields] = useState<FormState>(EMPTY)
+  const [fields, setFields] = useState<FormState>(() => (initialProgram ? programToFormState(initialProgram) : EMPTY))
   const [errors, setErrors] = useState<FormErrors>({})
   const { mutateAsync, isPending } = useCreateRecording()
   const searchRef = useRef<HTMLInputElement>(null)
+
+  // Sync external program selection whenever the dialog is re-opened with a new one.
+  const initialProgramId = initialProgram?.id
+  useEffect(() => {
+    if (open && initialProgram) {
+      setFields(programToFormState(initialProgram))
+      setErrors({})
+    }
+    // biome-ignore lint/correctness/useExhaustiveDependencies: open + initialProgramId are enough — program object identity changes per render
+  }, [open, initialProgramId])
 
   const { data: channelsData } = useChannels()
   const channels = channelsData?.channels ?? []
