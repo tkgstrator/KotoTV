@@ -165,13 +165,23 @@ export const mirakcClient = {
    */
   async openLiveStream(channelId: string, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
     const url = `${env.MIRAKC_URL}/api/services/${channelId}/stream?decode=1`
-    const init: RequestInit = {}
-    if (signal) init.signal = signal
-    const res = await fetch(url, init)
-    if (!res.ok || !res.body) {
-      throw new MirakcError(res.status, `openLiveStream ${channelId} → ${res.status}`)
+    // Fail fast if Mirakc isn't reachable (dev mode without MIRAKC_URL set
+    // → DNS hangs on "mirakc" hostname, blocking acquireLive for seconds).
+    // 2s is plenty for a healthy Mirakc to start sending headers.
+    const timeoutMs = 2000
+    const timeoutCtrl = new AbortController()
+    const timer = setTimeout(() => timeoutCtrl.abort(), timeoutMs)
+    // Compose any caller signal with our timeout signal.
+    if (signal) signal.addEventListener('abort', () => timeoutCtrl.abort())
+    try {
+      const res = await fetch(url, { signal: timeoutCtrl.signal })
+      if (!res.ok || !res.body) {
+        throw new MirakcError(res.status, `openLiveStream ${channelId} → ${res.status}`)
+      }
+      return res.body
+    } finally {
+      clearTimeout(timer)
     }
-    return res.body
   },
 
   async getAvailableTunerCount(): Promise<number> {
