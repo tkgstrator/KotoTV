@@ -315,6 +315,14 @@ function RecordingPlayerPage() {
   const { data: rec, isPending, isError, error } = useRecording(id)
   const stream = useStream({ type: 'recording', recordingId: id })
   const videoRef = useRef<HTMLVideoElement>(null)
+  // Mirror the video element into state for PlayerControls (callback-ref
+  // pattern — see PlayerControlsProps). videoRef still services existing
+  // subcomponents (ResumeToast, ChapterPanel) that read it synchronously.
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
+  const attachVideo = (el: HTMLVideoElement | null) => {
+    videoRef.current = el
+    setVideoEl(el)
+  }
   const clock = useClock()
   const [videoDuration, setVideoDuration] = useState(0)
 
@@ -485,7 +493,7 @@ function RecordingPlayerPage() {
               aria-label='録画映像プレイヤー'
             >
               <HlsPlayer
-                ref={videoRef}
+                ref={attachVideo}
                 playlistUrl={stream.playlistUrl ?? ''}
                 ariaLabel={`${rec.title} 録画映像`}
                 className='max-h-full max-w-full'
@@ -500,7 +508,7 @@ function RecordingPlayerPage() {
           <InlineIdentityStrip rec={rec} />
 
           {/* Controls */}
-          <PlayerControls isLive={false} videoRef={videoRef} chapters={STUB_CHAPTERS} />
+          <PlayerControls isLive={false} videoEl={videoEl} chapters={STUB_CHAPTERS} />
 
           {/* Fault log collapsible */}
           <FaultLog streamStatus={stream.status} sessionId={stream.sessionId} />

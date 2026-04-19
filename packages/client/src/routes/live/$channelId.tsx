@@ -297,10 +297,13 @@ function LogLine({ ts, level, children }: { ts: string; level: 'ok' | 'err' | 'i
 function LivePage() {
   const { channelId } = Route.useParams()
   const stream = useStream({ type: 'live', channelId })
-  const videoRef = useRef<HTMLVideoElement>(null)
+  // videoEl in state, not a ref, so downstream effects (PlayerControls
+  // listeners, diagnostics polling) re-run when HlsPlayer mounts the <video>
+  // — refs don't trigger re-renders, so early mounts were missing the element.
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
   const clock = useClock()
   const { prefs } = usePlaybackPrefs()
-  const diagnostics = useVideoDiagnostics(videoRef)
+  const diagnostics = useVideoDiagnostics(videoEl)
 
   const { data: channelsData } = useChannels()
   const channel = channelsData?.channels.find((c) => c.id === channelId)
@@ -421,7 +424,7 @@ function LivePage() {
               aria-label='ライブ映像プレイヤー'
             >
               <HlsPlayer
-                ref={videoRef}
+                ref={setVideoEl}
                 playlistUrl={stream.playlistUrl ?? ''}
                 ariaLabel={`${channel?.name ?? channelId} ライブ映像`}
                 className='max-h-full max-w-full'
@@ -431,7 +434,7 @@ function LivePage() {
           )}
 
           {/* Controls bar — always present below video */}
-          <PlayerControls isLive videoRef={videoRef} />
+          <PlayerControls isLive videoEl={videoEl} />
         </div>
 
         {/* Diagnostic sidebar */}

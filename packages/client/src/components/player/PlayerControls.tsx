@@ -19,7 +19,11 @@ export type { Chapter }
 
 export interface PlayerControlsProps {
   isLive: boolean
-  videoRef: React.RefObject<HTMLVideoElement | null>
+  /** The video element itself. Accept the node (callback-ref pattern) instead
+   *  of a ref-object so this component re-runs its listener effect when the
+   *  element mounts — otherwise stream.status='starting' skips the <video>
+   *  and controls never attach. */
+  videoEl: HTMLVideoElement | null
   className?: string
   chapters?: Chapter[]
 }
@@ -35,7 +39,11 @@ export interface PlayerControlsProps {
  *   - Seek bar is interactive (role="slider")
  *   - All controls are fully enabled
  */
-export function PlayerControls({ isLive, videoRef, className, chapters }: PlayerControlsProps) {
+export function PlayerControls({ isLive, videoEl, className, chapters }: PlayerControlsProps) {
+  // Adapter so the rest of this file keeps referring to videoRef.current —
+  // it's now just a shim around the state-backed element.
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  videoRef.current = videoEl
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [volume, setVolume] = useState(1)
@@ -49,7 +57,7 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
   const seekBarRef = useRef<HTMLDivElement>(null)
 
   const syncState = useCallback(() => {
-    const v = videoRef.current
+    const v = videoEl
     if (!v) return
     setIsPlaying(!v.paused)
     setIsMuted(v.muted)
@@ -57,10 +65,10 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
     setCurrentTime(v.currentTime)
     setDuration(v.duration || 0)
     if (v.duration) setProgress(v.currentTime / v.duration)
-  }, [videoRef])
+  }, [videoEl])
 
   useEffect(() => {
-    const v = videoRef.current
+    const v = videoEl
     if (!v) return
 
     const onPlay = () => setIsPlaying(true)
@@ -97,7 +105,7 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
       document.removeEventListener('fullscreenchange', onFullscreenChange)
       if (progressRafRef.current !== null) cancelAnimationFrame(progressRafRef.current)
     }
-  }, [syncState, videoRef])
+  }, [videoEl, syncState])
 
   const togglePlay = () => {
     const v = videoRef.current
@@ -335,10 +343,15 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
           step={1}
           aria-label='音量'
           value={Math.round((isMuted ? 0 : volume) * 100)}
-          onChange={(e) => {
+          onInput={(e) => {
             const v = videoRef.current
             if (!v) return
-            const next = Number(e.target.value) / 100
+            const next = Number((e.target as HTMLInputElement).value) / 100
+            // Optimistic local state so the slider thumb follows the drag
+            // immediately — waiting for the `volumechange` event makes the
+            // thumb snap back visually.
+            setVolume(next)
+            setIsMuted(next === 0)
             v.volume = next
             if (next > 0 && v.muted) v.muted = false
             else if (next === 0) v.muted = true
