@@ -19,7 +19,7 @@ export function ProgramCell({ program, className }: ProgramCellProps) {
       params={{ channelId: program.channelId }}
       aria-label={`${program.title} ${formatTimeRange(program.startAt, program.endAt)}`}
       className={cn(
-        'group flex h-full flex-col overflow-hidden rounded-[3px] outline-none',
+        'group flex h-full flex-col overflow-hidden outline-none',
         // Full border so cell edges are visible against adjacent cells + background.
         // Left edge is overridden to the genre color (3px wide) as the accent.
         'border border-border border-l-[3px] bg-card',
