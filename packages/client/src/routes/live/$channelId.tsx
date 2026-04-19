@@ -296,14 +296,16 @@ function LivePage() {
       </header>
 
       {/* Main area: video column + UpNext rail (YouTube-style).
-          Single padded gutter around the whole pair (no per-column borders /
-          cards); the 24 px padding and 24 px gap match YouTube's watch page. */}
-      <div className='flex flex-1 overflow-hidden flex-col lg:flex-row lg:gap-6 lg:p-6'>
+          12 px breathing room on all sides so the player doesn't collide
+          with the shell chrome or the viewport edge. 16 px gap between
+          the two columns. Capped at 1784 px and centered so ultra-wide
+          monitors don't stretch the video beyond YouTube's own max-width. */}
+      <div className='mx-auto flex w-full flex-1 flex-col overflow-hidden lg:max-w-[1784px] lg:flex-row lg:gap-4 lg:p-3'>
         {/* Video column */}
-        <div className='flex flex-1 flex-col overflow-hidden bg-[hsl(222_30%_6%)] lg:min-w-0'>
+        <div className='flex flex-1 flex-col overflow-hidden lg:min-w-0'>
           {stream.status === 'error' ? (
             /* Fatal error state */
-            <div className='flex flex-1 items-center justify-center p-6 bg-[hsl(222_30%_5%)]'>
+            <div className='flex flex-1 items-center justify-center p-6'>
               <div
                 role='alert'
                 className='max-w-[480px] rounded-md border border-border border-l-[3px] border-l-destructive bg-card p-4'
@@ -334,7 +336,7 @@ function LivePage() {
             </div>
           ) : stream.status === 'starting' || stream.status === 'idle' ? (
             /* Loading state */
-            <div className='flex flex-1 flex-col items-center justify-center gap-3 bg-[hsl(222_30%_5%)]'>
+            <div className='flex flex-1 flex-col items-center justify-center gap-3'>
               <div
                 role='status'
                 className='h-9 w-9 rounded-full border-[2.5px] border-muted border-t-primary animate-spin'
@@ -346,18 +348,16 @@ function LivePage() {
               </StatusChip>
             </div>
           ) : (
-            /* Ready: actual player */
-            <div
-              className='flex flex-1 items-center justify-center bg-[hsl(222_30%_5%)]'
-              role='application'
-              aria-label='ライブ映像プレイヤー'
-            >
+            /* Ready: actual player. aspect-video forces the well to 16:9
+               so the video sits flush against PlayerControls below — no
+               letterbox padding, no flex-grow gap. YouTube does the same. */
+            <div className='aspect-video w-full' role='application' aria-label='ライブ映像プレイヤー'>
               <HlsPlayer
                 key={stream.sessionId}
                 ref={videoRef}
                 playlistUrl={stream.playlistUrl ?? ''}
                 ariaLabel={`${channel?.name ?? channelId} ライブ映像`}
-                className='max-h-full max-w-full'
+                className='h-full w-full'
                 onError={(err) => console.error('[HlsPlayer]', err)}
               />
             </div>
@@ -375,8 +375,8 @@ function LivePage() {
         </div>
 
         {/* Up-next rail for the current channel (lg+ only — stacks below on
-            mobile). 400 px matches YouTube's secondary column width. */}
-        <div className='hidden shrink-0 lg:block lg:w-[400px]'>
+            mobile). 402 px matches YouTube's secondary column width. */}
+        <div className='hidden shrink-0 lg:block lg:w-[402px]'>
           <UpNextPanel channelId={channelId} />
         </div>
       </div>

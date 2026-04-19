@@ -112,7 +112,11 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
     return (
       <video
         ref={videoRef}
-        className={cn('h-full w-full object-contain', className)}
+        // Intrinsic sizing: the element itself takes the video's aspect
+        // ratio within whatever max-h/max-w the caller passes. Explicit
+        // h-full/w-full would force the <video> box to fill the parent and
+        // letterbox the picture inside, eating vertical space.
+        className={cn('object-contain', className)}
         controls={false}
         playsInline
         muted={muted}
