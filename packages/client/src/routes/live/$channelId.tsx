@@ -129,6 +129,7 @@ function DiagnosticSidebar({ sessionId, streamStatus, diagnostics, codec, qualit
   const resolution = diagnostics.videoWidth > 0 ? `${diagnostics.videoWidth}×${diagnostics.videoHeight}` : '—'
   const bufferedLabel = diagnostics.bufferedAhead > 0 ? `${diagnostics.bufferedAhead.toFixed(1)}s` : '—'
   const droppedLabel = `${diagnostics.droppedFrames} / ${diagnostics.decodedFrames}`
+  const currentTimeLabel = `${diagnostics.currentTime.toFixed(1)}s`
 
   const [logEvents, setLogEvents] = useState<LogEvent[]>(() => [
     { id: 0, ts: '--:--:--', level: 'info', message: '[session] initializing…' }
@@ -207,6 +208,9 @@ function DiagnosticSidebar({ sessionId, streamStatus, diagnostics, codec, qualit
       {/* HLS section */}
       <div className='border-b border-border px-3 py-2.5'>
         <SidebarSectionLabel>HLS</SidebarSectionLabel>
+        <StatRow label='position'>
+          <span className={STAT_VAL_CLS}>{currentTimeLabel}</span>
+        </StatRow>
         <StatRow label='buffer'>
           <span className={STAT_VAL_CLS}>{bufferedLabel}</span>
         </StatRow>
