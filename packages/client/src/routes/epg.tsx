@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import type { Program } from '@/hooks/usePrograms'
-import { useProgramsForChannels } from '@/hooks/usePrograms'
+import { useProgramGrid } from '@/hooks/usePrograms'
 
 const FILTER_VALUES: FilterValue[] = ['ALL', 'GR', 'BS', 'CS']
 
@@ -64,28 +64,22 @@ function EpgPage() {
 
   const channelIds = useMemo(() => channels.map((c) => c.id), [channels])
 
-  const programQueries = useProgramsForChannels(channelIds, startAtISO, endAtISO)
+  const { data: gridData, isPending: gridPending } = useProgramGrid(startAtISO, endAtISO)
 
   const programsByChannel = useMemo(() => {
     const map = new Map<string, Program[]>()
-    for (let i = 0; i < channelIds.length; i++) {
-      const id = channelIds[i]
-      const result = programQueries[i]
-      if (id && result?.data?.programs) {
-        map.set(id, result.data.programs)
-      }
+    const raw = gridData?.programs ?? {}
+    for (const id of channelIds) {
+      const list = raw[id]
+      if (list) map.set(id, list)
     }
     return map
-  }, [channelIds, programQueries])
+  }, [channelIds, gridData])
 
-  const loadingChannelIds = useMemo(() => {
-    const set = new Set<string>()
-    for (let i = 0; i < channelIds.length; i++) {
-      const id = channelIds[i]
-      if (id && programQueries[i]?.isPending) set.add(id)
-    }
-    return set
-  }, [channelIds, programQueries])
+  const loadingChannelIds = useMemo(
+    () => (gridPending ? new Set(channelIds) : new Set<string>()),
+    [gridPending, channelIds]
+  )
 
   function goToPrevDay() {
     navigate({
