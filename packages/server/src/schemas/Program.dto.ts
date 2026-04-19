@@ -16,22 +16,11 @@ export const ProgramListResponseSchema = z.object({
 })
 
 export const ProgramListQuerySchema = z.object({
-  channelId: z.string().min(1),
+  channelId: z.string().min(1).optional(),
   startAt: z.string().datetime({ offset: true }),
   endAt: z.string().datetime({ offset: true })
-})
-
-export const ProgramGridQuerySchema = z.object({
-  startAt: z.string().datetime({ offset: true }),
-  endAt: z.string().datetime({ offset: true })
-})
-
-export const ProgramGridResponseSchema = z.object({
-  programs: z.record(z.string(), z.array(ProgramSchema))
 })
 
 export type Program = z.infer<typeof ProgramSchema>
 export type ProgramListResponse = z.infer<typeof ProgramListResponseSchema>
 export type ProgramListQuery = z.infer<typeof ProgramListQuerySchema>
-export type ProgramGridQuery = z.infer<typeof ProgramGridQuerySchema>
-export type ProgramGridResponse = z.infer<typeof ProgramGridResponseSchema>
