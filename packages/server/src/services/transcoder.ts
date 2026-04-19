@@ -37,10 +37,13 @@ export type StartTranscoderOpts = {
   quality: Quality
 }
 
-// Regex that tolerates FFmpeg's variable whitespace in progress lines.
-// Example: "frame= 1234 fps= 30 q=... bitrate= 2987.1kbits/s ... drop=0 ..."
-// Also handles "dropped=N" and "dup=N drop=N" variants.
-const STATS_RE = /frame=\s*(\d+).*?fps=\s*([\d.]+).*?bitrate=\s*([\d.]+)kbits\/s.*?(?:drop(?:ped)?=\s*(\d+))?/
+// FFmpeg progress updates use `\r` as their line separator; multiple progress
+// frames often arrive concatenated in one `\n`-terminated line. We therefore
+// scan the whole line with a /g regex and keep the LAST match (most recent
+// progress). In HLS mode FFmpeg reports bitrate=N/A, so the bitrate capture
+// is optional; stream-manager falls back to the configured target bitrate.
+const STATS_RE =
+  /frame=\s*(\d+)\s+fps=\s*([\d.]+)\s+q=\S+(?:\s+L?size=\s*\S+\s+time=\S+\s+bitrate=\s*(?:([\d.]+)kbits\/s|N\/A))?(?:.*?drop(?:ped)?=\s*(\d+))?/g
 
 /**
  * Spawn FFmpeg, pipe `source` into stdin, and return control handles.
@@ -78,14 +81,20 @@ export function startTranscoder(opts: StartTranscoderOpts): TranscoderHandle {
   // Pipe stderr to pino at debug level and parse progress stats.
   // We do not await this; it runs concurrently and is best-effort.
   pipeStderrToLogger(proc.stderr, childLogger, (line) => {
-    const m = STATS_RE.exec(line)
-    if (m) {
+    // A single stderr "line" can contain many \r-separated progress updates.
+    // Iterate with /g and keep the latest one with a non-zero fps (skips the
+    // initial `fps=0.0` that FFmpeg emits before any frames have been encoded).
+    STATS_RE.lastIndex = 0
+    let last: RegExpExecArray | null = null
+    for (let m: RegExpExecArray | null; (m = STATS_RE.exec(line)) !== null; ) {
+      if (Number.parseFloat(m[2]!) > 0) last = m
+    }
+    if (last) {
       latestStats = {
-        // m[1..3] are guaranteed non-undefined when the regex matches
-        frame: Number.parseInt(m[1]!, 10),
-        fps: Math.round(Number.parseFloat(m[2]!)),
-        bitrateKbps: Math.round(Number.parseFloat(m[3]!)),
-        droppedFrames: m[4] !== undefined ? Number.parseInt(m[4], 10) : latestStats.droppedFrames,
+        frame: Number.parseInt(last[1]!, 10),
+        fps: Math.round(Number.parseFloat(last[2]!)),
+        bitrateKbps: last[3] !== undefined ? Math.round(Number.parseFloat(last[3])) : latestStats.bitrateKbps,
+        droppedFrames: last[4] !== undefined ? Number.parseInt(last[4], 10) : latestStats.droppedFrames,
         updatedAt: Date.now()
       }
     }

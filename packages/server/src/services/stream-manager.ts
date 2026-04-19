@@ -4,7 +4,7 @@
 import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { env } from '../lib/config'
-import { type Codec, type Quality, resolutionFor } from '../lib/ffmpeg'
+import { type Codec, QUALITY_PRESETS, type Quality, resolutionFor } from '../lib/ffmpeg'
 import { logger } from '../lib/logger'
 import type { StreamInfo } from '../schemas/Stream.dto'
 import { mirakcClient } from './mirakc-client'
@@ -42,6 +42,12 @@ type Session = {
 const byKey = new Map<SessionKey, Session>()
 /** sessionId → SessionKey (reverse index for O(1) release / lookup) */
 const bySession = new Map<string, SessionKey>()
+/**
+ * Concurrent acquireLive calls for the same key share this promise so that only
+ * one FFmpeg process is spawned; subsequent callers await the resolved Session
+ * and bump viewerCount.
+ */
+const pending = new Map<SessionKey, Promise<Session>>()
 
 const managerLogger = logger.child({ module: 'stream-manager' })
 
@@ -83,83 +89,33 @@ export const streamManager = {
       }
     }
 
-    // Create new session
-    const sessionId = crypto.randomUUID()
-    const outputDir = path.join(env.HLS_DIR, sessionId)
-    const resolution = resolutionFor(quality)
-
-    managerLogger.info({ sessionId, channelId, codec, quality, outputDir }, 'starting new live session')
-
-    await mkdir(outputDir, { recursive: true })
-
-    let openResult: Awaited<ReturnType<typeof mirakcClient.openLiveStream>>
-    try {
-      openResult = await mirakcClient.openLiveStream(channelId)
-    } catch (err) {
-      await rmDir(outputDir)
-      throw err
-    }
-
-    const hwAccel = env.HW_ACCEL_TYPE
-
-    let handle: TranscoderHandle
-    try {
-      handle = startTranscoder({
-        sessionId,
-        outputDir,
-        source: openResult.stream,
-        hwAccel,
-        codec,
-        quality
-      })
-    } catch (err) {
-      await openResult.cancel()
-      await rmDir(outputDir)
-      throw err
-    }
-
-    // Wait until FFmpeg has written at least one playlist before returning to
-    // the caller — this prevents the client from hitting 503 on the first request.
-    try {
-      await handle.waitForPlaylist(15_000)
-    } catch (err) {
-      managerLogger.error({ sessionId, channelId, codec, quality, err }, 'playlist_timeout — tearing down session')
-      await handle.abort()
-      await rmDir(outputDir)
-      throw err
-    }
-
-    const session: Session = {
-      sessionId,
-      channelId,
-      codec,
-      quality,
-      resolution,
-      outputDir,
-      handle,
-      viewerCount: 1,
-      idleTimer: null,
-      createdAt: Date.now()
-    }
-
-    byKey.set(key, session)
-    bySession.set(sessionId, key)
-
-    managerLogger.info({ sessionId, channelId, codec, quality }, 'live session ready')
-
-    // If FFmpeg exits unexpectedly, clean up the maps so the next
-    // acquireLive call starts fresh instead of returning a dead session.
-    handle.exited.then((code) => {
-      managerLogger.warn(
-        { sessionId, channelId, codec, quality, code },
-        'ffmpeg exited unexpectedly — removing session'
+    // Concurrent acquires for the same key share a single FFmpeg boot.
+    const inFlight = pending.get(key)
+    if (inFlight) {
+      const session = await inFlight
+      session.viewerCount++
+      managerLogger.debug(
+        { sessionId: session.sessionId, channelId, codec, quality, viewerCount: session.viewerCount },
+        'viewer joined in-flight session'
       )
-      teardownEntry(sessionId)
-    })
+      return {
+        sessionId: session.sessionId,
+        playlistUrl: `/api/streams/${session.sessionId}/playlist.m3u8`
+      }
+    }
+
+    const bootPromise = bootSession(channelId, codec, quality)
+    pending.set(key, bootPromise)
+    let session: Session
+    try {
+      session = await bootPromise
+    } finally {
+      pending.delete(key)
+    }
 
     return {
-      sessionId,
-      playlistUrl: `/api/streams/${sessionId}/playlist.m3u8`
+      sessionId: session.sessionId,
+      playlistUrl: `/api/streams/${session.sessionId}/playlist.m3u8`
     }
   },
 
@@ -218,12 +174,17 @@ export const streamManager = {
     if (!session) return null
 
     const stats = session.handle.getStats()
+    // FFmpeg's HLS muxer reports size=N/A, so stderr never yields a numeric
+    // bitrate. Fall back to the configured target from the quality preset
+    // when the measured value is zero.
+    const targetBitrate = QUALITY_PRESETS[session.quality].bitrate
+    const bitrate = stats.bitrateKbps > 0 ? stats.bitrateKbps : targetBitrate
 
     return {
       codec: session.codec,
       resolution: session.resolution,
-      bitrate: stats.bitrateKbps,
-      fps: stats.fps,
+      bitrate,
+      fps: stats.fps > 0 ? stats.fps : QUALITY_PRESETS[session.quality].fps,
       hwAccel: env.HW_ACCEL_TYPE,
       viewerCount: session.viewerCount,
       droppedFrames: stats.droppedFrames,
@@ -289,4 +250,81 @@ async function rmDir(dir: string): Promise<void> {
   } catch (err) {
     managerLogger.warn({ dir, err }, 'failed to remove session dir')
   }
+}
+
+/**
+ * Boot a fresh FFmpeg session and register it with the maps. Caller holds the
+ * `pending` entry until this resolves; concurrent acquirers share the promise.
+ * The returned Session starts with `viewerCount: 1` for the caller that
+ * initiated the boot.
+ */
+async function bootSession(channelId: string, codec: Codec, quality: Quality): Promise<Session> {
+  const key = sessionKey(channelId, codec, quality)
+  const sessionId = crypto.randomUUID()
+  const outputDir = path.join(env.HLS_DIR, sessionId)
+  const resolution = resolutionFor(quality)
+
+  managerLogger.info({ sessionId, channelId, codec, quality, outputDir }, 'starting new live session')
+
+  await mkdir(outputDir, { recursive: true })
+
+  let openResult: Awaited<ReturnType<typeof mirakcClient.openLiveStream>>
+  try {
+    openResult = await mirakcClient.openLiveStream(channelId)
+  } catch (err) {
+    await rmDir(outputDir)
+    throw err
+  }
+
+  const hwAccel = env.HW_ACCEL_TYPE
+
+  let handle: TranscoderHandle
+  try {
+    handle = startTranscoder({
+      sessionId,
+      outputDir,
+      source: openResult.stream,
+      hwAccel,
+      codec,
+      quality
+    })
+  } catch (err) {
+    await openResult.cancel()
+    await rmDir(outputDir)
+    throw err
+  }
+
+  try {
+    await handle.waitForPlaylist(15_000)
+  } catch (err) {
+    managerLogger.error({ sessionId, channelId, codec, quality, err }, 'playlist_timeout — tearing down session')
+    await handle.abort()
+    await rmDir(outputDir)
+    throw err
+  }
+
+  const session: Session = {
+    sessionId,
+    channelId,
+    codec,
+    quality,
+    resolution,
+    outputDir,
+    handle,
+    viewerCount: 1,
+    idleTimer: null,
+    createdAt: Date.now()
+  }
+
+  byKey.set(key, session)
+  bySession.set(sessionId, key)
+
+  managerLogger.info({ sessionId, channelId, codec, quality }, 'live session ready')
+
+  handle.exited.then((code) => {
+    managerLogger.warn({ sessionId, channelId, codec, quality, code }, 'ffmpeg exited unexpectedly — removing session')
+    teardownEntry(sessionId)
+  })
+
+  return session
 }
