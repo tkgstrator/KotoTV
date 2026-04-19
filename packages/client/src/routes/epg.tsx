@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import type { Program } from '@/hooks/usePrograms'
-import { useProgramGrid } from '@/hooks/usePrograms'
+import { usePrograms } from '@/hooks/usePrograms'
 
 const FILTER_VALUES: FilterValue[] = ['ALL', 'GR', 'BS', 'CS']
 
@@ -64,17 +64,17 @@ function EpgPage() {
 
   const channelIds = useMemo(() => channels.map((c) => c.id), [channels])
 
-  const { data: gridData, isPending: gridPending } = useProgramGrid(startAtISO, endAtISO)
+  const { data, isPending: gridPending } = usePrograms({ startAt: startAtISO, endAt: endAtISO })
 
   const programsByChannel = useMemo(() => {
     const map = new Map<string, Program[]>()
-    const raw = gridData?.programs ?? {}
-    for (const id of channelIds) {
-      const list = raw[id]
-      if (list) map.set(id, list)
+    for (const p of data?.programs ?? []) {
+      const bucket = map.get(p.channelId)
+      if (bucket) bucket.push(p)
+      else map.set(p.channelId, [p])
     }
     return map
-  }, [channelIds, gridData])
+  }, [data])
 
   const loadingChannelIds = useMemo(
     () => (gridPending ? new Set(channelIds) : new Set<string>()),
