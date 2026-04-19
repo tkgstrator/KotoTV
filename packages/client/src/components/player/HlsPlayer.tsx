@@ -1,5 +1,5 @@
 import Hls from 'hls.js'
-import { forwardRef, useEffect, useRef } from 'react'
+import { forwardRef, useCallback, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface HlsPlayerProps {
@@ -19,8 +19,9 @@ const MAX_RETRIES = 3
  * playback. Keeps hls.js initialization and cleanup self-contained so that
  * parent components only deal with stream lifecycle (useStream / useRecordingStream).
  *
- * forwardRef exposes the underlying <video> element so PlayerControls can
- * call play() / pause() and read/write muted without prop-drilling.
+ * forwardRef accepts either a RefObject or a callback ref — we always drive
+ * hls.js off an internal ref and fan the <video> element out to the
+ * forwarded ref on mount/unmount via mergeRef.
  */
 export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
   // Default lowLatencyMode=false — our dummy output is standard HLS (no
@@ -29,7 +30,18 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
   // shows up in DevTools as a firehose of requests.
   ({ playlistUrl, onError, onReady, className, autoPlay = true, ariaLabel, lowLatencyMode = false }, ref) => {
     const internalRef = useRef<HTMLVideoElement>(null)
-    const videoRef = (ref as React.RefObject<HTMLVideoElement>) ?? internalRef
+
+    // Merge internal ref + forwarded ref. Callback refs get called with the
+    // element; RefObjects get their `.current` assigned. Supporting both
+    // means parents can use useRef or useState (callback ref) equivalently.
+    const mergedRef = useCallback(
+      (node: HTMLVideoElement | null) => {
+        internalRef.current = node
+        if (typeof ref === 'function') ref(node)
+        else if (ref) (ref as { current: HTMLVideoElement | null }).current = node
+      },
+      [ref]
+    )
 
     // Latch callbacks via refs so the effect doesn't reattach the media source
     // every render when parents pass inline functions. Without this, hls.destroy()
@@ -40,7 +52,7 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
     onReadyRef.current = onReady
 
     useEffect(() => {
-      const video = videoRef.current
+      const video = internalRef.current
       if (!video) return
 
       let retryCount = 0
@@ -108,11 +120,11 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
       return () => {
         hls.destroy()
       }
-    }, [playlistUrl, autoPlay, videoRef, lowLatencyMode])
+    }, [playlistUrl, autoPlay, lowLatencyMode])
 
     return (
       <video
-        ref={videoRef}
+        ref={mergedRef}
         className={cn('h-full w-full object-contain', className)}
         controls={false}
         playsInline
