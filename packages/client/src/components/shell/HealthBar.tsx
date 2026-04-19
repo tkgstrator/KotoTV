@@ -27,13 +27,13 @@ export function HealthBar() {
       aria-label='グローバルヘルス'
       className='sticky top-0 z-[70] flex h-[var(--shell-health-bar-h)] shrink-0 items-center overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
     >
-      <span className='flex h-full shrink-0 items-center border-r border-border px-3 font-mono text-[0.8125rem] font-black uppercase tracking-[0.14em] text-foreground'>
+      <span className='flex h-full shrink-0 items-center px-3 font-mono text-[1.125rem] font-black uppercase tracking-[0.14em] text-foreground'>
         KotoTV
       </span>
 
       <div className='flex-1' />
 
-      <div className='flex h-full shrink-0 items-center gap-2 border-l border-border/50 px-3'>
+      <div className='flex h-full shrink-0 items-center gap-2 px-3'>
         <span className='font-mono text-[0.625rem] font-bold uppercase tracking-[0.1em] text-muted-foreground'>
           health
         </span>
@@ -42,7 +42,7 @@ export function HealthBar() {
         </StatusChip>
       </div>
 
-      <div className='flex h-full shrink-0 items-center gap-2 border-l border-border/50 px-3'>
+      <div className='flex h-full shrink-0 items-center gap-2 px-3'>
         <span className='font-mono text-[0.625rem] tracking-[0.06em] text-muted-foreground'>v0.1.0</span>
       </div>
     </div>
