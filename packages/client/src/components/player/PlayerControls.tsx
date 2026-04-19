@@ -294,23 +294,21 @@ export function PlayerControls({
 
         <div className='flex-1' />
 
-        {/* Playback rate — live: disabled */}
-        <Select value={String(playbackRate)} onValueChange={handleRateChange} disabled={isLive}>
-          <SelectTrigger
-            size='sm'
-            aria-label='再生速度'
-            className={cn(PICKER_TRIGGER_CLS, isLive && 'pointer-events-none opacity-50')}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className={PICKER_CONTENT_CLS}>
-            {PLAYBACK_RATES.map((r) => (
-              <SelectItem key={r} value={String(r)} className={PICKER_ITEM_CLS}>
-                {r === 1.0 ? '1.0×' : `${r}×`}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Playback rate — recording only (live streams cannot be time-scaled) */}
+        {!isLive && (
+          <Select value={String(playbackRate)} onValueChange={handleRateChange}>
+            <SelectTrigger size='sm' aria-label='再生速度' className={PICKER_TRIGGER_CLS}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className={PICKER_CONTENT_CLS}>
+              {PLAYBACK_RATES.map((r) => (
+                <SelectItem key={r} value={String(r)} className={PICKER_ITEM_CLS}>
+                  {r === 1.0 ? '1.0×' : `${r}×`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {/* Quality picker — wires to onQualityChange when provided */}
         <Select
