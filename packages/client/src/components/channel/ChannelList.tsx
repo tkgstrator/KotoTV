@@ -1,4 +1,5 @@
 import type { Channel, ChannelType } from '@kototv/server/src/schemas/Channel.dto'
+import { motion } from 'motion/react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import { ChannelRow } from './ChannelRow'
@@ -84,13 +85,24 @@ export function ChannelList({ type }: ChannelListProps) {
   if (type) {
     // Single-type view — no section headers, just the rows in a 2-col grid on desktop
     return (
-      <ul className='grid grid-cols-1 md:grid-cols-2'>
-        {channels.map((ch) => (
-          <li key={ch.id}>
+      <motion.ul
+        key={type}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
+        className='grid grid-cols-1 md:grid-cols-2'
+      >
+        {channels.map((ch, i) => (
+          <motion.li
+            key={ch.id}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut', delay: Math.min(i * 0.012, 0.24) }}
+          >
             <ChannelRow channel={ch} />
-          </li>
+          </motion.li>
         ))}
-      </ul>
+      </motion.ul>
     )
   }
 
@@ -107,10 +119,15 @@ export function ChannelList({ type }: ChannelListProps) {
         <section key={t} aria-label={TYPE_LABELS[t]}>
           <SectionHeader type={t} />
           <ul className='grid grid-cols-1 md:grid-cols-2'>
-            {list.map((ch) => (
-              <li key={ch.id}>
+            {list.map((ch, i) => (
+              <motion.li
+                key={ch.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, ease: 'easeOut', delay: Math.min(i * 0.012, 0.24) }}
+              >
                 <ChannelRow channel={ch} />
-              </li>
+              </motion.li>
             ))}
           </ul>
         </section>

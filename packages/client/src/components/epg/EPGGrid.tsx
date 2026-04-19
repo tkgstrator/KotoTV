@@ -23,6 +23,7 @@ import { Link } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { addHours, format, startOfHour } from 'date-fns'
 import { CalendarPlus } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -449,7 +450,13 @@ function AgendaView({
                     const isNow = new Date(p.startAt) <= now && new Date(p.endAt) > now
                     const accentColor = genreToColor(p.genres[0] ?? '')
                     return (
-                      <li key={p.id} className='relative'>
+                      <motion.li
+                        key={p.id}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.16, ease: 'easeOut' }}
+                        className='relative'
+                      >
                         <Link
                           to='/live/$channelId'
                           params={{ channelId: ch.id }}
@@ -507,7 +514,7 @@ function AgendaView({
                             <CalendarPlus className='size-3.5' aria-hidden />
                           </button>
                         )}
-                      </li>
+                      </motion.li>
                     )
                   })}
                 </ul>
