@@ -1,7 +1,8 @@
 /**
- * TIER-1 health bar (32px). Wordmark left, subsystem chips right.
- * Shares the ['health'] query with the Settings status tab — single fetch,
- * 15s polling, both surfaces stay in sync automatically.
+ * Mobile-only top bar (32px) with wordmark + health chip.
+ * On desktop the same content is folded into NavBar so the chrome is one
+ * row instead of two. Shares the ['health'] query with the Settings status
+ * tab — single fetch, 15s polling, both surfaces stay in sync automatically.
  */
 import { StatusChip } from '@/components/shared/status-chip'
 import { useHealth } from '@/hooks/useHealth'
@@ -25,7 +26,7 @@ export function HealthBar() {
     <div
       role='status'
       aria-label='グローバルヘルス'
-      className='sticky top-0 z-[70] flex h-[var(--shell-health-bar-h)] shrink-0 items-center overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+      className='sticky top-0 z-[70] flex h-[var(--shell-health-bar-h)] shrink-0 items-center overflow-x-auto border-b border-border bg-card [scrollbar-width:none] sm:hidden [&::-webkit-scrollbar]:hidden'
     >
       <span className='flex h-full shrink-0 items-center border-r border-border px-3 font-mono text-[0.8125rem] font-black uppercase tracking-[0.14em] text-foreground'>
         KotoTV

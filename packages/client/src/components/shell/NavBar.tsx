@@ -1,9 +1,21 @@
 /**
- * TIER-2 nav bar (40px desktop / bottom tabs mobile).
+ * Single-tier chrome bar (40px desktop / bottom tabs mobile).
+ * Desktop merges wordmark, nav tabs, settings, and the global health chip
+ * into one row so watching pages don't lose ~32px to a second header.
  * Active route detection uses TanStack Router's `useRouterState`.
  */
 import { Link, useRouterState } from '@tanstack/react-router'
+import { StatusChip } from '@/components/shared/status-chip'
+import { useHealth } from '@/hooks/useHealth'
 import { cn } from '@/lib/utils'
+
+type SubStatus = 'ok' | 'warn' | 'err'
+
+function worstStatus(statuses: SubStatus[]): SubStatus {
+  if (statuses.includes('err')) return 'err'
+  if (statuses.includes('warn')) return 'warn'
+  return 'ok'
+}
 
 const NAV_ITEMS = [
   { to: '/', label: 'チャンネル', short: 'CH', route: '/' },
@@ -16,6 +28,17 @@ const SETTINGS_ITEM = { to: '/settings', label: '設定', short: 'CFG', route: '
 export function NavBar() {
   const { location } = useRouterState()
   const path = location.pathname
+  const { data: health } = useHealth()
+
+  const overall: SubStatus = health
+    ? worstStatus([
+        health.mirakc.status,
+        health.postgres.status,
+        health.ffmpeg.status,
+        health.tuners.status,
+        health.disk.status
+      ])
+    : 'ok'
 
   function isActive(to: string) {
     return to === '/' ? path === '/' : path.startsWith(to)
@@ -26,8 +49,11 @@ export function NavBar() {
       {/* Desktop nav bar */}
       <nav
         aria-label='メインナビゲーション'
-        className='sticky top-[var(--shell-health-bar-h)] z-[60] hidden h-[var(--shell-nav-bar-h)] shrink-0 items-stretch overflow-x-auto border-b border-border bg-card [scrollbar-width:none] sm:flex [&::-webkit-scrollbar]:hidden'
+        className='sticky top-0 z-[70] hidden h-[var(--shell-nav-bar-h)] shrink-0 items-stretch overflow-x-auto border-b border-border bg-card [scrollbar-width:none] sm:flex [&::-webkit-scrollbar]:hidden'
       >
+        <span className='flex h-full shrink-0 items-center border-r border-border px-3 font-mono text-[0.8125rem] font-black uppercase tracking-[0.14em] text-foreground'>
+          KotoTV
+        </span>
         {NAV_ITEMS.map((item) => (
           <Link
             key={item.to}
@@ -75,6 +101,23 @@ export function NavBar() {
               {SETTINGS_ITEM.route}
             </span>
           </Link>
+        </div>
+
+        <div
+          role='status'
+          aria-label='グローバルヘルス'
+          className='flex h-full shrink-0 items-center gap-2 border-l border-border px-3'
+        >
+          <span className='font-mono text-[0.625rem] font-bold uppercase tracking-[0.1em] text-muted-foreground'>
+            health
+          </span>
+          <StatusChip variant={overall} size='sm'>
+            {overall.toUpperCase()}
+          </StatusChip>
+        </div>
+
+        <div className='flex h-full shrink-0 items-center border-l border-border/50 px-3'>
+          <span className='font-mono text-[0.625rem] tracking-[0.06em] text-muted-foreground'>v0.1.0</span>
         </div>
       </nav>
 
