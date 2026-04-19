@@ -1,8 +1,8 @@
 /**
- * Single-tier chrome bar (40px desktop / bottom tabs mobile).
- * Desktop shows wordmark + Japanese nav labels + settings — HEALTH and
- * version were moved out (they live in Settings now) so the bar reads as
- * "タイトル + ナビ" only, no diagnostic chrome.
+ * Desktop left sidebar (240 px expanded / 72 px mini on playback routes)
+ * and mobile bottom tab bar. The playback routes (/live/:id and
+ * /recordings/:id) auto-collapse to the 72 px mini rail so the video
+ * column doesn't lose horizontal space to nav chrome.
  * Active route detection uses TanStack Router's `useRouterState`.
  */
 import { Link, useRouterState } from '@tanstack/react-router'
@@ -17,9 +17,16 @@ const NAV_ITEMS = [
 
 const SETTINGS_ITEM = { to: '/settings', label: '設定', Icon: SettingsIcon } as const
 
+function isPlaybackRoute(path: string): boolean {
+  // /live/anything → playback. /recordings (list) stays expanded; only
+  // /recordings/<id> (watching a specific recording) collapses.
+  return path.startsWith('/live/') || /^\/recordings\/[^/]+$/.test(path)
+}
+
 export function NavBar() {
   const { location } = useRouterState()
   const path = location.pathname
+  const mini = isPlaybackRoute(path)
 
   function isActive(to: string) {
     return to === '/' ? path === '/' : path.startsWith(to)
@@ -27,45 +34,60 @@ export function NavBar() {
 
   return (
     <>
-      {/* Desktop nav bar */}
+      {/* Desktop left sidebar */}
       <nav
         aria-label='メインナビゲーション'
-        className='sticky top-0 z-[70] hidden h-[var(--shell-nav-bar-h)] shrink-0 items-stretch overflow-x-auto border-b border-border bg-card [scrollbar-width:none] sm:flex [&::-webkit-scrollbar]:hidden'
+        className={cn(
+          'hidden shrink-0 flex-col overflow-y-auto border-r border-border bg-card sm:flex',
+          mini ? 'w-[72px]' : 'w-[240px]'
+        )}
       >
-        <span className='flex h-full shrink-0 items-center border-r border-border px-3 font-mono text-[0.8125rem] font-black uppercase tracking-[0.14em] text-foreground'>
-          KotoTV
-        </span>
-        {NAV_ITEMS.map(({ to, label, Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            className={cn(
-              'flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 border-transparent bg-transparent px-3.5 text-[0.8125rem] font-bold text-muted-foreground whitespace-nowrap transition-colors',
-              'hover:bg-muted/20 hover:text-foreground',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:-outline-offset-[3px] focus-visible:rounded-sm',
-              isActive(to) && 'border-primary text-foreground'
-            )}
-            aria-current={isActive(to) ? 'page' : undefined}
-          >
-            <Icon aria-hidden='true' className='size-4' />
-            {label}
-          </Link>
-        ))}
+        {/* Wordmark */}
+        <div className={cn('flex h-10 shrink-0 items-center border-b border-border', mini ? 'justify-center' : 'px-3')}>
+          <span className='font-mono text-[0.8125rem] font-black uppercase tracking-[0.14em] text-foreground'>
+            {mini ? 'K' : 'KotoTV'}
+          </span>
+        </div>
+
+        {/* Primary nav */}
+        <div className='flex flex-col py-1.5'>
+          {NAV_ITEMS.map(({ to, label, Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              title={mini ? label : undefined}
+              aria-current={isActive(to) ? 'page' : undefined}
+              className={cn(
+                'flex items-center whitespace-nowrap text-[0.8125rem] font-bold text-muted-foreground transition-colors',
+                mini ? 'flex-col gap-0.5 py-2.5 text-[0.625rem]' : 'h-10 gap-3 px-3',
+                'hover:bg-muted/20 hover:text-foreground',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:-outline-offset-[3px] focus-visible:rounded-sm',
+                isActive(to) && 'bg-primary/10 text-foreground'
+              )}
+            >
+              <Icon aria-hidden='true' className={mini ? 'size-5' : 'size-4'} />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </div>
 
         <div className='flex-1' />
 
+        {/* Settings at bottom */}
         <Link
           to={SETTINGS_ITEM.to}
+          title={mini ? SETTINGS_ITEM.label : undefined}
+          aria-current={isActive(SETTINGS_ITEM.to) ? 'page' : undefined}
           className={cn(
-            'flex shrink-0 cursor-pointer items-center gap-1.5 border-b-2 border-l border-transparent border-l-border bg-transparent px-3.5 text-[0.8125rem] font-bold text-muted-foreground whitespace-nowrap transition-colors',
+            'flex items-center whitespace-nowrap border-t border-border text-[0.8125rem] font-bold text-muted-foreground transition-colors',
+            mini ? 'flex-col gap-0.5 py-2.5 text-[0.625rem]' : 'h-10 gap-3 px-3',
             'hover:bg-muted/20 hover:text-foreground',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm',
-            isActive(SETTINGS_ITEM.to) && 'border-b-primary text-foreground'
+            isActive(SETTINGS_ITEM.to) && 'bg-primary/10 text-foreground'
           )}
-          aria-current={isActive(SETTINGS_ITEM.to) ? 'page' : undefined}
         >
-          <SETTINGS_ITEM.Icon aria-hidden='true' className='size-4' />
-          {SETTINGS_ITEM.label}
+          <SETTINGS_ITEM.Icon aria-hidden='true' className={mini ? 'size-5' : 'size-4'} />
+          <span>{SETTINGS_ITEM.label}</span>
         </Link>
       </nav>
 
