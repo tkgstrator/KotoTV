@@ -2,6 +2,15 @@
 // All encoder tuning lives here; never inline flags in transcoder.ts.
 
 export type HwAccel = 'none' | 'nvenc' | 'vaapi'
+export type LiveQuality = 'auto' | 'high' | 'medium' | 'low'
+export type LiveCodec = 'avc' | 'hevc' | 'vp9'
+
+const QUALITY_TO_RES: Record<LiveQuality, { w: number; h: number; videoBitrate: number }> = {
+  auto: { w: 1280, h: 720, videoBitrate: 2500 },
+  high: { w: 1920, h: 1080, videoBitrate: 4500 },
+  medium: { w: 1280, h: 720, videoBitrate: 2500 },
+  low: { w: 854, h: 480, videoBitrate: 900 }
+}
 
 export type FfmpegArgsOptions = {
   /** Hardware acceleration backend. Dispatched by HW_ACCEL_TYPE env at call site. */
@@ -247,4 +256,94 @@ export function buildThumbnailArgs(opts: ThumbnailArgsOptions): string[] {
     '3',
     outputPath
   ]
+}
+
+// ---------------------------------------------------------------------------
+// Dummy live source — lavfi testsrc+sine → HLS, no upstream stream required.
+// Used until Mirakc is wired; also handy for Playwright tests because the
+// pipeline is self-contained and deterministic.
+// ---------------------------------------------------------------------------
+
+export type DummyLiveArgsOptions = {
+  /** Absolute output dir. Must exist. */
+  outputDir: string
+  quality?: LiveQuality
+  codec?: LiveCodec
+  segmentSeconds?: number
+  listSize?: number
+}
+
+/**
+ * Synthesize a live-style HLS playlist using ffmpeg's built-in lavfi sources
+ * (testsrc2 color bars + sine audio). The output mirrors what a real Mirakc
+ * transcode would produce — MPEG-TS segments for AVC/HEVC, fMP4 for VP9 —
+ * so hls.js treats both identically.
+ */
+export function buildDummyLiveArgs(opts: DummyLiveArgsOptions): string[] {
+  const { outputDir, quality = 'auto', codec = 'avc', segmentSeconds = 2, listSize = 6 } = opts
+  const { w, h, videoBitrate } = QUALITY_TO_RES[quality]
+
+  // Synthetic video: color bars with timestamp overlay, 30fps.
+  // Synthetic audio: 440Hz sine. Both loop forever (no duration).
+  const input = [
+    '-re', // real-time output — emits one second of media per second of wall clock
+    '-f',
+    'lavfi',
+    '-i',
+    `testsrc2=size=${w}x${h}:rate=30`,
+    '-f',
+    'lavfi',
+    '-i',
+    'sine=frequency=440'
+  ]
+
+  // Keyframe every 2s so HLS can cut clean segments.
+  const gop = ['-g', String(segmentSeconds * 30), '-keyint_min', String(segmentSeconds * 30)]
+
+  const videoFlags =
+    codec === 'hevc'
+      ? ['-c:v', 'libx265', '-preset', 'ultrafast', '-x265-params', 'log-level=error', '-b:v', `${videoBitrate}k`]
+      : codec === 'vp9'
+        ? ['-c:v', 'libvpx-vp9', '-deadline', 'realtime', '-cpu-used', '4', '-b:v', `${videoBitrate}k`]
+        : ['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-b:v', `${videoBitrate}k`]
+
+  // VP9 needs fMP4 segments (not allowed in MPEG-TS). AVC/HEVC use TS for
+  // maximum hls.js / native compatibility.
+  const audioCodec = codec === 'vp9' ? ['-c:a', 'libopus', '-b:a', '96k'] : ['-c:a', 'aac', '-b:a', '128k']
+
+  const segmentExt = codec === 'vp9' ? 'm4s' : 'ts'
+  const hlsFlags =
+    codec === 'vp9'
+      ? [
+          '-f',
+          'hls',
+          '-hls_time',
+          String(segmentSeconds),
+          '-hls_list_size',
+          String(listSize),
+          '-hls_flags',
+          'delete_segments+append_list+independent_segments',
+          '-hls_segment_type',
+          'fmp4',
+          '-hls_fmp4_init_filename',
+          'init.mp4',
+          '-hls_segment_filename',
+          `${outputDir}/%04d.${segmentExt}`,
+          `${outputDir}/playlist.m3u8`
+        ]
+      : [
+          '-f',
+          'hls',
+          '-hls_time',
+          String(segmentSeconds),
+          '-hls_list_size',
+          String(listSize),
+          '-hls_flags',
+          'delete_segments+append_list+independent_segments',
+          '-hls_segment_filename',
+          `${outputDir}/%04d.${segmentExt}`,
+          `${outputDir}/playlist.m3u8`
+        ]
+
+  return ['-y', ...input, ...gop, ...videoFlags, ...audioCodec, ...hlsFlags]
 }

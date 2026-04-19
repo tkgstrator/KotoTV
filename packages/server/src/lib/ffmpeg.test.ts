@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { FfmpegArgsOptions } from './ffmpeg'
-import { buildConvertArgs, buildFfmpegArgs, buildRecordArgs, buildThumbnailArgs } from './ffmpeg'
+import { buildConvertArgs, buildDummyLiveArgs, buildFfmpegArgs, buildRecordArgs, buildThumbnailArgs } from './ffmpeg'
 
 const BASE_OPTS = {
   outputDir: '/app/data/hls/test-session',
@@ -404,5 +404,62 @@ describe('buildThumbnailArgs', () => {
     })
     expect(flagValue(custom, '-ss')).toBe('30')
     expect(flagValue(custom, '-vf')).toBe('scale=320:-1')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Dummy live source (lavfi → HLS)
+// ---------------------------------------------------------------------------
+
+describe('buildDummyLiveArgs', () => {
+  test('uses lavfi testsrc + sine inputs and writes playlist to outputDir', () => {
+    const args = buildDummyLiveArgs({ outputDir: '/tmp/test-session' })
+    expect(args).toContain('-f')
+    expect(args.some((a) => a.startsWith('testsrc2=size='))).toBe(true)
+    expect(args.some((a) => a.startsWith('sine=frequency='))).toBe(true)
+    expect(args[args.length - 1]).toBe('/tmp/test-session/playlist.m3u8')
+  })
+
+  test('quality=high → 1920x1080', () => {
+    const args = buildDummyLiveArgs({ outputDir: '/x', quality: 'high' })
+    const src = args.find((a) => a.startsWith('testsrc2=size='))
+    expect(src).toContain('1920x1080')
+  })
+
+  test('quality=low → 854x480', () => {
+    const args = buildDummyLiveArgs({ outputDir: '/x', quality: 'low' })
+    expect(args.find((a) => a.startsWith('testsrc2=size='))).toContain('854x480')
+  })
+
+  test('codec=avc → libx264 + TS segments + aac audio', () => {
+    const args = buildDummyLiveArgs({ outputDir: '/x', codec: 'avc' })
+    expect(flagValue(args, '-c:v')).toBe('libx264')
+    expect(flagValue(args, '-c:a')).toBe('aac')
+    expect(args.some((a) => a.endsWith('.ts'))).toBe(true)
+    expect(args).not.toContain('fmp4')
+  })
+
+  test('codec=hevc → libx265 + TS segments', () => {
+    const args = buildDummyLiveArgs({ outputDir: '/x', codec: 'hevc' })
+    expect(flagValue(args, '-c:v')).toBe('libx265')
+    expect(args.some((a) => a.endsWith('.ts'))).toBe(true)
+  })
+
+  test('codec=vp9 → libvpx-vp9 + fMP4 segments + opus audio', () => {
+    const args = buildDummyLiveArgs({ outputDir: '/x', codec: 'vp9' })
+    expect(flagValue(args, '-c:v')).toBe('libvpx-vp9')
+    expect(flagValue(args, '-c:a')).toBe('libopus')
+    expect(flagValue(args, '-hls_segment_type')).toBe('fmp4')
+    expect(args.some((a) => a.endsWith('.m4s'))).toBe(true)
+  })
+
+  test('-re is present so output pacing matches wall clock (live feel)', () => {
+    const args = buildDummyLiveArgs({ outputDir: '/x' })
+    expect(contains(args, '-re')).toBe(true)
+  })
+
+  test('keyframe interval = segmentSeconds × fps so HLS cuts cleanly', () => {
+    const args = buildDummyLiveArgs({ outputDir: '/x', segmentSeconds: 2 })
+    expect(flagValue(args, '-g')).toBe('60') // 2s * 30fps
   })
 })

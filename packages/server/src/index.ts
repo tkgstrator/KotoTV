@@ -4,6 +4,7 @@ import { env } from './lib/config'
 import { logger } from './lib/logger'
 import { startEpgSyncScheduler, stopEpgSyncScheduler } from './services/epg-sync'
 import { stopRuleMatcherScheduler } from './services/rule-matcher'
+import { stopAllSessions } from './services/stream-manager'
 
 try {
   await mkdir(env.HLS_DIR, { recursive: true })
@@ -44,6 +45,8 @@ async function shutdown(signal: string) {
   try {
     await Promise.all([Promise.resolve(stopEpgSyncScheduler()), Promise.resolve(stopRuleMatcherScheduler())])
     logger.info('schedulers stopped')
+    await stopAllSessions()
+    logger.info('stream sessions stopped')
     await server.stop()
     logger.info('http server stopped')
     process.exit(0)
