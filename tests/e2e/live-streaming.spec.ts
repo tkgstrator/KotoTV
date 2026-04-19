@@ -137,7 +137,7 @@ test.describe('live-streaming AC', () => {
 
     const first = await startLiveSession(request, channelId, 'avc', 'mid')
     expect(first, 'first acquire must succeed').not.toBeNull()
-    const firstId = first!.sessionId
+    const firstId = first?.sessionId
 
     // Release (decrements viewerCount to 0, starts 15s idle timer)
     await releaseSession(request, firstId)
@@ -148,10 +148,10 @@ test.describe('live-streaming AC', () => {
     const second = await startLiveSession(request, channelId, 'avc', 'mid')
     expect(second, 'second acquire must succeed').not.toBeNull()
 
-    expect(second!.sessionId, 'reacquire within grace window must return the same sessionId').toBe(firstId)
+    expect(second?.sessionId, 'reacquire within grace window must return the same sessionId').toBe(firstId)
 
     // Cleanup
-    await releaseSession(request, second!.sessionId)
+    await releaseSession(request, second?.sessionId)
   })
 
   // -------------------------------------------------------------------------
@@ -175,16 +175,16 @@ test.describe('live-streaming AC', () => {
     expect(first, 'first acquire must succeed').not.toBeNull()
     expect(second, 'second acquire must succeed').not.toBeNull()
 
-    expect(first!.sessionId, 'parallel acquires for same key must share a sessionId').toBe(second!.sessionId)
+    expect(first?.sessionId, 'parallel acquires for same key must share a sessionId').toBe(second?.sessionId)
 
     // Verify viewerCount = 2 via SSE info
-    const info = await fetchStreamInfoOnce(request, first!.sessionId)
+    const info = await fetchStreamInfoOnce(request, first?.sessionId)
     expect(info, 'SSE /info must respond for the shared session').not.toBeNull()
-    expect(info!.viewerCount, 'viewerCount must be 2 after two parallel acquires').toBe(2)
+    expect(info?.viewerCount, 'viewerCount must be 2 after two parallel acquires').toBe(2)
 
     // Cleanup
-    await releaseSession(request, first!.sessionId)
-    await releaseSession(request, second!.sessionId)
+    await releaseSession(request, first?.sessionId)
+    await releaseSession(request, second?.sessionId)
   })
 
   // -------------------------------------------------------------------------
@@ -326,7 +326,7 @@ test.describe('live-streaming AC', () => {
   // but will fail with 503 when there's no tuner.
   // Requires: real tuner.
   // -------------------------------------------------------------------------
-  test('AC#7 two tabs different channels → two distinct sessions', async ({ browser, request }) => {
+  test('AC#7 two tabs different channels → two distinct sessions', async ({ browser: _browser, request }) => {
     const tuner = await isTunerAvailable(request)
     test.fixme(!tuner, 'AC#7 requires a hardware tuner')
 
@@ -340,9 +340,9 @@ test.describe('live-streaming AC', () => {
     expect(s1, 'session for channel 1 must be acquired').not.toBeNull()
     expect(s2, 'session for channel 2 must be acquired').not.toBeNull()
 
-    expect(s1!.sessionId, 'different channels must produce distinct sessionIds').not.toBe(s2!.sessionId)
+    expect(s1?.sessionId, 'different channels must produce distinct sessionIds').not.toBe(s2?.sessionId)
 
-    await Promise.all([releaseSession(request, s1!.sessionId), releaseSession(request, s2!.sessionId)])
+    await Promise.all([releaseSession(request, s1?.sessionId), releaseSession(request, s2?.sessionId)])
   })
 
   // -------------------------------------------------------------------------
@@ -472,20 +472,20 @@ test.describe('live-streaming AC', () => {
     expect(avcSession, 'AVC session must be acquired').not.toBeNull()
     expect(hevcSession, 'HEVC session must be acquired').not.toBeNull()
 
-    expect(avcSession!.sessionId, 'AVC and HEVC sessions for the same channel must have distinct sessionIds').not.toBe(
-      hevcSession!.sessionId
+    expect(avcSession?.sessionId, 'AVC and HEVC sessions for the same channel must have distinct sessionIds').not.toBe(
+      hevcSession?.sessionId
     )
 
     // Verify each session's SSE reports the correct codec
     const [avcInfo, hevcInfo] = await Promise.all([
-      fetchStreamInfoOnce(request, avcSession!.sessionId),
-      fetchStreamInfoOnce(request, hevcSession!.sessionId)
+      fetchStreamInfoOnce(request, avcSession?.sessionId),
+      fetchStreamInfoOnce(request, hevcSession?.sessionId)
     ])
 
     expect(avcInfo?.codec, 'AVC session SSE must report codec=avc').toBe('avc')
     expect(hevcInfo?.codec, 'HEVC session SSE must report codec=hevc').toBe('hevc')
 
-    await Promise.all([releaseSession(request, avcSession!.sessionId), releaseSession(request, hevcSession!.sessionId)])
+    await Promise.all([releaseSession(request, avcSession?.sessionId), releaseSession(request, hevcSession?.sessionId)])
   })
 
   // -------------------------------------------------------------------------
