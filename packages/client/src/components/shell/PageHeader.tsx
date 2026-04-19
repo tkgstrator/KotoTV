@@ -25,7 +25,7 @@ export function PageHeader({ children, className, ariaLabel }: PageHeaderProps) 
   return (
     <section
       aria-label={ariaLabel}
-      className={cn('sticky top-0 z-20 flex h-page-header shrink-0 border-b border-border bg-background', className)}
+      className={cn('sticky top-0 z-20 flex h-page-header shrink-0 bg-background', className)}
     >
       {children}
     </section>
