@@ -158,6 +158,10 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
       switch (e.key) {
         case ' ':
         case 'k':
+          // Space / k → play/pause is recording-only. Live ignores this:
+          // pausing a live stream just freezes video while the channel
+          // keeps broadcasting, which doesn't match TV metaphor.
+          if (isLive) break
           e.preventDefault()
           if (v.paused) v.play().catch(() => {})
           else v.pause()
@@ -172,16 +176,14 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
           else v.requestFullscreen().catch(() => {})
           break
         case 'ArrowLeft':
-          if (!isLive) {
-            e.preventDefault()
-            skip(-10)
-          }
+          if (isLive) break
+          e.preventDefault()
+          skip(-10)
           break
         case 'ArrowRight':
-          if (!isLive) {
-            e.preventDefault()
-            skip(10)
-          }
+          if (isLive) break
+          e.preventDefault()
+          skip(10)
           break
         case 'ArrowUp':
           e.preventDefault()
@@ -229,8 +231,6 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
     const sec = Math.floor(s % 60)
     return `${m}:${sec.toString().padStart(2, '0')}`
   }
-
-  const disabledLiveClass = isLive ? 'opacity-50 pointer-events-none' : ''
 
   return (
     <div className={cn('flex flex-col gap-1.5 border-t border-border bg-card px-2.5 py-2', className)}>
@@ -287,20 +287,25 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
         )}
       </div>
 
-      {/* Buttons row */}
+      {/* Buttons row — live keeps only mute / volume / quality / fullscreen.
+          No play/pause, no skip, no rate: lowering the "fidget with controls"
+          surface area for live viewing (app philosophy — short, intentional
+          sessions over endless transport tweaking). Recording playback keeps
+          the full control set since seeking is the point there. */}
       <div className='flex items-center gap-0.5'>
-        {/* Play / Pause */}
-        <Button
-          variant='ghost'
-          size='icon'
-          aria-label={isPlaying ? '一時停止' : '再生'}
-          onClick={togglePlay}
-          className='h-8 w-8 shrink-0'
-        >
-          {isPlaying ? <Pause className='size-4' /> : <Play className='size-4' />}
-        </Button>
+        {!isLive && (
+          <Button
+            variant='ghost'
+            size='icon'
+            aria-label={isPlaying ? '一時停止' : '再生'}
+            onClick={togglePlay}
+            className='h-8 w-8 shrink-0'
+          >
+            {isPlaying ? <Pause className='size-4' /> : <Play className='size-4' />}
+          </Button>
+        )}
 
-        {/* Mute */}
+        {/* Mute — always on, same semantics across live and recording */}
         <Button
           variant='ghost'
           size='icon'
@@ -311,55 +316,48 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
           {isMuted ? <VolumeX className='size-4' /> : <Volume2 className='size-4' />}
         </Button>
 
-        <div aria-hidden='true' className='mx-1 h-5 w-px bg-border shrink-0' />
-
-        {/* Skip back — live: disabled */}
-        <Button
-          variant='ghost'
-          size='icon'
-          aria-label='-10秒'
-          aria-disabled={isLive ? 'true' : undefined}
-          onClick={() => skip(-10)}
-          className={cn('h-8 w-8 shrink-0', disabledLiveClass)}
-          tabIndex={isLive ? -1 : 0}
-        >
-          <SkipBack className='size-4' />
-        </Button>
-
-        {/* Skip forward — live: disabled */}
-        <Button
-          variant='ghost'
-          size='icon'
-          aria-label='+10秒'
-          aria-disabled={isLive ? 'true' : undefined}
-          onClick={() => skip(10)}
-          className={cn('h-8 w-8 shrink-0', disabledLiveClass)}
-          tabIndex={isLive ? -1 : 0}
-        >
-          <SkipForward className='size-4' />
-        </Button>
+        {!isLive && (
+          <>
+            <div aria-hidden='true' className='mx-1 h-5 w-px bg-border shrink-0' />
+            <Button
+              variant='ghost'
+              size='icon'
+              aria-label='-10秒'
+              onClick={() => skip(-10)}
+              className='h-8 w-8 shrink-0'
+            >
+              <SkipBack className='size-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              aria-label='+10秒'
+              onClick={() => skip(10)}
+              className='h-8 w-8 shrink-0'
+            >
+              <SkipForward className='size-4' />
+            </Button>
+          </>
+        )}
 
         <div className='flex-1' />
 
-        {/* Playback rate — live: disabled */}
-        <Select value={String(playbackRate)} onValueChange={handleRateChange} disabled={isLive}>
-          <SelectTrigger
-            size='sm'
-            aria-label='再生速度'
-            className={cn('h-7 gap-1.5 px-2 font-mono text-[0.6875rem]', disabledLiveClass)}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className='font-mono text-[0.6875rem]'>
-            {PLAYBACK_RATES.map((r) => (
-              <SelectItem key={r} value={String(r)}>
-                {r === 1.0 ? '1.0×' : `${r}×`}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!isLive && (
+          <Select value={String(playbackRate)} onValueChange={handleRateChange}>
+            <SelectTrigger size='sm' aria-label='再生速度' className='h-7 gap-1.5 px-2 font-mono text-[0.6875rem]'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className='font-mono text-[0.6875rem]'>
+              {PLAYBACK_RATES.map((r) => (
+                <SelectItem key={r} value={String(r)}>
+                  {r === 1.0 ? '1.0×' : `${r}×`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
-        {/* Quality stub — UI only, no logic yet (Phase 2 range) */}
+        {/* Quality — UI only, wiring lives in useStream via usePlaybackPrefs */}
         <Select value={quality} onValueChange={setQuality}>
           <SelectTrigger size='sm' aria-label='画質' className='h-7 gap-1.5 px-2 font-mono text-[0.6875rem]'>
             <SelectValue />
