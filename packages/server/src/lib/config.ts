@@ -9,7 +9,10 @@ const EnvSchema = z.object({
   /* Workspace-relative. Prod mounts this path as tmpfs via compose. */
   HLS_DIR: z.string().default('./data/hls'),
   /* Milliseconds of zero-viewer idle time before the FFmpeg process is killed. */
-  HLS_IDLE_KILL_MS: z.coerce.number().int().positive().default(15_000)
+  HLS_IDLE_KILL_MS: z.coerce.number().int().positive().default(15_000),
+  /* When truthy, openLiveStream returns a synthetic testsrc2 MPEG-TS instead of
+   * hitting Mirakc. Used by Playwright E2E in envs without an antenna signal. */
+  MIRAKC_MOCK_STREAM: z.coerce.boolean().default(false)
 })
 
 const result = EnvSchema.safeParse(Bun.env)
