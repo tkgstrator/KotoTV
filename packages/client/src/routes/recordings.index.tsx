@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { RecordingScheduleForm } from '@/components/recording/RecordingScheduleForm'
 import { StatusChip } from '@/components/shared/status-chip'
+import { UnderlineTabBar } from '@/components/shared/underline-tab-bar'
 import { PageHeader } from '@/components/shell/PageHeader'
 import {
   AlertDialog,
@@ -28,11 +29,9 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRecordingRules } from '@/hooks/useRecordingRules'
 import { useDeleteRecording, useRecordingEvents, useRecordings } from '@/hooks/useRecordings'
 import { failureReasonLabel } from '@/lib/recording-labels'
-import { TAB_LIST_CLASS, TAB_TRIGGER_CLASS } from '@/lib/tab-bar'
 import { cn } from '@/lib/utils'
 
 type TabValue = 'pending' | 'completed' | 'failed'
@@ -445,110 +444,127 @@ function RecordingsPage() {
       )}
 
       {!isPending && !isError && (
-        <Tabs
-          value={activeTab}
-          onValueChange={(v) => navigate({ search: { tab: v as TabValue } })}
-          className='flex flex-1 flex-col overflow-hidden'
-        >
-          <div className='sticky top-0 z-10 border-b border-border bg-background'>
-            <TabsList className={TAB_LIST_CLASS}>
-              <TabsTrigger value='pending' className={cn(TAB_TRIGGER_CLASS, 'flex-1')}>
-                録画待ち
-                {pendingItems.length > 0 && (
-                  <span className='ml-1 text-[0.8125rem] tabular-nums text-muted-foreground'>
-                    ({pendingItems.length})
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value='completed' className={cn(TAB_TRIGGER_CLASS, 'flex-1')}>
-                完了
-                {completedItems.length > 0 && (
-                  <span className='ml-1 text-[0.8125rem] tabular-nums text-muted-foreground'>
-                    ({completedItems.length})
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value='failed' className={cn(TAB_TRIGGER_CLASS, 'flex-1')}>
-                失敗
-                {failedItems.length > 0 && (
-                  <span className='ml-1 text-[0.8125rem] tabular-nums text-destructive'>({failedItems.length})</span>
-                )}
-              </TabsTrigger>
-            </TabsList>
+        <div className='flex flex-1 flex-col overflow-hidden'>
+          <div className='sticky top-0 z-10'>
+            <UnderlineTabBar<TabValue>
+              tabs={[
+                {
+                  value: 'pending',
+                  label: (
+                    <>
+                      録画待ち
+                      {pendingItems.length > 0 && (
+                        <span className='ml-1 text-[0.8125rem] tabular-nums text-muted-foreground'>
+                          ({pendingItems.length})
+                        </span>
+                      )}
+                    </>
+                  )
+                },
+                {
+                  value: 'completed',
+                  label: (
+                    <>
+                      完了
+                      {completedItems.length > 0 && (
+                        <span className='ml-1 text-[0.8125rem] tabular-nums text-muted-foreground'>
+                          ({completedItems.length})
+                        </span>
+                      )}
+                    </>
+                  )
+                },
+                {
+                  value: 'failed',
+                  label: (
+                    <>
+                      失敗
+                      {failedItems.length > 0 && (
+                        <span className='ml-1 text-[0.8125rem] tabular-nums text-destructive'>
+                          ({failedItems.length})
+                        </span>
+                      )}
+                    </>
+                  )
+                }
+              ]}
+              value={activeTab}
+              onChange={(v) => navigate({ search: { tab: v } })}
+              ariaLabel='録画タブ'
+            />
           </div>
 
-          <TabsContent value='pending' className='flex-1 overflow-y-auto pb-16'>
-            {pendingItems.length === 0 ? (
-              <div className='px-4 py-12'>
-                <p className='mb-3 font-mono text-[0.8125rem] font-semibold text-muted-foreground'>
-                  $ nothing scheduled yet
-                </p>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  className='font-mono text-[0.75rem]'
-                  onClick={() => setFormOpen(true)}
-                >
-                  + 最初の予約を追加
-                </Button>
-              </div>
-            ) : (
-              <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'>
-                {pendingItems.map((item) =>
-                  'startAt' in item ? (
-                    <ScheduleRowEnhanced
-                      key={item.id}
-                      schedule={item as RecordingSchedule & { ruleId?: string | null }}
-                      ruleNameMap={ruleNameMap}
-                    />
-                  ) : (
-                    <RecordingRow key={item.id} rec={item} />
-                  )
-                )}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value='completed' className='flex-1 overflow-y-auto pb-16'>
-            {completedItems.length === 0 ? (
-              <div className='px-4 py-12'>
-                <div className='inline-block rounded-sm border border-border bg-muted/60 px-3.5 py-2.5 font-mono text-[0.75rem] text-muted-foreground'>
-                  $ ls recordings/ → 0 items
+          <div className='flex-1 overflow-y-auto pb-16'>
+            {activeTab === 'pending' &&
+              (pendingItems.length === 0 ? (
+                <div className='px-4 py-12'>
+                  <p className='mb-3 font-mono text-[0.8125rem] font-semibold text-muted-foreground'>
+                    $ nothing scheduled yet
+                  </p>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='font-mono text-[0.75rem]'
+                    onClick={() => setFormOpen(true)}
+                  >
+                    + 最初の予約を追加
+                  </Button>
                 </div>
-              </div>
-            ) : (
-              <div className='grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-px bg-border'>
-                {completedItems.map((r) => (
-                  <DoneCard key={r.id} rec={r} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value='failed' className='flex-1 overflow-y-auto pb-16'>
-            {failedItems.length === 0 ? (
-              <div className='px-4 py-12'>
-                <div className='inline-block rounded-sm border border-border bg-muted/60 px-3.5 py-2.5 font-mono text-[0.75rem] text-muted-foreground'>
-                  $ no failures — good
+              ) : (
+                <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'>
+                  {pendingItems.map((item) =>
+                    'startAt' in item ? (
+                      <ScheduleRowEnhanced
+                        key={item.id}
+                        schedule={item as RecordingSchedule & { ruleId?: string | null }}
+                        ruleNameMap={ruleNameMap}
+                      />
+                    ) : (
+                      <RecordingRow key={item.id} rec={item} />
+                    )
+                  )}
                 </div>
-              </div>
-            ) : (
-              <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'>
-                {failedItems.map((item) =>
-                  'startAt' in item ? (
-                    <ScheduleRowEnhanced
-                      key={item.id}
-                      schedule={item as RecordingSchedule & { ruleId?: string | null; failureReason?: string | null }}
-                      ruleNameMap={ruleNameMap}
-                    />
-                  ) : (
-                    <FailedRecordingRow key={item.id} rec={item} />
-                  )
-                )}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              ))}
+
+            {activeTab === 'completed' &&
+              (completedItems.length === 0 ? (
+                <div className='px-4 py-12'>
+                  <div className='inline-block rounded-sm border border-border bg-muted/60 px-3.5 py-2.5 font-mono text-[0.75rem] text-muted-foreground'>
+                    $ ls recordings/ → 0 items
+                  </div>
+                </div>
+              ) : (
+                <div className='grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-px bg-border'>
+                  {completedItems.map((r) => (
+                    <DoneCard key={r.id} rec={r} />
+                  ))}
+                </div>
+              ))}
+
+            {activeTab === 'failed' &&
+              (failedItems.length === 0 ? (
+                <div className='px-4 py-12'>
+                  <div className='inline-block rounded-sm border border-border bg-muted/60 px-3.5 py-2.5 font-mono text-[0.75rem] text-muted-foreground'>
+                    $ no failures — good
+                  </div>
+                </div>
+              ) : (
+                <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'>
+                  {failedItems.map((item) =>
+                    'startAt' in item ? (
+                      <ScheduleRowEnhanced
+                        key={item.id}
+                        schedule={item as RecordingSchedule & { ruleId?: string | null; failureReason?: string | null }}
+                        ruleNameMap={ruleNameMap}
+                      />
+                    ) : (
+                      <FailedRecordingRow key={item.id} rec={item} />
+                    )
+                  )}
+                </div>
+              ))}
+          </div>
+        </div>
       )}
 
       <RecordingScheduleForm open={formOpen} onOpenChange={setFormOpen} />
