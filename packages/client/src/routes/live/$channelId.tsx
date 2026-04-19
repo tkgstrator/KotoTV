@@ -263,25 +263,19 @@ function LivePage() {
         <div className='flex items-center gap-1.5'>
           {stream.status === 'ready' ? (
             <>
-              <StatusChip variant='live' dot size='sm'>
+              <StatusChip variant='live' dot>
                 LIVE
               </StatusChip>
-              <StatusChip variant='ok' size='sm'>
-                OK
-              </StatusChip>
+              <StatusChip variant='ok'>OK</StatusChip>
             </>
           ) : stream.status === 'error' ? (
-            <StatusChip variant='fatal' size='sm'>
-              FATAL
-            </StatusChip>
+            <StatusChip variant='fatal'>FATAL</StatusChip>
           ) : (
-            <StatusChip variant='info' size='sm'>
-              INIT
-            </StatusChip>
+            <StatusChip variant='info'>INIT</StatusChip>
           )}
         </div>
 
-        <span className='font-mono text-[0.75rem] font-semibold tabular-nums text-muted-foreground'>
+        <span className='font-mono text-status font-semibold tabular-nums text-muted-foreground'>
           {format(clock, 'HH:mm:ss')}
         </span>
 
