@@ -82,16 +82,7 @@ function SettingsPage() {
 
       <HealthStrip />
 
-      <div className='sticky top-[calc(var(--page-header-h)+48px)] z-10 shrink-0 overflow-x-auto bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-        <UnderlineTabBar<SettingsTab>
-          tabs={SETTINGS_TABS}
-          value={tab}
-          onChange={setTab}
-          ariaLabel='設定タブ'
-          heightClass='h-page-header'
-          className='bg-card'
-        />
-      </div>
+      <UnderlineTabBar<SettingsTab> tabs={SETTINGS_TABS} value={tab} onChange={setTab} ariaLabel='設定タブ' />
 
       <div className='flex-1'>
         {tab === 'status' && <StatusTab />}
