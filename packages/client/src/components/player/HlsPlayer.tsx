@@ -25,7 +25,7 @@ const MAX_RETRIES = 3
  */
 export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
   (
-    { playlistUrl, onError, onReady, className, autoPlay = true, muted = true, ariaLabel, lowLatencyMode = true },
+    { playlistUrl, onError, onReady, className, autoPlay = true, muted = true, ariaLabel, lowLatencyMode = false },
     ref
   ) => {
     const internalRef = useRef<HTMLVideoElement>(null)
@@ -51,10 +51,21 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
       }
 
       const hls = new Hls({
+        // lowLatencyMode requires LL-HLS playlists (#EXT-X-PART-INF etc);
+        // our FFmpeg muxer emits plain HLS so keep this off by default or
+        // hls.js will busy-poll the playlist and keep resetting currentTime.
         lowLatencyMode,
+        // 3 segments ≈ 6s live edge latency, a reasonable default for 2s HLS
         liveSyncDurationCount: 3,
-        maxLiveSyncPlaybackRate: 1.05,
-        enableWorker: true
+        // Bounded live-edge catch-up. Higher values can cause perceptible
+        // speed changes when the buffer is healthy.
+        maxLiveSyncPlaybackRate: 1.02,
+        // Give hls.js extra room before it decides to stall or resync; 2s
+        // segments × 5 allows the transcoder to fall behind briefly without
+        // triggering a live-edge jump.
+        liveMaxLatencyDurationCount: 10,
+        enableWorker: true,
+        backBufferLength: 30
       })
 
       hls.on(Hls.Events.ERROR, (_e, data) => {

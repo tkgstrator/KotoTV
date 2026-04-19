@@ -273,11 +273,26 @@ export const mirakcClient = {
     if (env.MIRAKC_MOCK_STREAM) {
       return openMockStream(channelId)
     }
-    const timeoutSignal = AbortSignal.timeout(30_000)
-    const combinedSignal = signal ? AbortSignal.any([timeoutSignal, signal]) : timeoutSignal
+
+    // A live MPEG-TS stream is expected to run indefinitely, so we must NOT
+    // apply a total-duration AbortSignal to the fetch — doing so would kill
+    // the stream at the timeout mark. Only the caller-supplied abort signal
+    // (session teardown) should cancel the fetch. A connect-only timeout is
+    // enforced separately below via a watchdog that is cleared once headers
+    // arrive.
+    const connectController = new AbortController()
+    const connectTimer = setTimeout(() => connectController.abort(new Error('connect_timeout')), 30_000)
+    const combinedSignal = signal ? AbortSignal.any([connectController.signal, signal]) : connectController.signal
 
     const url = `${env.MIRAKC_URL}/api/services/${channelId}/stream?decode=1`
-    const res = await fetch(url, { signal: combinedSignal })
+    let res: Response
+    try {
+      res = await fetch(url, { signal: combinedSignal })
+    } finally {
+      // Headers arrived (or fetch threw); clear the watchdog so it does not
+      // tear down the live body stream later.
+      clearTimeout(connectTimer)
+    }
 
     if (!res.ok) {
       throw new MirakcError(res.status, `openLiveStream ${res.status} for channel ${channelId}`)
