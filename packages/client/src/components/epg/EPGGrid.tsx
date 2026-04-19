@@ -544,8 +544,8 @@ export function EPGGrid({
 
       {/* ── Desktop: future schedule grid (md+) ── */}
       <div className='hidden flex-1 overflow-hidden md:flex md:flex-col'>
-        <div className='shrink-0 border-b border-border bg-muted/50 px-3 py-1'>
-          <span className='text-[0.65rem] font-bold uppercase tracking-[0.06em] text-muted-foreground'>
+        <div className='flex h-6 shrink-0 items-center border-b border-border bg-muted/50 px-3'>
+          <span className='text-[0.65rem] font-bold uppercase leading-none tracking-[0.06em] text-muted-foreground'>
             これからの番組（{format(gridStartAt, 'HH:mm')} 〜 {format(gridEnd, 'HH:mm')}）
           </span>
         </div>

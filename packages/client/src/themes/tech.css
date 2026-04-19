@@ -71,6 +71,11 @@
      * stays consistent. The channel-list TypeFilter uses this slot. */
     --page-header-h: 48px;
 
+    /* PC でタイトル行に呼吸量を確保。タブバーはモバイル 48 / PC 56。 */
+    @media (min-width: 768px) {
+      --page-header-h: 56px;
+    }
+
     /* ── Player surfaces ───────────────────────────────────────────── */
     /* live-player v10: permanent diagnostic sidebar on desktop. */
     --diag-sidebar-w: 240px;
