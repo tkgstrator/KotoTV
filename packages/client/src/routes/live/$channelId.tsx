@@ -117,12 +117,33 @@ function DiagnosticSidebar({
   streamStatus: string
   videoRef: React.RefObject<HTMLVideoElement | null>
 }) {
-  const nowDate = useClock()
-  const now = format(nowDate, 'HH:mm:ss')
   const shortId = sessionId ? `${sessionId.slice(0, 8)}…` : '—'
   const info = useStreamInfo(sessionId)
 
   const [bufferSec, setBufferSec] = useState<number | null>(null)
+
+  // Snapshot the timestamp of each log-worthy state transition exactly once
+  // so the rendered "HH:MM:SS" does not tick forward every second.
+  const [logTimestamps, setLogTimestamps] = useState<{
+    api?: string
+    acquired?: string
+    error?: string
+  }>({})
+
+  useEffect(() => {
+    if (sessionId && !logTimestamps.api) {
+      setLogTimestamps((prev) => ({ ...prev, api: format(new Date(), 'HH:mm:ss') }))
+    }
+  }, [sessionId, logTimestamps.api])
+
+  useEffect(() => {
+    if (streamStatus === 'ready' && !logTimestamps.acquired) {
+      setLogTimestamps((prev) => ({ ...prev, acquired: format(new Date(), 'HH:mm:ss') }))
+    }
+    if (streamStatus === 'error' && !logTimestamps.error) {
+      setLogTimestamps((prev) => ({ ...prev, error: format(new Date(), 'HH:mm:ss') }))
+    }
+  }, [streamStatus, logTimestamps.acquired, logTimestamps.error])
 
   // Client-side buffer measurement is more accurate than the server-estimated value.
   useEffect(() => {
@@ -210,7 +231,7 @@ function DiagnosticSidebar({
           <span className={cn(STAT_VAL_CLS, 'opacity-70')}>{shortId}</span>
         </StatRow>
         <StatRow label='started'>
-          <span className={STAT_VAL_CLS}>{now}</span>
+          <span className={STAT_VAL_CLS}>{logTimestamps.api ?? '—'}</span>
         </StatRow>
       </div>
 
@@ -223,23 +244,23 @@ function DiagnosticSidebar({
           <LogLine ts='--:--:--' level='info'>
             [session] initializing…
           </LogLine>
-          {sessionId && (
-            <LogLine ts={now} level='info'>
+          {sessionId && logTimestamps.api && (
+            <LogLine ts={logTimestamps.api} level='info'>
               [api] POST /api/streams/live → 201
             </LogLine>
           )}
-          {streamStatus === 'ready' && (
+          {streamStatus === 'ready' && logTimestamps.acquired && (
             <>
-              <LogLine ts={now} level='ok'>
+              <LogLine ts={logTimestamps.acquired} level='ok'>
                 [stream] session acquired
               </LogLine>
-              <LogLine ts={now} level='info'>
+              <LogLine ts={logTimestamps.acquired} level='info'>
                 [hls] waiting for playlist…
               </LogLine>
             </>
           )}
-          {streamStatus === 'error' && (
-            <LogLine ts={now} level='err'>
+          {streamStatus === 'error' && logTimestamps.error && (
+            <LogLine ts={logTimestamps.error} level='err'>
               [stream] start failed
             </LogLine>
           )}
