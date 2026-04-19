@@ -143,15 +143,19 @@ export async function fetchStreamInfoOnce(
 // ---------------------------------------------------------------------------
 
 /**
- * Wait until the <video> element is actively playing:
- *   readyState >= 3 (HAVE_FUTURE_DATA), paused === false, currentTime > 0.
- * Rejects after timeoutMs (default 15s).
+ * Wait until the <video> element is actively playing.
+ *
+ * For live HLS, hls.js may hold `currentTime` at 0 briefly while seeking to
+ * the live edge — check buffered ranges as a secondary readiness signal so the
+ * helper doesn't hang on live streams.
  */
 export function waitForPlaying(page: Page, timeoutMs = 15_000): Promise<void> {
   return page.waitForFunction(
     () => {
       const v = document.querySelector('video')
-      return !!v && v.readyState >= 3 && !v.paused && v.currentTime > 0
+      if (!v || v.paused || v.readyState < 3) return false
+      const hasBuffered = v.buffered.length > 0 && v.buffered.end(v.buffered.length - 1) > 0
+      return v.currentTime > 0 || hasBuffered
     },
     { timeout: timeoutMs }
   )

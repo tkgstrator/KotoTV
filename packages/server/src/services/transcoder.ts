@@ -86,7 +86,9 @@ export function startTranscoder(opts: StartTranscoderOpts): TranscoderHandle {
     // initial `fps=0.0` that FFmpeg emits before any frames have been encoded).
     STATS_RE.lastIndex = 0
     let last: RegExpExecArray | null = null
-    for (let m: RegExpExecArray | null; (m = STATS_RE.exec(line)) !== null; ) {
+    while (true) {
+      const m = STATS_RE.exec(line)
+      if (m === null) break
       if (Number.parseFloat(m[2]!) > 0) last = m
     }
     if (last) {
