@@ -4,7 +4,7 @@
 |------|-----|
 | **目標** | チャンネル選択後にライブ映像が HLS で再生される。複数タブでプロセス共有、全タブ閉じで idle 停止 |
 | **工数** | 3-5 日 |
-| **ステータス** | 実行中 (Mirakc-free パート着手 2026-04-17) |
+| **ステータス** | 実装完了 (Mirakc-free 2026-04-17 / Mirakc-dependent 2026-04-19)。検証基準は実行環境で別途確認 |
 | **前提フェーズ** | Phase 1 |
 
 ## 全体フロー
@@ -65,14 +65,14 @@ Mirakc 稼働待ち。影響しないパートを先行で実装し、Mirakc 稼
 - [x] `buildFfmpegArgs({ hwAccel, outputDir, segmentSeconds, listSize, videoBitrate, audioBitrate })` 純関数を実装 — `packages/server/src/lib/ffmpeg.ts`
 - [x] `nvenc` / `qsv` / `vaapi` / `libx264` の分岐を入れ、VAAPI は `-vaapi_device` と `-vf format=nv12,hwupload` を含める — `packages/server/src/lib/ffmpeg.ts`
 - [x] 全セグメントが tmpfs 上であることを確認、`-hls_flags delete_segments+append_list+independent_segments` を必ず付ける (単体テストで invariant 固定) — `packages/server/src/lib/ffmpeg.ts` / `packages/server/src/lib/ffmpeg.test.ts` (32 tests pass)
-- [ ] `startTranscoder(sessionId, outputDir, source, opts)` を実装: `mkdir` → `Bun.spawn` → stdin pump + stderr→pino (debug) + `waitForPlaylist` — `packages/server/src/services/transcoder.ts` **(Mirakc 稼働待ち)**
-- [ ] `waitForPlaylist(path, timeoutMs)` で `playlist.m3u8` の生成をポーリング検知 — `packages/server/src/services/transcoder.ts` **(Mirakc 稼働待ち)**
-- [ ] `abort()` ハンドラで Mirakc reader cancel + `proc.kill()` + `proc.exited` 待機 — `packages/server/src/services/transcoder.ts` **(Mirakc 稼働待ち)**
-- [ ] `streamManager` オブジェクト (in-memory `Map<key, { handle, viewerCount, idleTimer }>`) を実装 — `packages/server/src/services/stream-manager.ts` **(Mirakc 稼働待ち)**
-- [ ] `acquireLive(channelId)`: 既存あれば viewerCount++、なければ `mirakcClient.openLiveStream` + `startTranscoder` で起動、戻り値は `{ sessionId, playlistUrl }` — `packages/server/src/services/stream-manager.ts` **(Mirakc 稼働待ち)**
-- [ ] `release(sessionId)`: viewerCount--、0 なら `setTimeout(HLS_IDLE_KILL_MS)` で abort + session dir `rm -rf` — `packages/server/src/services/stream-manager.ts` **(Mirakc 稼働待ち)**
-- [ ] 再取得時に idle timer を cancel する復帰ロジック — `packages/server/src/services/stream-manager.ts` **(Mirakc 稼働待ち)**
-- [ ] `process.on('SIGTERM', ...)` で全セッションの `abort()` を await してから exit — `packages/server/src/index.ts` (登録) + `packages/server/src/services/stream-manager.ts` (クリーンアップ処理) **(Mirakc 稼働待ち)**
+- [x] `startTranscoder(sessionId, outputDir, source, opts)` を実装: `mkdir` → `Bun.spawn` → stdin pump + stderr→pino (debug) + `waitForPlaylist` — `packages/server/src/services/transcoder.ts`
+- [x] `waitForPlaylist(path, timeoutMs)` で `playlist.m3u8` の生成をポーリング検知 — `packages/server/src/services/transcoder.ts`
+- [x] `abort()` ハンドラで Mirakc reader cancel + `proc.kill()` + `proc.exited` 待機 — `packages/server/src/services/transcoder.ts`
+- [x] `streamManager` オブジェクト (in-memory `Map<key, { handle, viewerCount, idleTimer }>`) を実装 — `packages/server/src/services/stream-manager.ts`
+- [x] `acquireLive(channelId)`: 既存あれば viewerCount++、なければ `mirakcClient.openLiveStream` + `startTranscoder` で起動、戻り値は `{ sessionId, playlistUrl }` — `packages/server/src/services/stream-manager.ts`
+- [x] `release(sessionId)`: viewerCount--、0 なら `setTimeout(HLS_IDLE_KILL_MS)` で abort + session dir `rm -rf` — `packages/server/src/services/stream-manager.ts`
+- [x] 再取得時に idle timer を cancel する復帰ロジック — `packages/server/src/services/stream-manager.ts`
+- [x] `process.on('SIGTERM', ...)` + `SIGINT` で全セッションの `abort()` を await してから exit — `packages/server/src/index.ts` (登録) + `packages/server/src/services/stream-manager.ts` (クリーンアップ処理)
 
 ### frontend ✅ 完了
 - [x] `useStream(channelId)` フックを作成: `useMutation` で `POST /api/streams/live/:channelId` → state 管理 → unmount 時に `DELETE /api/streams/:sessionId` — `packages/client/src/hooks/useStream.ts`
@@ -84,7 +84,7 @@ Mirakc 稼働待ち。影響しないパートを先行で実装し、Mirakc 稼
 - [x] `ChannelRow` にライブページ (`/live/$channelId`) への `<Link>` を追加 (plan 上の `ChannelCard` は本コードベースでは `ChannelRow`) — `packages/client/src/components/channel/ChannelRow.tsx`
 - [x] `:focus-visible` リングが全操作要素に出ることを確認
 
-### qa ✅ Mirakc-free パート完了
+### qa ✅ Mirakc-dependent パート完了 2026-04-19
 - [x] 型検査 + Biome (clean)
 - [x] コミット単位 (実績):
   - `c420ea5 build(docker): include ffmpeg runtime + HW accel variants`
@@ -92,6 +92,10 @@ Mirakc 稼働待ち。影響しないパートを先行で実装し、Mirakc 稼
   - `1a090bb feat(server): /api/streams/* routes with Mirakc-deferred stubs`
   - `2827eff feat(client): HlsPlayer + PlayerControls shared components`
   - `2562d6f feat(client): useStream hook + live route (/live/$channelId)`
+  - `59a4526 feat(server): HLS_IDLE_KILL_MS env var`
+  - `a6c5cc8 feat(mirakc): openLiveStream for live TS stream`
+  - `bf9de20 feat(streaming): transcoder + stream-manager`
+  - `28fb60c feat(server): wire streams routes to stream-manager`
 
 ## 共有コントラクト (Phase 2 で先出し、後続フェーズが consume)
 
@@ -119,3 +123,13 @@ Mirakc 稼働待ち。影響しないパートを先行で実装し、Mirakc 稼
 ## 参照スキル
 
 - `ffmpeg-hls` (最重要)、`mirakc`、`bun-hono`、`hls-player`、`spatial-nav`
+
+## 完了ログ
+
+- 2026-04-17: Mirakc-free パート完了 (devops / streaming / backend / frontend / qa)
+- 2026-04-19: Mirakc-dependent パート実装完了 (streaming + qa)
+  - `59a4526` feat(server): HLS_IDLE_KILL_MS env var
+  - `a6c5cc8` feat(mirakc): openLiveStream for live TS stream
+  - `bf9de20` feat(streaming): transcoder + stream-manager
+  - `28fb60c` feat(server): wire streams routes to stream-manager
+  - 残タスク: 検証基準 6 項目は実稼働環境 (FFmpeg + Mirakc + 実チューナー) でのみ確認可能
