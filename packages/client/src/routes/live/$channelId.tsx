@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import { useClock } from '@/hooks/useClock'
+import { usePlaybackPrefs } from '@/hooks/usePlaybackPrefs'
 import { useStream } from '@/hooks/useStream'
+import { useVideoDiagnostics } from '@/hooks/useVideoDiagnostics'
 import { formatTimeRange, getProgress } from '@/lib/program'
 import { cn } from '@/lib/utils'
 
@@ -110,10 +112,22 @@ type LogEvent = { id: number; ts: string; level: 'ok' | 'err' | 'info'; message:
 
 const STICK_THRESHOLD_PX = 16
 
-function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | undefined; streamStatus: string }) {
+interface DiagnosticSidebarProps {
+  sessionId: string | undefined
+  streamStatus: string
+  diagnostics: import('@/hooks/useVideoDiagnostics').VideoDiagnostics
+  codec: string
+  quality: string
+}
+
+function DiagnosticSidebar({ sessionId, streamStatus, diagnostics, codec, quality }: DiagnosticSidebarProps) {
   const nowDate = useClock()
   const now = format(nowDate, 'HH:mm:ss')
   const shortId = sessionId ? `${sessionId.slice(0, 8)}…` : '—'
+
+  const resolution = diagnostics.videoWidth > 0 ? `${diagnostics.videoWidth}×${diagnostics.videoHeight}` : '—'
+  const bufferedLabel = diagnostics.bufferedAhead > 0 ? `${diagnostics.bufferedAhead.toFixed(1)}s` : '—'
+  const droppedLabel = `${diagnostics.droppedFrames} / ${diagnostics.decodedFrames}`
 
   const [logEvents, setLogEvents] = useState<LogEvent[]>(() => [
     { id: 0, ts: '--:--:--', level: 'info', message: '[session] initializing…' }
@@ -179,30 +193,27 @@ function DiagnosticSidebar({ sessionId, streamStatus }: { sessionId: string | un
           </StatusChip>
         </StatRow>
         <StatRow label='codec'>
-          <span className={STAT_VAL_CLS}>HEVC / 1080p60</span>
+          <span className={STAT_VAL_CLS}>{codec.toUpperCase()}</span>
         </StatRow>
-        <StatRow label='hw_accel'>
-          <span className={STAT_VAL_CLS}>FFmpeg → stub</span>
+        <StatRow label='resolution'>
+          <span className={STAT_VAL_CLS}>{resolution}</span>
         </StatRow>
-        <StatRow label='bitrate'>
-          <span className={STAT_VAL_CLS}>— Mbps</span>
-        </StatRow>
-        <StatRow label='latency'>
-          <span className={STAT_VAL_CLS}>—</span>
+        <StatRow label='quality'>
+          <span className={STAT_VAL_CLS}>{quality.toUpperCase()}</span>
         </StatRow>
       </div>
 
       {/* HLS section */}
       <div className='border-b border-border px-3 py-2.5'>
         <SidebarSectionLabel>HLS</SidebarSectionLabel>
-        <StatRow label='segment'>
-          <span className={STAT_VAL_CLS}>—</span>
-        </StatRow>
         <StatRow label='buffer'>
-          <span className={STAT_VAL_CLS}>—</span>
+          <span className={STAT_VAL_CLS}>{bufferedLabel}</span>
+        </StatRow>
+        <StatRow label='decoded'>
+          <span className={STAT_VAL_CLS}>{diagnostics.decodedFrames}</span>
         </StatRow>
         <StatRow label='dropped_f'>
-          <span className={STAT_VAL_CLS}>0</span>
+          <span className={STAT_VAL_CLS}>{droppedLabel}</span>
         </StatRow>
       </div>
 
@@ -288,6 +299,8 @@ function LivePage() {
   const stream = useStream({ type: 'live', channelId })
   const videoRef = useRef<HTMLVideoElement>(null)
   const clock = useClock()
+  const { prefs } = usePlaybackPrefs()
+  const diagnostics = useVideoDiagnostics(videoRef)
 
   const { data: channelsData } = useChannels()
   const channel = channelsData?.channels.find((c) => c.id === channelId)
@@ -422,7 +435,13 @@ function LivePage() {
         </div>
 
         {/* Diagnostic sidebar */}
-        <DiagnosticSidebar sessionId={stream.sessionId} streamStatus={stream.status} />
+        <DiagnosticSidebar
+          sessionId={stream.sessionId}
+          streamStatus={stream.status}
+          diagnostics={diagnostics}
+          codec={prefs.codec}
+          quality={prefs.quality}
+        />
       </div>
     </div>
   )
