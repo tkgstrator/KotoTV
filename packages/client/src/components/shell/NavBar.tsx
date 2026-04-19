@@ -37,9 +37,9 @@ export function AppSidebar() {
   const isActive = useIsActive()
 
   return (
-    // top-10 + the matching height lift the fixed sidebar container below
-    // the 40 px TopBar; without this override it would overlap the header.
-    <Sidebar collapsible='icon' className='top-10 !h-[calc(100svh-2.5rem)]'>
+    // top-14 + the matching height lift the fixed sidebar container below
+    // the 56 px TopBar; without this override it would overlap the header.
+    <Sidebar collapsible='icon' className='top-14 !h-[calc(100svh-3.5rem)]'>
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
