@@ -3,13 +3,7 @@ import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { aribGenreToString } from '../lib/arib-genre'
 import type { MirakcProgram } from '../schemas/Channel.dto'
-import {
-  type Program,
-  ProgramGridQuerySchema,
-  ProgramGridResponseSchema,
-  ProgramListQuerySchema,
-  ProgramListResponseSchema
-} from '../schemas/Program.dto'
+import { type Program, ProgramListQuerySchema, ProgramListResponseSchema } from '../schemas/Program.dto'
 import { mirakcClient } from '../services/mirakc-client'
 
 function toProgram(p: MirakcProgram, channelId: string, now: number): Program {
@@ -30,46 +24,31 @@ function toProgram(p: MirakcProgram, channelId: string, now: number): Program {
   }
 }
 
-const programsRoute = new Hono()
-  .get('/', zValidator('query', ProgramListQuerySchema), async (c) => {
-    const { channelId, startAt: startAtStr, endAt: endAtStr } = c.req.valid('query')
+const programsRoute = new Hono().get('/', zValidator('query', ProgramListQuerySchema), async (c) => {
+  const { channelId, startAt: startAtStr, endAt: endAtStr } = c.req.valid('query')
 
-    const startAt = new Date(startAtStr)
-    const endAt = new Date(endAtStr)
+  const startAt = new Date(startAtStr)
+  const endAt = new Date(endAtStr)
 
-    if (endAt <= startAt) {
-      throw new HTTPException(400, { message: 'endAt must be after startAt' })
-    }
+  if (endAt <= startAt) {
+    throw new HTTPException(400, { message: 'endAt must be after startAt' })
+  }
 
-    const now = Date.now()
+  const startMs = startAt.getTime()
+  const endMs = endAt.getTime()
+  const now = Date.now()
 
-    let mirakcPrograms: Awaited<ReturnType<typeof mirakcClient.listProgramsInRange>>
+  let programs: Program[]
+
+  if (channelId !== undefined) {
+    let mirakcPrograms: MirakcProgram[]
     try {
       mirakcPrograms = await mirakcClient.listProgramsInRange({ channelId, startAt, endAt })
     } catch (_err) {
       throw new HTTPException(502, { message: 'mirakc unavailable' })
     }
-
-    const programs: Program[] = mirakcPrograms.map((p) => toProgram(p, channelId, now))
-
-    const body = ProgramListResponseSchema.parse({ programs }) satisfies typeof ProgramListResponseSchema._type
-
-    return c.json(body)
-  })
-  .get('/grid', zValidator('query', ProgramGridQuerySchema), async (c) => {
-    const { startAt: startAtStr, endAt: endAtStr } = c.req.valid('query')
-
-    const startAt = new Date(startAtStr)
-    const endAt = new Date(endAtStr)
-
-    if (endAt <= startAt) {
-      throw new HTTPException(400, { message: 'endAt must be after startAt' })
-    }
-
-    const startMs = startAt.getTime()
-    const endMs = endAt.getTime()
-    const now = Date.now()
-
+    programs = mirakcPrograms.map((p) => toProgram(p, channelId, now))
+  } else {
     let allByServiceId: Map<number, MirakcProgram[]>
     try {
       allByServiceId = await mirakcClient.listAllProgramsByServiceId()
@@ -82,27 +61,28 @@ const programsRoute = new Hono()
       throw new HTTPException(502, { message: 'mirakc unavailable' })
     }
 
-    const result: Record<string, Program[]> = {}
-
-    for (const [mirakurunId, programs] of allByServiceId) {
-      const channelId = String(mirakurunId)
-
-      const filtered = programs
-        .filter((p) => {
-          const programEnd = p.startAt + p.duration
-          return p.startAt < endMs && programEnd > startMs
-        })
-        .sort((a, b) => a.startAt - b.startAt)
-        .map((p) => toProgram(p, channelId, now))
-
-      if (filtered.length > 0) {
-        result[channelId] = filtered
+    programs = []
+    for (const [mirakurunId, servicePrograms] of allByServiceId) {
+      const cid = String(mirakurunId)
+      for (const p of servicePrograms) {
+        const programEnd = p.startAt + p.duration
+        if (p.startAt < endMs && programEnd > startMs) {
+          programs.push(toProgram(p, cid, now))
+        }
       }
     }
 
-    const body = ProgramGridResponseSchema.parse({ programs: result }) satisfies typeof ProgramGridResponseSchema._type
+    // Sort ascending by startAt, then channelId for deterministic order
+    programs.sort((a, b) => {
+      const tDiff = new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+      if (tDiff !== 0) return tDiff
+      return a.channelId < b.channelId ? -1 : a.channelId > b.channelId ? 1 : 0
+    })
+  }
 
-    return c.json(body)
-  })
+  const body = ProgramListResponseSchema.parse({ programs }) satisfies typeof ProgramListResponseSchema._type
+
+  return c.json(body)
+})
 
 export default programsRoute
