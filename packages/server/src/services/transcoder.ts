@@ -1,10 +1,19 @@
 // Transcoder: wraps a single FFmpeg process fed from a Mirakc ReadableStream.
 // All encoder flag tuning lives in lib/ffmpeg.ts — never add flags here.
 
-import { buildFfmpegArgs, type HwAccel } from '../lib/ffmpeg'
+import { buildFfmpegArgs, type Codec, type HwAccel, type Quality } from '../lib/ffmpeg'
 import { logger } from '../lib/logger'
 
 type DebugLogger = { debug: (msg: string | object, ...args: unknown[]) => void }
+
+export type TranscoderStats = {
+  frame: number
+  fps: number
+  bitrateKbps: number
+  droppedFrames: number
+  /** Unix timestamp (ms) when these stats were last updated. */
+  updatedAt: number
+}
 
 export type TranscoderHandle = {
   /** Kill FFmpeg, cancel the source stream, and wait for the process to exit. Idempotent. */
@@ -13,6 +22,8 @@ export type TranscoderHandle = {
   exited: Promise<number>
   /** Resolves when playlist.m3u8 exists in outputDir, or throws 'playlist_timeout'. */
   waitForPlaylist: (timeoutMs: number) => Promise<void>
+  /** Returns a snapshot of the latest FFmpeg progress stats. Always safe to call. */
+  getStats: () => TranscoderStats
 }
 
 export type StartTranscoderOpts = {
@@ -22,7 +33,14 @@ export type StartTranscoderOpts = {
   /** Mirakc MPEG-TS ReadableStream — will be pumped into FFmpeg stdin. */
   source: ReadableStream<Uint8Array>
   hwAccel: HwAccel
+  codec: Codec
+  quality: Quality
 }
+
+// Regex that tolerates FFmpeg's variable whitespace in progress lines.
+// Example: "frame= 1234 fps= 30 q=... bitrate= 2987.1kbits/s ... drop=0 ..."
+// Also handles "dropped=N" and "dup=N drop=N" variants.
+const STATS_RE = /frame=\s*(\d+).*?fps=\s*([\d.]+).*?bitrate=\s*([\d.]+)kbits\/s.*?(?:drop(?:ped)?=\s*(\d+))?/
 
 /**
  * Spawn FFmpeg, pipe `source` into stdin, and return control handles.
@@ -32,11 +50,11 @@ export type StartTranscoderOpts = {
  * the pump IIFE from racing against a closed stdin.
  */
 export function startTranscoder(opts: StartTranscoderOpts): TranscoderHandle {
-  const { sessionId, outputDir, source, hwAccel } = opts
+  const { sessionId, outputDir, source, hwAccel, codec, quality } = opts
 
   const childLogger = logger.child({ module: 'transcoder', sessionId })
 
-  const args = buildFfmpegArgs({ hwAccel, outputDir })
+  const args = buildFfmpegArgs({ hwAccel, codec, quality, outputDir })
 
   childLogger.debug({ args }, 'spawning ffmpeg')
 
@@ -48,9 +66,30 @@ export function startTranscoder(opts: StartTranscoderOpts): TranscoderHandle {
     // promise below also resolves at that point.
   })
 
-  // Pipe stderr to pino at debug level — one log entry per line.
+  // Mutable stats snapshot — updated by the stderr parser as lines arrive.
+  let latestStats: TranscoderStats = {
+    frame: 0,
+    fps: 0,
+    bitrateKbps: 0,
+    droppedFrames: 0,
+    updatedAt: Date.now()
+  }
+
+  // Pipe stderr to pino at debug level and parse progress stats.
   // We do not await this; it runs concurrently and is best-effort.
-  pipeStderrToLogger(proc.stderr, childLogger)
+  pipeStderrToLogger(proc.stderr, childLogger, (line) => {
+    const m = STATS_RE.exec(line)
+    if (m) {
+      latestStats = {
+        // m[1..3] are guaranteed non-undefined when the regex matches
+        frame: Number.parseInt(m[1]!, 10),
+        fps: Math.round(Number.parseFloat(m[2]!)),
+        bitrateKbps: Math.round(Number.parseFloat(m[3]!)),
+        droppedFrames: m[4] !== undefined ? Number.parseInt(m[4], 10) : latestStats.droppedFrames,
+        updatedAt: Date.now()
+      }
+    }
+  })
 
   // Pump source bytes into FFmpeg stdin, respecting backpressure.
   // Runs in a detached async IIFE; errors are logged but do not propagate
@@ -119,7 +158,8 @@ export function startTranscoder(opts: StartTranscoderOpts): TranscoderHandle {
   return {
     abort,
     exited: proc.exited,
-    waitForPlaylist
+    waitForPlaylist,
+    getStats: () => ({ ...latestStats })
   }
 }
 
@@ -131,7 +171,11 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function pipeStderrToLogger(stderr: ReadableStream<Uint8Array>, childLogger: DebugLogger): Promise<void> {
+async function pipeStderrToLogger(
+  stderr: ReadableStream<Uint8Array>,
+  childLogger: DebugLogger,
+  onLine?: (line: string) => void
+): Promise<void> {
   const decoder = new TextDecoder()
   const reader = stderr.getReader()
   let buffer = ''
@@ -144,11 +188,17 @@ async function pipeStderrToLogger(stderr: ReadableStream<Uint8Array>, childLogge
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? ''
       for (const line of lines) {
-        if (line.trim()) childLogger.debug(line)
+        if (line.trim()) {
+          childLogger.debug(line)
+          onLine?.(line)
+        }
       }
     }
     // Flush any remaining partial line
-    if (buffer.trim()) childLogger.debug(buffer)
+    if (buffer.trim()) {
+      childLogger.debug(buffer)
+      onLine?.(buffer)
+    }
   } catch {
     // Stream closed abruptly; nothing to do
   }
