@@ -27,21 +27,18 @@ const EMPTY: VideoDiagnostics = {
 
 /**
  * Polls the given <video> element once per second to pull the live decode
- * metrics the diagnostic sidebar surfaces. Stateless — no retries, no
- * smoothing; whatever the element reports at tick time is what we show.
- *
- * Separated from DiagnosticSidebar so the same metrics can feed the live
- * page, recording page, and any future telemetry target without duplicating
- * the polling loop.
+ * metrics the diagnostic sidebar surfaces. Accepts the element directly
+ * (callback-ref pattern) so the polling re-arms when the video mounts —
+ * a RefObject wouldn't trigger the effect because refs don't re-render.
  */
-export function useVideoDiagnostics(videoRef: React.RefObject<HTMLVideoElement | null>): VideoDiagnostics {
+export function useVideoDiagnostics(videoEl: HTMLVideoElement | null): VideoDiagnostics {
   const [diag, setDiag] = useState<VideoDiagnostics>(EMPTY)
 
   useEffect(() => {
-    const tick = () => {
-      const v = videoRef.current
-      if (!v) return
+    const v = videoEl
+    if (!v) return
 
+    const tick = () => {
       const buffered = v.buffered
       let ahead = 0
       for (let i = 0; i < buffered.length; i++) {
@@ -69,7 +66,7 @@ export function useVideoDiagnostics(videoRef: React.RefObject<HTMLVideoElement |
     tick()
     const id = setInterval(tick, 1_000)
     return () => clearInterval(id)
-  }, [videoRef])
+  }, [videoEl])
 
   return diag
 }
