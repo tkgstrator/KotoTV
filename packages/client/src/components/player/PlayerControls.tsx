@@ -343,7 +343,7 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
             if (next > 0 && v.muted) v.muted = false
             else if (next === 0) v.muted = true
           }}
-          className='hidden h-1 w-20 shrink-0 cursor-pointer accent-primary md:block'
+          className='hidden h-1 w-32 shrink-0 cursor-pointer accent-primary md:block'
         />
 
         {!isLive && (
