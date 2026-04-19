@@ -24,10 +24,7 @@ export function UpNextPanel({ channelId }: { channelId: string }) {
   const programs = data?.programs ?? []
 
   return (
-    <aside
-      aria-label='このチャンネルの番組表'
-      className='flex h-full w-full flex-col overflow-hidden border-l border-border bg-card'
-    >
+    <aside aria-label='このチャンネルの番組表' className='flex h-full w-full flex-col overflow-hidden'>
       <div className='flex h-10 shrink-0 items-center border-b border-border px-3 text-[0.75rem] font-bold uppercase tracking-wider text-muted-foreground'>
         次の番組
       </div>
