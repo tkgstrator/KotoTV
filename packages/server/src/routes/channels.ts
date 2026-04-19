@@ -52,46 +52,41 @@ const channelsRoute = new Hono().get('/', zValidator('query', ChannelListQuerySc
 
   const now = Date.now()
 
-  const channels: Channel[] = await Promise.all(
-    filtered.map(async (svc) => {
-      let programs: MirakcProgram[]
-      try {
-        programs = await mirakcClient.listPrograms(svc.serviceId)
-      } catch {
-        programs = []
-      }
+  // Single bulk fetch — one round-trip for all services instead of N+1
+  const programMap = await mirakcClient.listAllProgramsByServiceId()
 
-      const { current, next } = pickCurrentAndNext(programs, now)
+  const channels: Channel[] = filtered.map((svc) => {
+    const programs: MirakcProgram[] = programMap.get(svc.id) ?? []
+    const { current, next } = pickCurrentAndNext(programs, now)
 
-      return {
-        id: String(svc.id),
-        type: (svc.channel?.type ?? 'GR') as Channel['type'],
-        serviceId: svc.serviceId,
-        networkId: svc.networkId,
-        name: svc.name,
-        channelNumber: svc.channel?.channel ?? '',
-        hasLogo: true,
-        currentProgram: current
-          ? {
-              id: String(current.id),
-              title: current.name ?? '(無題)',
-              startAt: msToIso(current.startAt),
-              endAt: msToIso(current.startAt + current.duration),
-              synopsis: current.description
-            }
-          : null,
-        nextProgram: next
-          ? {
-              id: String(next.id),
-              title: next.name ?? '(無題)',
-              startAt: msToIso(next.startAt),
-              endAt: msToIso(next.startAt + next.duration),
-              synopsis: next.description
-            }
-          : null
-      }
-    })
-  )
+    return {
+      id: String(svc.id),
+      type: (svc.channel?.type ?? 'GR') as Channel['type'],
+      serviceId: svc.serviceId,
+      networkId: svc.networkId,
+      name: svc.name,
+      channelNumber: svc.channel?.channel ?? '',
+      hasLogo: true,
+      currentProgram: current
+        ? {
+            id: String(current.id),
+            title: current.name ?? '(無題)',
+            startAt: msToIso(current.startAt),
+            endAt: msToIso(current.startAt + current.duration),
+            synopsis: current.description
+          }
+        : null,
+      nextProgram: next
+        ? {
+            id: String(next.id),
+            title: next.name ?? '(無題)',
+            startAt: msToIso(next.startAt),
+            endAt: msToIso(next.startAt + next.duration),
+            synopsis: next.description
+          }
+        : null
+    }
+  })
 
   const body = ChannelListResponseSchema.parse({
     channels,

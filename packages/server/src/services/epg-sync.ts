@@ -22,9 +22,9 @@ async function withConcurrency<T>(
   return results
 }
 
-async function syncChannel(serviceId: number): Promise<number> {
-  const programs = await mirakcClient.listPrograms(serviceId)
-  const channelId = String(serviceId)
+async function syncChannel(mirakurunId: number): Promise<number> {
+  const programs = await mirakcClient.listPrograms(mirakurunId)
+  const channelId = String(mirakurunId)
   const now = new Date()
 
   let upserted = 0
@@ -70,10 +70,10 @@ export async function syncAllPrograms(): Promise<{
 
   await withConcurrency(services, CONCURRENCY, async (service) => {
     try {
-      const count = await syncChannel(service.serviceId)
+      const count = await syncChannel(service.id)
       upserted += count
     } catch (err) {
-      const channelId = String(service.serviceId)
+      const channelId = String(service.id)
       failedChannels.push(channelId)
       logger.warn({ module: 'epg-sync', channelId, err }, 'failed to sync channel EPG')
     }

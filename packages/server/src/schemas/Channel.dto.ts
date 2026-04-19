@@ -19,6 +19,7 @@ export const MirakcServiceSchema = z
 export const MirakcProgramSchema = z
   .object({
     id: z.number().int(),
+    networkId: z.number().int().optional(),
     serviceId: z.number().int(),
     startAt: z.number().int(),
     duration: z.number().int(),
