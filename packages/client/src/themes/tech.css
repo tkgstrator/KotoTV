@@ -57,10 +57,10 @@
     --radius: 0.5rem;
 
     /* ── Shell / chrome dimensions ─────────────────────────────────── */
-    /* app-shell v12: 32px health bar + 40px nav bar stacked on desktop. */
-    --shell-health-bar-h: 32px;
+    /* app-shell v12: 44px health bar (title surface) + 40px nav bar stacked on desktop. */
+    --shell-health-bar-h: 44px;
     --shell-nav-bar-h: 40px;
-    --shell-offset: 72px; /* = health-bar + nav-bar; kept as a literal so downstream calc() works */
+    --shell-offset: 84px; /* = health-bar + nav-bar; kept as a literal so downstream calc() works */
     /* Mobile bottom-tab nav (app-shell v14 pattern). */
     --mobile-nav-h: 58px;
 
