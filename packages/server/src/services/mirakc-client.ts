@@ -105,30 +105,62 @@ export const mirakcClient = {
     }
   },
 
-  async listPrograms(serviceId: number): Promise<MirakcProgram[]> {
+  /**
+   * Fetch programs for a single service using the 40-bit Mirakurun service id
+   * (i.e. `MirakcService.id`, not the short `serviceId`).
+   * `/api/programs?serviceId=X` is broken in mirakc — it ignores the filter and
+   * returns all programs. The per-service endpoint is the only reliable one.
+   */
+  async listPrograms(id: number): Promise<MirakcProgram[]> {
     try {
-      const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/programs?serviceId=${serviceId}`)
+      const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/services/${id}/programs`)
       if (!res.ok) throw new MirakcError(res.status, `programs ${res.status}`)
       const data = await res.json()
       if (!Array.isArray(data)) throw new MirakcError(200, 'unexpected shape')
       return data as MirakcProgram[]
     } catch (err) {
-      logger.warn(
-        { module: 'mirakc-client', fallback: true, serviceId, err },
-        'mirakc programs unreachable, using mock'
-      )
-      return buildMockPrograms(serviceId)
+      logger.warn({ module: 'mirakc-client', fallback: true, id, err }, 'mirakc programs unreachable, using mock')
+      return buildMockPrograms(id)
+    }
+  },
+
+  /**
+   * Fetch ALL programs from mirakc in one call and group by Mirakurun service id.
+   * Used by the channel list route to avoid N+1 per-service calls.
+   * Mirakurun id = networkId * 100000 + serviceId (decimal, not bit-shift).
+   */
+  async listAllProgramsByServiceId(): Promise<Map<number, MirakcProgram[]>> {
+    try {
+      const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/programs`, 30_000)
+      if (!res.ok) throw new MirakcError(res.status, `programs ${res.status}`)
+      const data = await res.json()
+      if (!Array.isArray(data)) throw new MirakcError(200, 'unexpected shape')
+      const programs = data as MirakcProgram[]
+      const map = new Map<number, MirakcProgram[]>()
+      for (const p of programs) {
+        if (p.networkId === undefined) continue
+        const mirakurunId = p.networkId * 100000 + p.serviceId
+        let bucket = map.get(mirakurunId)
+        if (!bucket) {
+          bucket = []
+          map.set(mirakurunId, bucket)
+        }
+        bucket.push(p)
+      }
+      return map
+    } catch (err) {
+      logger.warn({ module: 'mirakc-client', err }, 'listAllProgramsByServiceId failed, returning empty map')
+      return new Map()
     }
   },
 
   async listProgramsInRange(params: { channelId: string; startAt: Date; endAt: Date }): Promise<MirakcProgram[]> {
-    const serviceId = Number(params.channelId)
     const startMs = params.startAt.getTime()
     const endMs = params.endAt.getTime()
 
     let all: MirakcProgram[]
     try {
-      const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/programs?serviceId=${serviceId}`, 30_000)
+      const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/services/${params.channelId}/programs`, 30_000)
       if (!res.ok) throw new MirakcError(res.status, `programs ${res.status}`)
       const data = await res.json()
       if (!Array.isArray(data)) throw new MirakcError(200, 'unexpected shape')
@@ -138,7 +170,7 @@ export const mirakcClient = {
         { module: 'mirakc-client', fallback: true, channelId: params.channelId, err },
         'mirakc programs unreachable, using mock'
       )
-      all = buildMockPrograms(serviceId)
+      all = buildMockPrograms(Number(params.channelId))
     }
 
     // Keep programs whose time range overlaps [startMs, endMs)
