@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readdir, rm } from 'node:fs/promises'
 import { app } from './app'
 import { env } from './lib/config'
 import { logger } from './lib/logger'
@@ -8,6 +8,16 @@ import { stopAllSessions } from './services/stream-manager'
 
 try {
   await mkdir(env.HLS_DIR, { recursive: true })
+  // Wipe any session dirs left behind by a previous server instance. The
+  // in-memory stream-manager Map is empty on boot so those dirs are
+  // unreachable anyway — leaving them just fills disk over restart cycles.
+  const leftover = await readdir(env.HLS_DIR)
+  await Promise.all(
+    leftover.map((name) => rm(`${env.HLS_DIR}/${name}`, { recursive: true, force: true }).catch(() => {}))
+  )
+  if (leftover.length > 0) {
+    logger.info({ module: 'server', count: leftover.length }, 'cleared orphaned HLS session dirs on boot')
+  }
 } catch (err) {
   logger.error({ err, HLS_DIR: env.HLS_DIR }, 'failed to create HLS_DIR — streams will fail until resolved')
 }
