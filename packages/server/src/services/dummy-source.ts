@@ -10,12 +10,12 @@ import { mkdir, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { logger } from '../lib/logger'
 
-// Big Buck Bunny — CC BY 3.0, Blender Foundation. ~60MB, 10 min — loops
-// cleanly to fill any session length. Google CDN URL is the canonical
-// sample-bucket asset.
+// Elephants Dream — CC BY 2.5, Blender Foundation. ~47 MB, 10 min. Hosted by
+// the Internet Archive which is stable + CORS-friendly. Previously we pointed
+// at Google's gtv-videos-bucket but that started 403'ing in April 2026.
 const DEFAULT_SAMPLE_URL =
-  process.env.DUMMY_VIDEO_URL ?? 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
-const DEFAULT_SAMPLE_PATH = process.env.DUMMY_VIDEO_PATH ?? './data/samples/big_buck_bunny.mp4'
+  process.env.DUMMY_VIDEO_URL ?? 'https://archive.org/download/ElephantsDream/ed_1024_512kb.mp4'
+const DEFAULT_SAMPLE_PATH = process.env.DUMMY_VIDEO_PATH ?? './data/samples/elephants_dream.mp4'
 
 let downloadPromise: Promise<string | null> | null = null
 
