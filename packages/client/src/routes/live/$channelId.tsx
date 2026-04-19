@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import { ChevronLeft } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { HlsPlayer } from '@/components/player/HlsPlayer'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { StatusChip } from '@/components/shared/status-chip'
@@ -428,7 +429,11 @@ function LivePage() {
                 playlistUrl={stream.playlistUrl ?? ''}
                 ariaLabel={`${channel?.name ?? channelId} ライブ映像`}
                 className='max-h-full max-w-full'
-                onError={(err) => console.error('[HlsPlayer]', err)}
+                onError={(err) => {
+                  // biome-ignore lint/suspicious/noConsole: surfacing hls.js failures during dev
+                  console.error('[HlsPlayer]', err)
+                  toast.error(`再生エラー: ${err.message}`)
+                }}
               />
             </div>
           )}
