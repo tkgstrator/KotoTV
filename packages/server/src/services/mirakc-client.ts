@@ -88,6 +88,75 @@ async function fetchWithTimeout(url: string, timeoutMs = 1000): Promise<Response
 }
 
 // ---------------------------------------------------------------------------
+// Synthetic MPEG-TS source (MIRAKC_MOCK_STREAM=1 only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Spawn a local FFmpeg process that produces a synthetic 1280x720 MPEG-TS stream
+ * via the lavfi testsrc2 + sine filters. This is intentionally unconditionally
+ * software-encoded (libx264 ultrafast) since it is only used in test envs.
+ */
+async function openMockStream(
+  channelId: string
+): Promise<{ stream: ReadableStream<Uint8Array>; cancel: () => Promise<void> }> {
+  const args = [
+    '-re', // read at native (live) rate
+    '-f',
+    'lavfi',
+    '-i',
+    'testsrc2=size=1280x720:rate=30,format=yuv420p',
+    '-f',
+    'lavfi',
+    '-i',
+    'sine=frequency=1000:sample_rate=48000',
+    '-c:v',
+    'libx264',
+    '-preset',
+    'ultrafast',
+    '-tune',
+    'zerolatency',
+    '-b:v',
+    '2M',
+    '-c:a',
+    'aac',
+    '-b:a',
+    '128k',
+    '-f',
+    'mpegts',
+    '-'
+  ]
+
+  const proc = Bun.spawn(['ffmpeg', ...args], {
+    stdin: 'ignore',
+    stdout: 'pipe',
+    stderr: 'pipe'
+  })
+
+  logger.info({ module: 'mirakc-client', mock: true, channelId }, 'synthetic TS source')
+
+  // Drain stderr at debug level so FFmpeg startup errors are visible.
+  ;(async () => {
+    const childLogger = logger.child({ module: 'mirakc-client', mock: true, channelId })
+    const reader = (proc.stderr as ReadableStream<Uint8Array>).getReader()
+    const decoder = new TextDecoder()
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      childLogger.debug(decoder.decode(value, { stream: true }))
+    }
+  })()
+
+  const stream = proc.stdout as ReadableStream<Uint8Array>
+
+  const cancel = async (): Promise<void> => {
+    proc.kill()
+    await proc.exited
+  }
+
+  return { stream, cancel }
+}
+
+// ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
 
@@ -193,11 +262,17 @@ export const mirakcClient = {
    * A 30-second connect timeout is applied automatically; the caller may
    * supply an additional AbortSignal (e.g. session-level abort) which will be
    * combined via AbortSignal.any().
+   *
+   * When MIRAKC_MOCK_STREAM=1 the real Mirakc endpoint is bypassed entirely and
+   * a locally-spawned FFmpeg testsrc2 process is returned instead.
    */
   async openLiveStream(
     channelId: string,
     signal?: AbortSignal
   ): Promise<{ stream: ReadableStream<Uint8Array>; cancel: () => Promise<void> }> {
+    if (env.MIRAKC_MOCK_STREAM) {
+      return openMockStream(channelId)
+    }
     const timeoutSignal = AbortSignal.timeout(30_000)
     const combinedSignal = signal ? AbortSignal.any([timeoutSignal, signal]) : timeoutSignal
 
