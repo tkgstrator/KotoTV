@@ -19,9 +19,13 @@ export function ProgramCell({ program, className }: ProgramCellProps) {
       params={{ channelId: program.channelId }}
       aria-label={`${program.title} ${formatTimeRange(program.startAt, program.endAt)}`}
       className={cn(
-        'group flex h-full flex-col overflow-hidden rounded-[2px] border-l-[3px] bg-[var(--genre-color)]/10 p-[3px_5px] outline-none',
-        'hover:bg-[var(--genre-color)]/18',
+        'group flex h-full flex-col overflow-hidden rounded-[3px] outline-none',
+        // Full border so cell edges are visible against adjacent cells + background.
+        // Left edge is overridden to the genre color (3px wide) as the accent.
+        'border border-border border-l-[3px] bg-card',
+        'hover:bg-[var(--genre-color)]/12',
         'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+        'p-[3px_5px]',
         className
       )}
       style={{ '--genre-color': accentColor, borderLeftColor: accentColor } as React.CSSProperties}
