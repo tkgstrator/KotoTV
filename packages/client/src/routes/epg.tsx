@@ -2,9 +2,10 @@ import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { addDays, addHours, startOfMinute } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { type FilterValue, TypeFilter } from '@/components/channel/TypeFilter'
 import { EPGGrid } from '@/components/epg/EPGGrid'
+import { RecordingScheduleForm } from '@/components/recording/RecordingScheduleForm'
 import { StatusChip } from '@/components/shared/status-chip'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,9 @@ function EpgPage() {
   const { at, channel: highlightChannelId, type: typeParam } = Route.useSearch()
   const navigate = useNavigate({ from: '/epg' })
   const type: FilterValue = typeParam ?? 'ALL'
+
+  // Reservation dialog state — driven by Program from the EPG cells.
+  const [reserveProgram, setReserveProgram] = useState<Program | null>(null)
 
   const windowStart = useMemo(() => {
     const base = at ? new Date(at) : new Date()
@@ -155,6 +159,14 @@ function EpgPage() {
         loadingChannelIds={loadingChannelIds}
         gridStartAt={windowStart}
         highlightChannelId={highlightChannelId}
+        onReserve={setReserveProgram}
+      />
+      <RecordingScheduleForm
+        open={reserveProgram !== null}
+        onOpenChange={(v) => {
+          if (!v) setReserveProgram(null)
+        }}
+        initialProgram={reserveProgram}
       />
     </div>
   )
