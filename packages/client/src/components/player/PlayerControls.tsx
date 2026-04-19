@@ -1,4 +1,4 @@
-import { Maximize, Minimize, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
+import { Maximize, Minimize, Pause, Play, SkipBack, SkipForward, Volume1, Volume2, VolumeX } from 'lucide-react'
 import type * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { type Chapter, SeekbarChapters } from '@/components/player/SeekbarChapters'
@@ -38,6 +38,7 @@ export interface PlayerControlsProps {
 export function PlayerControls({ isLive, videoRef, className, chapters }: PlayerControlsProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
+  const [volume, setVolume] = useState(1)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -52,6 +53,7 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
     if (!v) return
     setIsPlaying(!v.paused)
     setIsMuted(v.muted)
+    setVolume(v.volume)
     setCurrentTime(v.currentTime)
     setDuration(v.duration || 0)
     if (v.duration) setProgress(v.currentTime / v.duration)
@@ -63,7 +65,10 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
 
     const onPlay = () => setIsPlaying(true)
     const onPause = () => setIsPlaying(false)
-    const onVolumeChange = () => setIsMuted(v.muted)
+    const onVolumeChange = () => {
+      setIsMuted(v.muted)
+      setVolume(v.volume)
+    }
     const onDurationChange = () => setDuration(v.duration || 0)
 
     const tickProgress = () => {
@@ -305,7 +310,9 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
           </Button>
         )}
 
-        {/* Mute — always on, same semantics across live and recording */}
+        {/* Volume — icon reflects level (muted / low / mid/high), slider sits
+            inline on md+ so users can drag. Mobile shows the icon only; arrow
+            keys still adjust. */}
         <Button
           variant='ghost'
           size='icon'
@@ -313,8 +320,31 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
           onClick={toggleMute}
           className='h-8 w-8 shrink-0'
         >
-          {isMuted ? <VolumeX className='size-4' /> : <Volume2 className='size-4' />}
+          {isMuted || volume === 0 ? (
+            <VolumeX className='size-4' />
+          ) : volume < 0.5 ? (
+            <Volume1 className='size-4' />
+          ) : (
+            <Volume2 className='size-4' />
+          )}
         </Button>
+        <input
+          type='range'
+          min={0}
+          max={100}
+          step={1}
+          aria-label='音量'
+          value={Math.round((isMuted ? 0 : volume) * 100)}
+          onChange={(e) => {
+            const v = videoRef.current
+            if (!v) return
+            const next = Number(e.target.value) / 100
+            v.volume = next
+            if (next > 0 && v.muted) v.muted = false
+            else if (next === 0) v.muted = true
+          }}
+          className='hidden h-1 w-20 shrink-0 cursor-pointer accent-primary md:block'
+        />
 
         {!isLive && (
           <>
