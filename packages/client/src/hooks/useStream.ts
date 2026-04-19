@@ -33,6 +33,17 @@ function codecSupported(codec: LiveCodecChoice): boolean {
   return probes.some((p) => MediaSource.isTypeSupported(p))
 }
 
+/**
+ * Fire a DELETE for the session. During page unload browsers cancel
+ * regular fetch() calls, so pass `keepalive: true` which tells the
+ * browser to let this request finish even after the page is gone.
+ * (navigator.sendBeacon only supports POST — not DELETE — so it's not
+ * applicable here.)
+ */
+function releaseSession(sessionId: string): void {
+  fetch(`/api/streams/${sessionId}`, { method: 'DELETE', keepalive: true }).catch(() => {})
+}
+
 function resolveLiveCodec(pref: 'auto' | 'avc' | 'hevc' | 'vp9'): LiveCodecChoice {
   // AVC is the only codec the dummy ffmpeg pipeline has been proven to
   // decode reliably across Chrome / Safari / Firefox. HEVC requires HW
@@ -89,7 +100,7 @@ export function useStream(source: StreamSource): StreamState {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         if (cancelled) {
-          fetch(`/api/streams/${data.sessionId}`, { method: 'DELETE' }).catch(() => {})
+          releaseSession(data.sessionId)
           return
         }
         sessionIdRef.current = data.sessionId
@@ -100,13 +111,22 @@ export function useStream(source: StreamSource): StreamState {
       }
     })()
 
+    // pagehide / beforeunload fire when the browser is tearing the page
+    // down (reload, close, navigation off-site). In that moment fetch()
+    // may be cancelled mid-flight — sendBeacon is designed for this path
+    // and guarantees delivery.
+    const onPageHide = () => {
+      const sid = sessionIdRef.current
+      if (sid) releaseSession(sid)
+    }
+    window.addEventListener('pagehide', onPageHide)
+
     return () => {
       cancelled = true
+      window.removeEventListener('pagehide', onPageHide)
       const sid = sessionIdRef.current
       sessionIdRef.current = null
-      if (sid) {
-        fetch(`/api/streams/${sid}`, { method: 'DELETE' }).catch(() => {})
-      }
+      if (sid) releaseSession(sid)
     }
     // biome-ignore lint/correctness/useExhaustiveDependencies: sourceKey encodes source identity
   }, [sourceKey])
