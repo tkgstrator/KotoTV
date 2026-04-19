@@ -133,3 +133,175 @@ Mirakc 稼働待ち。影響しないパートを先行で実装し、Mirakc 稼
   - `bf9de20` feat(streaming): transcoder + stream-manager
   - `28fb60c` feat(server): wire streams routes to stream-manager
   - 残タスク: 検証基準 6 項目は実稼働環境 (FFmpeg + Mirakc + 実チューナー) でのみ確認可能
+
+---
+
+## 追加要件 (2026-04-19)
+
+**Phase:** 2  ·  **Date:** 2026-04-19  ·  **Owner:** leader
+
+### ゴール
+
+`/live/$channelId` ページで 12 項目の受入基準をすべて満たすライブ視聴体験を提供し、Playwright E2E (devcontainer 実 Mirakc 環境) で回帰を保護する。セッション共有キーを `(channelId, codec, quality)` に拡張し、コーデック/画質切替と SSE 経由のリアルタイム診断情報配信を追加する。
+
+### 受入基準 (Acceptance Criteria)
+
+- [ ] 1. 映像が途切れることなく 30 秒以上視聴できる (hls.js `FRAG_BUFFERED` が連続 15 フラグメント以上流れる / `BUFFER_STALLED_ERROR` が 0)
+- [ ] 2. セッションが切れても 15 秒はチューナーを確保し続ける (`release` 後 `HLS_IDLE_KILL_MS=15000` 以内に再取得すれば同一 sessionId)
+- [ ] 3. 同時に同じチャンネルを複数人が見てもチューナーを余計に消費しない (同一 `(channelId, codec, quality)` の 2 並列取得でも Mirakc `openLiveStream` / FFmpeg はそれぞれ 1 プロセス)
+- [ ] 4. ページを開くと自動再生される (HlsPlayer が `muted` デフォルト有効で autoplay policy を通過、`video.paused === false` を 3 秒以内に満たす)
+- [ ] 5. リロードしたら 15 秒 grace 内なら続きから再生される (リロード後も同一 sessionId が返却され、初映像到達が 2 秒以内)
+- [ ] 6. 複数人 (別タブ) 同じ番組 → チューナー 1 つ (`ps aux | grep ffmpeg | wc -l` が 1、Mirakc の現在接続数が 1)
+- [ ] 7. 複数人 (別タブ) 異なる番組 → チューナー複数 (異なる `channelId` の 2 タブで FFmpeg プロセス 2 / Mirakc 接続 2)
+- [ ] 8. AVC/HEVC の SW エンコード + AVC/HEVC の CUDA (NVENC) HW エンコードで再生できる (VP9 は非対応) — 4 セルすべてでプレイリスト生成 + 初映像再生
+- [ ] 9. ストリームの `(codec, resolution, bitrate, fps, hwAccel, viewerCount, droppedFrames, bufferSec)` が SSE 経由でサイドバーに 1s 毎反映される
+- [ ] 10. バッファ不足 / ドロップフレーム時に自動的にビットレートを下げる (本フェーズでは `// TODO(phase-2-abr)` コメントのみで実装保留)
+- [ ] 11. 複数人が異なるコーデックで同じ番組を視聴 → 別セッション (sessionKey が `codec` で分離、FFmpeg プロセス 2 / Mirakc 接続 2)
+- [ ] 12. 視聴中にコーデック変更・解像度変更が可能 — 既存 sessionId release → 新パラメータで acquire → プレイリスト差替 (切替中 1-2 秒の黒画面は許容)
+
+### 実装分解
+
+| # | Task | Owner | Depends on |
+|---|------|-------|------------|
+| 1 | `buildFfmpegArgs` に `codec: 'avc'\|'hevc'` を追加し AVC/HEVC × (none/nvenc/qsv/vaapi) の 2×4 マトリクスに拡張。`libx265` / `hevc_nvenc` / `hevc_qsv` / `hevc_vaapi` を分岐 — `packages/server/src/lib/ffmpeg.ts` + 既存単体テスト追加 | streaming | — |
+| 2 | FFmpeg に `-s WxH -r fps` を挿入するため `quality: 'low'\|'mid'\|'high'` を受け解像度/ビットレート/fps に展開 (後述「Quality テーブル」) — `packages/server/src/lib/ffmpeg.ts` | streaming | 1 |
+| 3 | transcoder.ts に stderr パーサを追加: `frame= N fps= X bitrate= Ykbits/s` 行を正規表現でキャプチャし `getLatestStats(): { fps, bitrate, droppedFrames }` を `TranscoderHandle` に生やす — `packages/server/src/services/transcoder.ts` | streaming | 1 |
+| 4 | stream-manager の session キーを `${channelId}\|${codec}\|${quality}` に変更 (`byChannel` → `byKey`)、`acquireLive(channelId, codec, quality)` シグネチャ拡張、`getStreamInfo(sessionId)` で `{ codec, resolution, bitrate, fps, hwAccel, viewerCount, droppedFrames, bufferSec }` を返す — `packages/server/src/services/stream-manager.ts` | streaming | 2,3 |
+| 5 | `StartStreamRequestSchema` / `StreamInfoSchema` を定義し export — `packages/server/src/schemas/Stream.dto.ts` | backend | — |
+| 6 | `POST /api/streams/live/:channelId` に `zValidator('json', StartStreamRequestSchema)` を追加し body の `codec/quality` を `streamManager.acquireLive` に渡す — `packages/server/src/routes/streams.ts` | backend | 4,5 |
+| 7 | `GET /api/streams/:sessionId/info` を SSE (`text/event-stream`) で実装。`streamEvents` ヘルパ (hono/streaming) で 1s 毎に `data: <StreamInfo JSON>\n\n` を push、`c.req.raw.signal` で abort — `packages/server/src/routes/streams.ts` | backend | 4 |
+| 8 | `AppType` の更新を確認し `hc` 経由で型共有されることを検証 — `packages/server/src/app.ts` (export のみ) | backend | 5,6,7 |
+| 9 | `HlsPlayer` に `muted` デフォルトを追加 (`muted = true` default prop、`<video muted>` 属性を連動)。autoplay policy を通過させる — `packages/client/src/components/player/HlsPlayer.tsx` | frontend | — |
+| 10 | `useStream` を `{ type: 'live', channelId, codec, quality }` に拡張、`sourceKey` に codec/quality を含めて切替時に自動 re-acquire。POST body に codec/quality を乗せる — `packages/client/src/hooks/useStream.ts` | frontend | 6 |
+| 11 | `PlayerControls` に codec picker (`AVC / HEVC`) を追加。既存 quality picker は `'auto'→mid` / `'高'→high` / `'中'→mid` / `'低'→low` にマップし、`onCodecChange` / `onQualityChange` callback を受ける (live ページ側で `useStream` に渡す) — `packages/client/src/components/player/PlayerControls.tsx` | frontend | 10 |
+| 12 | `useStreamInfo(sessionId)` フック新設 — `EventSource` で `/api/streams/:sessionId/info` を subscribe、StreamInfo を state に保持、unmount で close — `packages/client/src/hooks/useStreamInfo.ts` (新規) | frontend | 7 |
+| 13 | `DiagnosticSidebar` のハードコード値を `useStreamInfo` の実データに差替。STREAM / HLS / SESSION 各項目を SSE 値にバインド、viewer/dropped/buffer も反映 — `packages/client/src/routes/live/$channelId.tsx` | frontend | 12 |
+| 14 | live ページに codec/quality 状態を持たせ `PlayerControls` へ渡す。切替時は `useStream` の `sourceKey` が変わり自動で release→acquire (切替中 1-2s 黒画面は許容) — `packages/client/src/routes/live/$channelId.tsx` | frontend | 10,11 |
+| 15 | Playwright E2E: `tests/e2e/live-streaming.spec.ts` を新規作成。12 項目のシナリオを `test.describe` で記述、HW テストは `test.skip(process.env.HW_ACCEL_TYPE !== 'nvenc')` でスキップ可能 — `tests/e2e/live-streaming.spec.ts` | visual-qa | 1-14 |
+| 16 | 型検査 + Biome + commitlint でコミット分割 (streaming / backend / frontend / tests / docs) — QA 最終ゲート | qa | 1-15 |
+
+### 契約 (Contracts)
+
+#### Request / Response DTO
+
+```ts
+// packages/server/src/schemas/Stream.dto.ts
+export const StartStreamRequestSchema = z.object({
+  codec: z.enum(['avc', 'hevc']),
+  quality: z.enum(['low', 'mid', 'high'])
+})
+
+export const StreamInfoSchema = z.object({
+  codec: z.enum(['avc', 'hevc']),
+  resolution: z.string().regex(/^\d+x\d+$/),  // e.g. '1920x1080'
+  bitrate: z.number().int().nonnegative(),    // kbps
+  fps: z.number().nonnegative(),
+  hwAccel: z.enum(['none', 'nvenc', 'qsv', 'vaapi']),
+  viewerCount: z.number().int().nonnegative(),
+  droppedFrames: z.number().int().nonnegative(),
+  bufferSec: z.number().nonnegative()
+})
+
+export type StartStreamRequest = z.infer<typeof StartStreamRequestSchema>
+export type StreamInfo = z.infer<typeof StreamInfoSchema>
+```
+
+#### Routes
+
+- `POST /api/streams/live/:channelId`
+  - body: `StartStreamRequest`
+  - 201: `StartStreamResponse` (既存)
+  - 503: `{ error: { code: 'STREAM_START_FAILED', message } }`
+- `GET /api/streams/:sessionId/info`
+  - response: `text/event-stream; charset=utf-8` + `Cache-Control: no-store`
+  - イベント: 1 秒毎に `data: <StreamInfo JSON>\n\n` を push、`c.req.raw.signal` に反応して終了
+  - 404: `{ error: { code: 'SESSION_NOT_FOUND' } }` (non-SSE)
+
+#### セッションキー (stream-manager 内部)
+
+```ts
+type SessionKey = `${string}|${'avc'|'hevc'}|${'low'|'mid'|'high'}`
+const byKey = new Map<SessionKey, Session>()
+```
+
+### Quality テーブル
+
+| quality | resolution | videoBitrate | fps | 備考 |
+|---------|-----------|--------------|-----|------|
+| `low`   | 854x480   | 1500 kbps    | 30  | 外出先モバイル回線向け |
+| `mid`   | 1280x720  | 3000 kbps    | 30  | デフォルト。quality picker の `auto` も mid にマップ |
+| `high`  | 1920x1080 | 6000 kbps    | 30  | 自宅 Wi-Fi 向け |
+
+> 入力 TS の元 fps はソース依存 (通常 30 or 60)。本フェーズは出力を 30fps 固定にダウンサンプル (`-r 30`) して安定度を優先する。60fps は将来オプション。
+
+### FFmpeg コマンドマトリクス
+
+入力は常に `pipe:0` (Mirakc MPEG-TS)。`-s WxH -r 30 -b:v {bitrate}k` を共通前置、以下は `-c:v` + preset + 前処理のみ記載。
+
+| codec | hwAccel=none | hwAccel=nvenc (CUDA) | hwAccel=qsv | hwAccel=vaapi |
+|-------|--------------|----------------------|-------------|---------------|
+| avc   | `-c:v libx264 -preset veryfast -tune zerolatency` | `-hwaccel cuda -c:v h264_nvenc -preset p4` | `-hwaccel qsv -c:v h264_qsv -preset veryfast` | `-vaapi_device /dev/dri/renderD128` + `-vf format=nv12,hwupload -c:v h264_vaapi` |
+| hevc  | `-c:v libx265 -preset veryfast -tune zerolatency -tag:v hvc1` | `-hwaccel cuda -c:v hevc_nvenc -preset p4 -tag:v hvc1` | `-hwaccel qsv -c:v hevc_qsv -preset veryfast -tag:v hvc1` | `-vaapi_device /dev/dri/renderD128` + `-vf format=nv12,hwupload -c:v hevc_vaapi -tag:v hvc1` |
+
+> `-tag:v hvc1` は HEVC で iOS Safari / hls.js の両方で再生可能にするための fourcc タグ。
+
+> VP9 は仕様上非対応のためマトリクスに含めない (NVENC 非対応 + Apple 系デコード不可)。
+
+### Playwright E2E テスト計画
+
+ファイル: `tests/e2e/live-streaming.spec.ts`
+事前条件: devcontainer 起動中で `.devcontainer/compose.yaml` の mirakc が稼働。テスト側は `page.goto('/live/<realChannelId>')` で開始。`HW_ACCEL_TYPE` が `nvenc` でない環境では HW テストをスキップ。
+
+| # | test title | 検証方法 |
+|---|------------|---------|
+| 1 | `plays for 30 seconds without interruption` | video の `currentTime` が 30s 時点で 25s 以上進み、`waiting` イベントが 1 回以下 |
+| 2 | `reacquires same sessionId within 15s grace` | 1 つ目タブで sessionId を取得 → close → 5s 待機 → 同 channel を再度開き、2 つ目 sessionId が 1 つ目と一致 |
+| 3 | `single tuner for same channel/codec/quality across 2 tabs` | 2 ページを同 channel+codec+quality で並行に開き、`/api/streams/<sid>/info` の viewerCount が 2 / sessionId が一致 |
+| 4 | `autoplays on page open (muted)` | 遷移後 3s で `video.paused === false` かつ `video.muted === true` |
+| 5 | `resumes within 15s grace on reload` | 再生開始 → `page.reload()` → 2s 以内に再び再生、sessionId 一致 |
+| 6 | `two tabs on same channel keep single ffmpeg` | 同 channel 2 タブで sidebar `viewers` が `2`、backend SSE viewerCount=2 |
+| 7 | `two tabs on different channels spawn two ffmpeg` | 異 channel 2 タブで sidebar `viewers` が各 `1`、sessionId が別 |
+| 8 | `plays with AVC SW / AVC HW / HEVC SW / HEVC HW` | 4 パラメータ組で `test.describe.each`。 HW 系は `HW_ACCEL_TYPE=nvenc` のみ実行、他スキップ |
+| 9 | `sidebar reflects SSE stream info within 2s` | sidebar の codec/resolution/bitrate/fps が `—` から実値に変化 (regex `/\d+x\d+/`, `/\d+ Mbps/` 等) |
+| 10 | `ABR TODO placeholder` | 期待値: テストは `test.fixme()` でスキップ、コメントに `// TODO(phase-2-abr)` を記載 |
+| 11 | `different codec on same channel → separate sessions` | 2 タブで 1=AVC/mid, 2=HEVC/mid → sessionId 別、ffmpeg 2 プロセス、Mirakc 接続 2 |
+| 12 | `codec switch mid-stream reattaches playlist` | 1 タブで AVC 再生開始 → codec picker で HEVC に変更 → 5s 以内に HEVC プレイリストで再生復帰 (sidebar codec='HEVC') |
+
+共通ヘルパ: `tests/e2e/helpers/stream.ts` に `waitForPlaying(page)`, `getStreamInfo(page, sessionId)`, `countFfmpegProcesses()` (devcontainer 内で `docker exec` するか backend の `/api/admin/debug/processes` を Phase 6 で用意するか — 今回は DOM + SSE 値で代替し、直接 `ps` は使わない)。
+
+> `ps aux` 代替: `viewerCount` と sessionId 多重度で間接検証。直接の OS プロセス数検証は CI 制約のため Playwright からは行わない。
+
+### 非対応 / 保留
+
+- **VP9**: 非対応 (NVENC 非対応 + Apple 系デコード不可)。`codec` enum に入れない / UI picker にも出さない。
+- **受入基準 10 (ABR 自動低下)**: `packages/server/src/services/transcoder.ts` に `// TODO(phase-2-abr): detect droppedFrames > threshold → restart FFmpeg with lower quality` のコメントのみ。Phase 6 で検討。
+- **60fps 出力**: 本フェーズは 30fps 固定。Phase 6 の polish で検討。
+- **プロセスカウント直接検証**: Playwright から `ps` は叩かない (devcontainer 権限依存)。間接検証のみ。
+
+### リスクと緩和策
+
+- **SSE コネクション漏れ**: `useStreamInfo` の `useEffect` cleanup で `eventSource.close()` を必須化。backend 側も `c.req.raw.signal` の `abort` で interval を止める (`clearInterval`)。
+- **HEVC + hls.js 互換**: `-tag:v hvc1` を必須付与。Chrome / Firefox での HEVC ソフトウェアデコード前提。ダメなら browser 側 fallback トースト。
+- **stderr パース正規表現の ffmpeg バージョン依存**: 代替として ffmpeg の `-progress pipe:3` (key=value 形式) を別ディスクリプタで受ける案もあるが、現状の実装は stderr のみ捕捉しているので正規表現で開始し、不安定なら `-progress` に切替 (Phase 6)。
+- **codec 切替中の黒画面**: 1-2s は許容 (ユーザー決定済)。`HlsPlayer` の `playlistUrl` が変わったら hls.js を destroy→再初期化する既存実装でカバー。
+- **quality picker の既存値との互換**: 現在 `'auto' / '高' / '中' / '低'` のラベル運用。`auto→mid` にマップし、画面上のラベルは維持 (ユーザーに影響なし)。
+
+### ロールアウト / 検証
+
+1. 単体: `bun test` で `buildFfmpegArgs` の 8 セル (2 codec × 4 hwAccel) × 3 quality = 24 ケースを追加
+2. 手動: devcontainer で `bun run dev` → `/live/<channelId>` で AVC/HEVC × low/mid/high を切替して挙動確認
+3. E2E: `bunx playwright test tests/e2e/live-streaming.spec.ts --project=desktop-chromium`
+4. HW accel: `HW_ACCEL_TYPE=nvenc bunx playwright test tests/e2e/live-streaming.spec.ts` で HW テスト群を有効化
+5. コミット分割: `feat(streaming): ...` / `feat(server): SSE stream info` / `feat(client): codec picker + SSE sidebar` / `test(e2e): live streaming 12 criteria`
+
+### 参照スキル
+
+- `ffmpeg-hls` (最重要 — codec マトリクス、HEVC fourcc、quality プリセット)
+- `mirakc` (stream manager の Mirakc 接続は既存のまま)
+- `bun-hono` (SSE = `hono/streaming` の `streamSSE` helper)
+- `hls-player` (autoplay muted、hls.js 再初期化、SSE subscribe フック)
+
+### 開いた質問 (Open questions)
+
+- 出力 fps は 30 固定で良いか (ユーザー確認済みの方針を前提にするが、60 源流の番組で体験差が出る可能性)
+- `hc<AppType>` で SSE エンドポイントを型付きで叩けるかは RPC 側の対応次第。厳しければ `useStreamInfo` 内で `new EventSource()` を直接使う (RPC 型エクスポートはレスポンス型のみ) — こちらを既定とする。
