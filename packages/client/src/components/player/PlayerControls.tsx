@@ -9,6 +9,13 @@ import { cn } from '@/lib/utils'
 const PLAYBACK_RATES = [0.5, 1.0, 1.25, 1.5, 2.0] as const
 const QUALITY_OPTIONS = ['auto', '高', '中', '低'] as const
 
+const QUALITY_LABEL_TO_VALUE: Record<string, 'low' | 'mid' | 'high'> = {
+  auto: 'mid',
+  高: 'high',
+  中: 'mid',
+  低: 'low'
+}
+
 export type { Chapter }
 
 export interface PlayerControlsProps {
@@ -16,6 +23,10 @@ export interface PlayerControlsProps {
   videoRef: React.RefObject<HTMLVideoElement | null>
   className?: string
   chapters?: Chapter[]
+  codec?: 'avc' | 'hevc'
+  onCodecChange?: (codec: 'avc' | 'hevc') => void
+  quality?: 'low' | 'mid' | 'high'
+  onQualityChange?: (quality: 'low' | 'mid' | 'high') => void
 }
 
 /**
@@ -29,7 +40,16 @@ export interface PlayerControlsProps {
  *   - Seek bar is interactive (role="slider")
  *   - All controls are fully enabled
  */
-export function PlayerControls({ isLive, videoRef, className, chapters }: PlayerControlsProps) {
+export function PlayerControls({
+  isLive,
+  videoRef,
+  className,
+  chapters,
+  codec,
+  onCodecChange,
+  quality: _quality,
+  onQualityChange
+}: PlayerControlsProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -37,7 +57,7 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [playbackRate, setPlaybackRate] = useState(1.0)
-  const [quality, setQuality] = useState<string>('auto')
+  const [qualityLabel, setQualityLabel] = useState<string>('auto')
   const progressRafRef = useRef<number | null>(null)
   const seekBarRef = useRef<HTMLDivElement>(null)
 
@@ -285,11 +305,15 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
           ))}
         </select>
 
-        {/* Quality stub — UI only, no logic yet (Phase 2 range) */}
+        {/* Quality picker — wires to onQualityChange when provided */}
         <select
           aria-label='画質'
-          value={quality}
-          onChange={(e) => setQuality(e.target.value)}
+          value={qualityLabel}
+          onChange={(e) => {
+            const label = e.target.value
+            setQualityLabel(label)
+            onQualityChange?.(QUALITY_LABEL_TO_VALUE[label] ?? 'mid')
+          }}
           className={cn(
             'rounded border border-border bg-transparent font-mono text-[0.6875rem] text-foreground px-1.5 py-0.5 cursor-pointer',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
@@ -301,6 +325,22 @@ export function PlayerControls({ isLive, videoRef, className, chapters }: Player
             </option>
           ))}
         </select>
+
+        {/* Codec picker — only rendered when parent opts in via onCodecChange */}
+        {onCodecChange && (
+          <select
+            aria-label='コーデック'
+            value={codec ?? 'avc'}
+            onChange={(e) => onCodecChange(e.target.value as 'avc' | 'hevc')}
+            className={cn(
+              'rounded border border-border bg-transparent font-mono text-[0.6875rem] text-foreground px-1.5 py-0.5 cursor-pointer',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            )}
+          >
+            <option value='avc'>AVC</option>
+            <option value='hevc'>HEVC</option>
+          </select>
+        )}
 
         <div aria-hidden='true' className='mx-1 h-5 w-px bg-border shrink-0' />
 
