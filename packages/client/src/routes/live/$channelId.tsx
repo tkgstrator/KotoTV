@@ -298,9 +298,9 @@ function LivePage() {
       {/* Main area: video column + UpNext rail (YouTube-style).
           12 px breathing room on all sides so the player doesn't collide
           with the shell chrome or the viewport edge. 16 px gap between
-          the two columns. Width cap (1784 px) lives on AppShell's <main>
-          so every page is bounded consistently. */}
-      <div className='flex flex-1 flex-col overflow-hidden lg:flex-row lg:gap-4 lg:p-3'>
+          the two columns. Capped at 1784 px and centered so ultra-wide
+          monitors don't stretch the video beyond YouTube's own max-width. */}
+      <div className='mx-auto flex w-full flex-1 flex-col overflow-hidden lg:max-w-[1784px] lg:flex-row lg:gap-4 lg:p-3'>
         {/* Video column */}
         <div className='flex flex-1 flex-col overflow-hidden lg:min-w-0'>
           {stream.status === 'error' ? (
