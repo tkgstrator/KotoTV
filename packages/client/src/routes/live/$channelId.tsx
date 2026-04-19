@@ -9,12 +9,10 @@ import { PlayerControls } from '@/components/player/PlayerControls'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import { useClock } from '@/hooks/useClock'
 import { useStream } from '@/hooks/useStream'
 import { useStreamInfo } from '@/hooks/useStreamInfo'
-import { formatTimeRange, getProgress } from '@/lib/program'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/live/$channelId')({
@@ -36,79 +34,6 @@ const SECTION_LABEL_CLS = 'font-mono text-[0.625rem] font-bold uppercase trackin
 const STAT_LABEL_CLS = 'font-mono text-[0.625rem] tracking-[0.03em] text-muted-foreground'
 const STAT_VAL_CLS = 'font-mono text-[0.75rem] font-semibold tabular-nums text-foreground'
 const LOG_LINE_CLS = 'font-mono text-[0.625rem] leading-[1.6] text-muted-foreground'
-
-function NowStrip({ channelId }: { channelId: string }) {
-  const { data } = useChannels()
-  const channel = data?.channels.find((c) => c.id === channelId)
-  const cur = channel?.currentProgram ?? null
-  const next = channel?.nextProgram ?? null
-
-  const progress = cur ? getProgress(cur.startAt, cur.endAt) : 0
-  const elapsed = cur ? Math.floor((Date.now() - new Date(cur.startAt).getTime()) / 60000) : 0
-  const remaining = cur ? Math.ceil((new Date(cur.endAt).getTime() - Date.now()) / 60000) : 0
-  const total = cur ? Math.round((new Date(cur.endAt).getTime() - new Date(cur.startAt).getTime()) / 60000) : 0
-
-  const NOW_LABEL_CLS = `${SECTION_LABEL_CLS.replace('text-muted-foreground', 'text-destructive')} mb-1`
-
-  if (!channel) {
-    return (
-      <div className='flex-shrink-0 border-b-2 border-border bg-card px-3 py-2.5'>
-        <div className={NOW_LABEL_CLS}>NOW ON AIR</div>
-        <Skeleton className='mb-2 h-[18px] w-60' />
-        <Skeleton className='mb-2.5 h-[11px] w-40' />
-        <Skeleton className='h-[5px] w-full rounded-sm' />
-      </div>
-    )
-  }
-
-  return (
-    <div className='flex-shrink-0 border-b-2 border-border bg-card px-3 pb-3 pt-2.5'>
-      <div className={cn('flex items-center gap-1.5', NOW_LABEL_CLS)}>
-        <span aria-hidden='true' className='size-1.5 rounded-full bg-destructive animate-pulse' />
-        NOW ON AIR
-      </div>
-
-      {cur ? (
-        <>
-          <div className='text-[1.0625rem] font-bold leading-[1.25] mb-1.5'>{cur.title}</div>
-          <div className='flex flex-wrap items-center gap-2.5 font-mono text-[0.75rem] tabular-nums text-muted-foreground mb-2'>
-            <span>{formatTimeRange(cur.startAt, cur.endAt)}</span>
-            <span>残り {remaining}分</span>
-            {next && (
-              <span>
-                次: {next.title} {format(new Date(next.startAt), 'HH:mm')}
-              </span>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className='text-[0.75rem] text-muted-foreground mb-2'>番組情報なし</div>
-      )}
-
-      <div
-        role='progressbar'
-        aria-label='番組経過'
-        aria-valuenow={Math.round(progress * 100)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        className='h-[5px] overflow-hidden rounded-[2px] bg-muted'
-      >
-        <div
-          className='h-full rounded-[2px] bg-primary transition-[width] duration-1000'
-          style={{ width: `${Math.round(progress * 100)}%` }}
-        />
-      </div>
-      {cur && (
-        <div className={cn('mt-1 flex justify-between tabular-nums', STAT_LABEL_CLS)}>
-          <span>経過 {elapsed}分</span>
-          <span>
-            残り {remaining}分 / {total}分
-          </span>
-        </div>
-      )}
-    </div>
-  )
-}
 
 function DiagnosticSidebar({
   sessionId,
@@ -376,9 +301,6 @@ function LivePage() {
         </Sheet>
       </header>
 
-      {/* NOW-strip */}
-      <NowStrip channelId={channelId} />
-
       {/* Main area: video column + UpNext rail (YouTube-style). Keeps the
           video from stretching to the full viewport width, which on a 16:9
           monitor + app header would otherwise overflow vertically. */}
@@ -458,8 +380,9 @@ function LivePage() {
           />
         </div>
 
-        {/* Up-next rail for the current channel (lg+ only — stacks below on mobile) */}
-        <div className='hidden shrink-0 lg:block lg:w-[320px]'>
+        {/* Up-next rail for the current channel (lg+ only — stacks below on
+            mobile). 400 px matches YouTube's secondary column width. */}
+        <div className='hidden shrink-0 lg:block lg:w-[400px]'>
           <UpNextPanel channelId={channelId} />
         </div>
       </div>
