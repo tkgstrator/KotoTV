@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import { SUBSYSTEMS } from '@/components/settings/_shared'
 import { AboutTab } from '@/components/settings/AboutTab'
@@ -85,11 +86,21 @@ function SettingsPage() {
       <UnderlineTabBar<SettingsTab> tabs={SETTINGS_TABS} value={tab} onChange={setTab} ariaLabel='設定タブ' />
 
       <div className='flex-1'>
-        {tab === 'status' && <StatusTab />}
-        {tab === 'playback' && <PlaybackTab />}
-        {tab === 'recording' && <RecordingTab />}
-        {tab === 'display' && <DisplayTab />}
-        {tab === 'about' && <AboutTab />}
+        <AnimatePresence mode='wait'>
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+          >
+            {tab === 'status' && <StatusTab />}
+            {tab === 'playback' && <PlaybackTab />}
+            {tab === 'recording' && <RecordingTab />}
+            {tab === 'display' && <DisplayTab />}
+            {tab === 'about' && <AboutTab />}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </>
   )

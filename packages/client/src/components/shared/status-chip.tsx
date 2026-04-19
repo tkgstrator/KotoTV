@@ -10,6 +10,7 @@
  * See: docs/mocks/app-shell/README.md §StatusChip
  */
 import { cva, type VariantProps } from 'class-variance-authority'
+import { motion } from 'motion/react'
 import type * as React from 'react'
 import { cn } from '@/lib/utils'
 
@@ -68,10 +69,16 @@ export function StatusChip({ variant, children, dot, asLink, className, size }: 
 
   const dotSize = size === 'sm' ? 'size-1' : 'size-1.5'
   const dotEl = dot ? (
-    <span
-      aria-hidden='true'
-      className={cn(dotSize, 'rounded-full bg-current flex-shrink-0', shouldPulse && 'animate-pulse')}
-    />
+    shouldPulse ? (
+      <motion.span
+        aria-hidden='true'
+        className={cn(dotSize, 'rounded-full bg-current flex-shrink-0')}
+        animate={{ scale: [1, 1.35, 1], opacity: [1, 0.55, 1] }}
+        transition={{ duration: 1.6, repeat: Number.POSITIVE_INFINITY, ease: 'easeInOut' }}
+      />
+    ) : (
+      <span aria-hidden='true' className={cn(dotSize, 'rounded-full bg-current flex-shrink-0')} />
+    )
   ) : null
 
   const inner = (

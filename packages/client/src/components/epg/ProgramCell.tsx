@@ -23,6 +23,9 @@ export function ProgramCell({ program, className, onReserve }: ProgramCellProps)
         'group relative flex h-full flex-col overflow-hidden',
         'border border-border border-l-[3px] bg-card',
         'hover:bg-[var(--genre-color)]/12',
+        // Subtle hover lift — CSS is simpler here than a motion wrapper and avoids
+        // the typed MotionStyle vs React.CSSProperties friction for custom props.
+        'transition-transform duration-150 ease-out hover:z-10 hover:scale-[1.02]',
         className
       )}
       style={{ '--genre-color': accentColor, borderLeftColor: accentColor } as React.CSSProperties}
