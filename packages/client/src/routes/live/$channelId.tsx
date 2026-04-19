@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { format } from 'date-fns'
-import { ChevronLeft } from 'lucide-react'
+import { Activity, ChevronLeft } from 'lucide-react'
 import type * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { HlsPlayer } from '@/components/player/HlsPlayer'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import { useClock } from '@/hooks/useClock'
@@ -174,17 +175,7 @@ function DiagnosticSidebar({
   const bufferDisplay = bufferSec !== null ? `${bufferSec.toFixed(1)}s` : '—'
 
   return (
-    <aside
-      aria-label='診断情報パネル'
-      className={cn(
-        'flex flex-col overflow-hidden bg-card',
-        /* mobile stacks below the video; reserve bottom-nav space so the LOG
-         * tail isn't obscured by the fixed bottom tabs. On lg+ the sidebar
-         * is on the right and the mobile nav is hidden, so no padding. */
-        'w-full border-t border-border pb-[var(--mobile-nav-h)]',
-        'lg:w-[240px] lg:flex-shrink-0 lg:border-l lg:border-t-0 lg:pb-0'
-      )}
-    >
+    <section aria-label='診断情報パネル' className='flex h-full flex-col overflow-hidden bg-card'>
       {/* STREAM section */}
       <div className='border-b border-border px-3 py-2.5'>
         <SidebarSectionLabel>STREAM</SidebarSectionLabel>
@@ -269,7 +260,7 @@ function DiagnosticSidebar({
           )}
         </div>
       </div>
-    </aside>
+    </section>
   )
 }
 
@@ -367,13 +358,28 @@ function LivePage() {
         <span className='font-mono text-[0.75rem] font-semibold tabular-nums text-muted-foreground'>
           {format(clock, 'HH:mm:ss')}
         </span>
+
+        {/* Diagnostic panel toggle — hidden by default; power users open it on demand */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant='ghost' size='icon' className='h-8 w-8' aria-label='動画情報を表示'>
+              <Activity className='size-4' />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side='right' className='w-[280px] p-0 sm:max-w-[280px]'>
+            <SheetHeader className='sr-only'>
+              <SheetTitle>動画情報</SheetTitle>
+            </SheetHeader>
+            <DiagnosticSidebar sessionId={stream.sessionId} streamStatus={stream.status} videoRef={videoRef} />
+          </SheetContent>
+        </Sheet>
       </header>
 
       {/* NOW-strip */}
       <NowStrip channelId={channelId} />
 
-      {/* Main area: video column + diagnostic sidebar */}
-      <div className='flex flex-1 overflow-hidden flex-col lg:flex-row'>
+      {/* Main area: video column (diagnostic panel now lives behind a Sheet in the header) */}
+      <div className='flex flex-1 overflow-hidden flex-col'>
         {/* Video column */}
         <div className='flex flex-1 flex-col overflow-hidden bg-[hsl(222_30%_6%)]'>
           {stream.status === 'error' ? (
@@ -448,9 +454,6 @@ function LivePage() {
             onQualityChange={setQuality}
           />
         </div>
-
-        {/* Diagnostic sidebar */}
-        <DiagnosticSidebar sessionId={stream.sessionId} streamStatus={stream.status} videoRef={videoRef} />
       </div>
     </div>
   )
