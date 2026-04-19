@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import type { FfmpegArgsOptions } from './ffmpeg'
-import { buildFfmpegArgs } from './ffmpeg'
+import { buildFfmpegArgs, QUALITY_PRESETS, resolutionFor } from './ffmpeg'
 
 const BASE_OPTS = {
   outputDir: '/app/data/hls/test-session',
   segmentSeconds: 2,
   listSize: 6,
-  videoBitrate: 4000,
-  audioBitrate: 128
+  codec: 'avc' as const,
+  quality: 'mid' as const
 } satisfies Omit<FfmpegArgsOptions, 'hwAccel'>
 
 // ---------------------------------------------------------------------------
@@ -26,11 +26,145 @@ function contains(args: string[], value: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// HW accel — encoder codec selection
+// Codec × HwAccel matrix — -c:v and -tag:v hvc1
+// ---------------------------------------------------------------------------
+
+describe('codec × hwAccel matrix: AVC', () => {
+  test('none → libx264', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', codec: 'avc' })
+    expect(flagValue(args, '-c:v')).toBe('libx264')
+    expect(contains(args, 'hvc1')).toBe(false)
+  })
+
+  test('nvenc → h264_nvenc', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'nvenc', codec: 'avc' })
+    expect(flagValue(args, '-c:v')).toBe('h264_nvenc')
+    expect(contains(args, 'hvc1')).toBe(false)
+  })
+
+  test('qsv → h264_qsv', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'qsv', codec: 'avc' })
+    expect(flagValue(args, '-c:v')).toBe('h264_qsv')
+    expect(contains(args, 'hvc1')).toBe(false)
+  })
+
+  test('vaapi → h264_vaapi', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'vaapi', codec: 'avc' })
+    expect(flagValue(args, '-c:v')).toBe('h264_vaapi')
+    expect(contains(args, 'hvc1')).toBe(false)
+  })
+})
+
+describe('codec × hwAccel matrix: HEVC (-tag:v hvc1 required)', () => {
+  test('none → libx265 + hvc1', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', codec: 'hevc' })
+    expect(flagValue(args, '-c:v')).toBe('libx265')
+    expect(flagValue(args, '-tag:v')).toBe('hvc1')
+  })
+
+  test('nvenc → hevc_nvenc + hvc1', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'nvenc', codec: 'hevc' })
+    expect(flagValue(args, '-c:v')).toBe('hevc_nvenc')
+    expect(flagValue(args, '-tag:v')).toBe('hvc1')
+  })
+
+  test('qsv → hevc_qsv + hvc1', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'qsv', codec: 'hevc' })
+    expect(flagValue(args, '-c:v')).toBe('hevc_qsv')
+    expect(flagValue(args, '-tag:v')).toBe('hvc1')
+  })
+
+  test('vaapi → hevc_vaapi + hvc1', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'vaapi', codec: 'hevc' })
+    expect(flagValue(args, '-c:v')).toBe('hevc_vaapi')
+    expect(flagValue(args, '-tag:v')).toBe('hvc1')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Quality presets — -s, -r, -b:v defaults
+// ---------------------------------------------------------------------------
+
+describe('quality preset: low', () => {
+  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', codec: 'avc', quality: 'low' })
+
+  test('-s is 854x480', () => {
+    expect(flagValue(args, '-s')).toBe('854x480')
+  })
+
+  test('-r is 30', () => {
+    expect(flagValue(args, '-r')).toBe('30')
+  })
+
+  test('-b:v defaults to 1500k', () => {
+    expect(flagValue(args, '-b:v')).toBe('1500k')
+  })
+})
+
+describe('quality preset: mid', () => {
+  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', codec: 'avc', quality: 'mid' })
+
+  test('-s is 1280x720', () => {
+    expect(flagValue(args, '-s')).toBe('1280x720')
+  })
+
+  test('-r is 30', () => {
+    expect(flagValue(args, '-r')).toBe('30')
+  })
+
+  test('-b:v defaults to 3000k', () => {
+    expect(flagValue(args, '-b:v')).toBe('3000k')
+  })
+})
+
+describe('quality preset: high', () => {
+  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', codec: 'avc', quality: 'high' })
+
+  test('-s is 1920x1080', () => {
+    expect(flagValue(args, '-s')).toBe('1920x1080')
+  })
+
+  test('-r is 30', () => {
+    expect(flagValue(args, '-r')).toBe('30')
+  })
+
+  test('-b:v defaults to 6000k', () => {
+    expect(flagValue(args, '-b:v')).toBe('6000k')
+  })
+})
+
+describe('videoBitrate override overrides quality preset default', () => {
+  test('explicit videoBitrate takes precedence', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', codec: 'avc', quality: 'low', videoBitrate: 999 })
+    expect(flagValue(args, '-b:v')).toBe('999k')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolutionFor helper
+// ---------------------------------------------------------------------------
+
+describe('resolutionFor()', () => {
+  test('low → 854x480', () => expect(resolutionFor('low')).toBe('854x480'))
+  test('mid → 1280x720', () => expect(resolutionFor('mid')).toBe('1280x720'))
+  test('high → 1920x1080', () => expect(resolutionFor('high')).toBe('1920x1080'))
+})
+
+describe('QUALITY_PRESETS shape', () => {
+  for (const [q, p] of Object.entries(QUALITY_PRESETS) as [
+    string,
+    (typeof QUALITY_PRESETS)[keyof typeof QUALITY_PRESETS]
+  ][]) {
+    test(`${q} has fps=30`, () => expect(p.fps).toBe(30))
+  }
+})
+
+// ---------------------------------------------------------------------------
+// HW accel — encoder codec selection (legacy coverage with new required fields)
 // ---------------------------------------------------------------------------
 
 describe('hwAccel: none (libx264)', () => {
-  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none' })
+  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', codec: 'avc' })
 
   test('uses libx264 codec', () => {
     expect(flagValue(args, '-c:v')).toBe('libx264')
@@ -50,8 +184,8 @@ describe('hwAccel: none (libx264)', () => {
   })
 })
 
-describe('hwAccel: nvenc', () => {
-  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'nvenc' })
+describe('hwAccel: nvenc (avc)', () => {
+  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'nvenc', codec: 'avc' })
 
   test('uses h264_nvenc codec', () => {
     expect(flagValue(args, '-c:v')).toBe('h264_nvenc')
@@ -66,8 +200,8 @@ describe('hwAccel: nvenc', () => {
   })
 })
 
-describe('hwAccel: qsv', () => {
-  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'qsv' })
+describe('hwAccel: qsv (avc)', () => {
+  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'qsv', codec: 'avc' })
 
   test('uses h264_qsv codec', () => {
     expect(flagValue(args, '-c:v')).toBe('h264_qsv')
@@ -82,8 +216,8 @@ describe('hwAccel: qsv', () => {
   })
 })
 
-describe('hwAccel: vaapi', () => {
-  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'vaapi' })
+describe('hwAccel: vaapi (avc)', () => {
+  const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'vaapi', codec: 'avc' })
 
   test('uses h264_vaapi codec', () => {
     expect(flagValue(args, '-c:v')).toBe('h264_vaapi')
@@ -98,7 +232,6 @@ describe('hwAccel: vaapi', () => {
   })
 
   test('does not include -hwaccel cuda or qsv keyword', () => {
-    // vaapi uses -vaapi_device instead of -hwaccel
     expect(contains(args, 'cuda')).toBe(false)
   })
 })
@@ -109,10 +242,12 @@ describe('hwAccel: vaapi', () => {
 
 describe('HLS flags invariant', () => {
   for (const hwAccel of ['none', 'nvenc', 'qsv', 'vaapi'] as const) {
-    test(`delete_segments+append_list+independent_segments is present for hwAccel=${hwAccel}`, () => {
-      const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel })
-      expect(flagValue(args, '-hls_flags')).toBe('delete_segments+append_list+independent_segments')
-    })
+    for (const codec of ['avc', 'hevc'] as const) {
+      test(`delete_segments+append_list+independent_segments present for hwAccel=${hwAccel} codec=${codec}`, () => {
+        const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel, codec })
+        expect(flagValue(args, '-hls_flags')).toBe('delete_segments+append_list+independent_segments')
+      })
+    }
   }
 })
 
@@ -142,6 +277,8 @@ describe('outputDir is reflected in output paths', () => {
 describe('numeric parameters are reflected in FFmpeg flags', () => {
   const args = buildFfmpegArgs({
     hwAccel: 'none',
+    codec: 'avc',
+    quality: 'high',
     outputDir: '/tmp/sess',
     segmentSeconds: 4,
     listSize: 10,
@@ -171,7 +308,7 @@ describe('numeric parameters are reflected in FFmpeg flags', () => {
 // ---------------------------------------------------------------------------
 
 describe('defaults', () => {
-  const args = buildFfmpegArgs({ hwAccel: 'none', outputDir: '/tmp/sess' })
+  const args = buildFfmpegArgs({ hwAccel: 'none', codec: 'avc', quality: 'mid', outputDir: '/tmp/sess' })
 
   test('default segmentSeconds is 2', () => {
     expect(flagValue(args, '-hls_time')).toBe('2')
@@ -181,12 +318,12 @@ describe('defaults', () => {
     expect(flagValue(args, '-hls_list_size')).toBe('6')
   })
 
-  test('default videoBitrate is 4000k', () => {
-    expect(flagValue(args, '-b:v')).toBe('4000k')
-  })
-
   test('default audioBitrate is 128k', () => {
     expect(flagValue(args, '-b:a')).toBe('128k')
+  })
+
+  test('default videoBitrate for mid quality is 3000k', () => {
+    expect(flagValue(args, '-b:v')).toBe('3000k')
   })
 })
 
@@ -213,5 +350,26 @@ describe('input and stream mapping', () => {
 
   test('-y overwrite flag is present', () => {
     expect(contains(args, '-y')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Argument order: -s and -r appear before -c:v
+// ---------------------------------------------------------------------------
+
+describe('argument ordering', () => {
+  test('-s appears before -c:v', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', codec: 'avc' })
+    expect(args.indexOf('-s')).toBeLessThan(args.indexOf('-c:v'))
+  })
+
+  test('-r appears before -c:v', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', codec: 'avc' })
+    expect(args.indexOf('-r')).toBeLessThan(args.indexOf('-c:v'))
+  })
+
+  test('-hwaccel cuda appears before -i for nvenc', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'nvenc', codec: 'avc' })
+    expect(args.indexOf('-hwaccel')).toBeLessThan(args.indexOf('-i'))
   })
 })
