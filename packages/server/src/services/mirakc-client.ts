@@ -156,6 +156,24 @@ export const mirakcClient = {
     return `${env.MIRAKC_URL}/api/services/${serviceId}/logo`
   },
 
+  /**
+   * Open the live MPEG-TS stream for a channel. The caller gets a ReadableStream
+   * suitable for piping into an FFmpeg transcoder's stdin.
+   *
+   * `decode=1` asks Mirakc to decode scrambled signals using the configured
+   * B-CAS; without it ARIB-encrypted channels return encrypted payload.
+   */
+  async openLiveStream(channelId: string, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+    const url = `${env.MIRAKC_URL}/api/services/${channelId}/stream?decode=1`
+    const init: RequestInit = {}
+    if (signal) init.signal = signal
+    const res = await fetch(url, init)
+    if (!res.ok || !res.body) {
+      throw new MirakcError(res.status, `openLiveStream ${channelId} → ${res.status}`)
+    }
+    return res.body
+  },
+
   async getAvailableTunerCount(): Promise<number> {
     if (_cachedTunerTotal !== null && Date.now() - _cachedTunerTotal.at < 60_000) {
       return _cachedTunerTotal.value
