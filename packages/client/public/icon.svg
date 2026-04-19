@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="KotoTV">
+  <rect width="512" height="512" rx="96" fill="#1f68db"/>
+  <text
+    x="50%"
+    y="54%"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif"
+    font-weight="900"
+    font-size="140"
+    fill="#ffffff"
+    letter-spacing="-4"
+  >KOTO</text>
+  <text
+    x="50%"
+    y="78%"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif"
+    font-weight="900"
+    font-size="140"
+    fill="#ffffff"
+    letter-spacing="-4"
+  >TV</text>
+</svg>

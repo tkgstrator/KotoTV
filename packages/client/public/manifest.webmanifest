@@ -1,0 +1,21 @@
+{
+  "name": "KotoTV",
+  "short_name": "KotoTV",
+  "description": "KotoTV — 外出先ライブ視聴クライアント",
+  "lang": "ja",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f5f7",
+  "theme_color": "#1f68db",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "utilities"]
+}
