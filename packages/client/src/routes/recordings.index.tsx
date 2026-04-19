@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { format, intervalToDuration } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { CalendarPlus, ListFilter, MoreVertical, Trash2, Wand2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { RecordingScheduleForm } from '@/components/recording/RecordingScheduleForm'
@@ -495,74 +496,117 @@ function RecordingsPage() {
           </div>
 
           <div className='flex-1 overflow-y-auto pb-16'>
-            {activeTab === 'pending' &&
-              (pendingItems.length === 0 ? (
-                <div className='px-4 py-12'>
-                  <p className='mb-3 font-mono text-[0.8125rem] font-semibold text-muted-foreground'>
-                    $ nothing scheduled yet
-                  </p>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    className='font-mono text-[0.75rem]'
-                    onClick={() => setFormOpen(true)}
-                  >
-                    + 最初の予約を追加
-                  </Button>
-                </div>
-              ) : (
-                <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'>
-                  {pendingItems.map((item) =>
-                    'startAt' in item ? (
-                      <ScheduleRowEnhanced
-                        key={item.id}
-                        schedule={item as RecordingSchedule & { ruleId?: string | null }}
-                        ruleNameMap={ruleNameMap}
-                      />
-                    ) : (
-                      <RecordingRow key={item.id} rec={item} />
-                    )
-                  )}
-                </div>
-              ))}
-
-            {activeTab === 'completed' &&
-              (completedItems.length === 0 ? (
-                <div className='px-4 py-12'>
-                  <div className='inline-block rounded-sm border border-border bg-muted/60 px-3.5 py-2.5 font-mono text-[0.75rem] text-muted-foreground'>
-                    $ ls recordings/ → 0 items
-                  </div>
-                </div>
-              ) : (
-                <div className='grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-px bg-border'>
-                  {completedItems.map((r) => (
-                    <DoneCard key={r.id} rec={r} />
+            <AnimatePresence mode='wait'>
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+              >
+                {activeTab === 'pending' &&
+                  (pendingItems.length === 0 ? (
+                    <div className='px-4 py-12'>
+                      <p className='mb-3 font-mono text-[0.8125rem] font-semibold text-muted-foreground'>
+                        $ nothing scheduled yet
+                      </p>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        className='font-mono text-[0.75rem]'
+                        onClick={() => setFormOpen(true)}
+                      >
+                        + 最初の予約を追加
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'>
+                      <AnimatePresence initial={false}>
+                        {pendingItems.map((item) => (
+                          <motion.div
+                            key={item.id}
+                            layout
+                            initial={{ opacity: 0, scale: 0.97 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.97 }}
+                            transition={{ duration: 0.18, ease: 'easeOut' }}
+                          >
+                            {'startAt' in item ? (
+                              <ScheduleRowEnhanced
+                                schedule={item as RecordingSchedule & { ruleId?: string | null }}
+                                ruleNameMap={ruleNameMap}
+                              />
+                            ) : (
+                              <RecordingRow rec={item} />
+                            )}
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
                   ))}
-                </div>
-              ))}
 
-            {activeTab === 'failed' &&
-              (failedItems.length === 0 ? (
-                <div className='px-4 py-12'>
-                  <div className='inline-block rounded-sm border border-border bg-muted/60 px-3.5 py-2.5 font-mono text-[0.75rem] text-muted-foreground'>
-                    $ no failures — good
-                  </div>
-                </div>
-              ) : (
-                <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'>
-                  {failedItems.map((item) =>
-                    'startAt' in item ? (
-                      <ScheduleRowEnhanced
-                        key={item.id}
-                        schedule={item as RecordingSchedule & { ruleId?: string | null; failureReason?: string | null }}
-                        ruleNameMap={ruleNameMap}
-                      />
-                    ) : (
-                      <FailedRecordingRow key={item.id} rec={item} />
-                    )
-                  )}
-                </div>
-              ))}
+                {activeTab === 'completed' &&
+                  (completedItems.length === 0 ? (
+                    <div className='px-4 py-12'>
+                      <div className='inline-block rounded-sm border border-border bg-muted/60 px-3.5 py-2.5 font-mono text-[0.75rem] text-muted-foreground'>
+                        $ ls recordings/ → 0 items
+                      </div>
+                    </div>
+                  ) : (
+                    <div className='grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-px bg-border'>
+                      <AnimatePresence initial={false}>
+                        {completedItems.map((r) => (
+                          <motion.div
+                            key={r.id}
+                            layout
+                            initial={{ opacity: 0, scale: 0.97 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.97 }}
+                            transition={{ duration: 0.18, ease: 'easeOut' }}
+                          >
+                            <DoneCard rec={r} />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  ))}
+
+                {activeTab === 'failed' &&
+                  (failedItems.length === 0 ? (
+                    <div className='px-4 py-12'>
+                      <div className='inline-block rounded-sm border border-border bg-muted/60 px-3.5 py-2.5 font-mono text-[0.75rem] text-muted-foreground'>
+                        $ no failures — good
+                      </div>
+                    </div>
+                  ) : (
+                    <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'>
+                      <AnimatePresence initial={false}>
+                        {failedItems.map((item) => (
+                          <motion.div
+                            key={item.id}
+                            layout
+                            initial={{ opacity: 0, scale: 0.97 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.97 }}
+                            transition={{ duration: 0.18, ease: 'easeOut' }}
+                          >
+                            {'startAt' in item ? (
+                              <ScheduleRowEnhanced
+                                schedule={
+                                  item as RecordingSchedule & { ruleId?: string | null; failureReason?: string | null }
+                                }
+                                ruleNameMap={ruleNameMap}
+                              />
+                            ) : (
+                              <FailedRecordingRow rec={item} />
+                            )}
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  ))}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       )}
