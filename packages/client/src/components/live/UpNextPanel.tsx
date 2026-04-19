@@ -1,4 +1,5 @@
-import { format } from 'date-fns'
+import { addHours, format, toDate } from 'date-fns'
+import { useMemo } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePrograms } from '@/hooks/usePrograms'
 import { formatTimeRange, getProgress } from '@/lib/program'
@@ -10,16 +11,23 @@ import { cn } from '@/lib/utils'
  * (which, on a 16:9 monitor with a header, would overflow vertically) while
  * giving viewers something to look at.
  */
+const BUCKET_MS = 5 * 60_000
+
 export function UpNextPanel({ channelId }: { channelId: string }) {
   // Pull the next 6 hours of programs so the rail always has enough content
   // to scroll through, even right after a daypart rolls over.
-  const now = new Date()
-  const horizon = new Date(now.getTime() + 6 * 60 * 60 * 1000)
-  const { data, isLoading } = usePrograms({
-    channelId,
-    startAt: now.toISOString(),
-    endAt: horizon.toISOString()
-  })
+  //
+  // Round "now" down to a 5-minute bucket so the query key stays stable
+  // across renders — otherwise every re-render (and there are plenty when
+  // the stream status / player controls tick) produces a fresh ISO string
+  // and react-query re-fetches /api/programs every time.
+  const bucketKey = Math.floor(Date.now() / BUCKET_MS)
+  const { startAt, endAt } = useMemo(() => {
+    const start = toDate(bucketKey * BUCKET_MS)
+    const end = addHours(start, 6)
+    return { startAt: start.toISOString(), endAt: end.toISOString() }
+  }, [bucketKey])
+  const { data, isLoading } = usePrograms({ channelId, startAt, endAt })
 
   const programs = data?.programs ?? []
 
