@@ -16,11 +16,35 @@ export type LiveQualityChoice = 'auto' | 'high' | 'medium' | 'low'
 
 export type StreamSource = { type: 'live'; channelId: string } | { type: 'recording'; recordingId: string }
 
+/**
+ * MSE codec strings to probe. Keep these in sync with buildDummyLiveArgs on
+ * the server — we want MediaSource.isTypeSupported to agree with what ffmpeg
+ * emits, so "codec negotiated" actually plays.
+ */
+const CODEC_PROBE: Record<LiveCodecChoice, string[]> = {
+  avc: ['video/mp4; codecs="avc1.4D401F,mp4a.40.2"', 'video/mp2t; codecs="avc1.4D401F,mp4a.40.2"'],
+  hevc: ['video/mp4; codecs="hvc1.1.6.L90.B0,mp4a.40.2"', 'video/mp2t; codecs="hvc1.1.6.L90.B0,mp4a.40.2"'],
+  vp9: ['video/mp4; codecs="vp09.00.10.08,opus"', 'video/webm; codecs="vp9,opus"']
+}
+
+function codecSupported(codec: LiveCodecChoice): boolean {
+  if (typeof window === 'undefined' || typeof MediaSource === 'undefined') return true
+  const probes = CODEC_PROBE[codec]
+  return probes.some((p) => MediaSource.isTypeSupported(p))
+}
+
 function resolveLiveCodec(pref: 'auto' | 'avc' | 'hevc' | 'vp9'): LiveCodecChoice {
-  // `auto` → pick a sensible default the current backend always supports.
-  // In the future this should inspect navigator / MediaSource capabilities,
-  // but picking AVC is a safe starting point.
-  return pref === 'auto' ? 'avc' : pref
+  // AVC is the only codec the dummy ffmpeg pipeline has been proven to
+  // decode reliably across Chrome / Safari / Firefox. HEVC requires HW
+  // decode on most browsers (Chrome on Linux, Firefox) and VP9 in fMP4 HLS
+  // has patchy support. Until we wire per-codec canary decoding, pin the
+  // live path to AVC regardless of pref. Pref still feeds the server query
+  // so switching to HEVC/VP9 is a one-line change when we're ready.
+  if (codecSupported('avc')) return 'avc'
+  if (pref !== 'auto' && codecSupported(pref)) return pref
+  if (codecSupported('vp9')) return 'vp9'
+  if (codecSupported('hevc')) return 'hevc'
+  return 'avc'
 }
 
 /**
