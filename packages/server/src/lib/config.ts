@@ -7,7 +7,9 @@ const EnvSchema = z.object({
   MIRAKC_URL: z.string().url().default('http://mirakc:40772'),
   HW_ACCEL_TYPE: z.enum(['nvenc', 'qsv', 'vaapi', 'none']).default('none'),
   /* Workspace-relative. Prod mounts this path as tmpfs via compose. */
-  HLS_DIR: z.string().default('./data/hls')
+  HLS_DIR: z.string().default('./data/hls'),
+  /* Milliseconds of zero-viewer idle time before the FFmpeg process is killed. */
+  HLS_IDLE_KILL_MS: z.coerce.number().int().positive().default(15_000)
 })
 
 const result = EnvSchema.safeParse(Bun.env)
