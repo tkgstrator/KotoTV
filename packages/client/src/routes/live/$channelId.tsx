@@ -295,10 +295,10 @@ function LivePage() {
         </Sheet>
       </header>
 
-      {/* Main area: video column + UpNext rail (YouTube-style). Keeps the
-          video from stretching to the full viewport width, which on a 16:9
-          monitor + app header would otherwise overflow vertically. */}
-      <div className='flex flex-1 overflow-hidden flex-col lg:flex-row'>
+      {/* Main area: video column + UpNext rail (YouTube-style).
+          Single padded gutter around the whole pair (no per-column borders /
+          cards); the 24 px padding and 24 px gap match YouTube's watch page. */}
+      <div className='flex flex-1 overflow-hidden flex-col lg:flex-row lg:gap-6 lg:p-6'>
         {/* Video column */}
         <div className='flex flex-1 flex-col overflow-hidden bg-[hsl(222_30%_6%)] lg:min-w-0'>
           {stream.status === 'error' ? (
