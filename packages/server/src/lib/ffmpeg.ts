@@ -271,6 +271,12 @@ export type DummyLiveArgsOptions = {
   codec?: LiveCodec
   segmentSeconds?: number
   listSize?: number
+  /**
+   * Optional path to a source video file (e.g. a cached public-domain clip).
+   * When set, the dummy stream loops it forever; when undefined, lavfi
+   * synthesizes a color-bar + sine-tone pattern instead.
+   */
+  inputFile?: string
 }
 
 /**
@@ -280,32 +286,60 @@ export type DummyLiveArgsOptions = {
  * so hls.js treats both identically.
  */
 export function buildDummyLiveArgs(opts: DummyLiveArgsOptions): string[] {
-  const { outputDir, quality = 'auto', codec = 'avc', segmentSeconds = 2, listSize = 6 } = opts
+  const { outputDir, quality = 'auto', codec = 'avc', segmentSeconds = 2, listSize = 6, inputFile } = opts
   const { w, h, videoBitrate } = QUALITY_TO_RES[quality]
 
-  // Synthetic video: color bars with timestamp overlay, 30fps.
-  // Synthetic audio: 440Hz sine. Both loop forever (no duration).
-  const input = [
-    '-re', // real-time output — emits one second of media per second of wall clock
-    '-f',
-    'lavfi',
-    '-i',
-    `testsrc2=size=${w}x${h}:rate=30`,
-    '-f',
-    'lavfi',
-    '-i',
-    'sine=frequency=440'
-  ]
+  // Input: either loop a real clip (public-domain MP4) with -stream_loop -1
+  // so the session plays indefinitely, or synthesize via lavfi when no file
+  // is cached. Both variants feed the same downstream video + audio flags.
+  const input = inputFile
+    ? ['-re', '-stream_loop', '-1', '-i', inputFile]
+    : ['-re', '-f', 'lavfi', '-i', `testsrc2=size=${w}x${h}:rate=30`, '-f', 'lavfi', '-i', 'sine=frequency=440']
+
+  // With a real file, FFmpeg needs an explicit scale filter to hit the
+  // quality preset. The lavfi path already sizes the testsrc directly.
+  const scaleFilter = inputFile
+    ? ['-vf', `scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2`]
+    : []
 
   // Keyframe every 2s so HLS can cut clean segments.
   const gop = ['-g', String(segmentSeconds * 30), '-keyint_min', String(segmentSeconds * 30)]
 
   const videoFlags =
     codec === 'hevc'
-      ? ['-c:v', 'libx265', '-preset', 'ultrafast', '-x265-params', 'log-level=error', '-b:v', `${videoBitrate}k`]
+      ? [
+          '-c:v',
+          'libx265',
+          '-preset',
+          'ultrafast',
+          '-pix_fmt',
+          'yuv420p',
+          '-tag:v',
+          'hvc1', // Safari requires hvc1 tag for HLS + HEVC
+          '-x265-params',
+          'log-level=error',
+          '-b:v',
+          `${videoBitrate}k`
+        ]
       : codec === 'vp9'
         ? ['-c:v', 'libvpx-vp9', '-deadline', 'realtime', '-cpu-used', '4', '-b:v', `${videoBitrate}k`]
-        : ['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-b:v', `${videoBitrate}k`]
+        : [
+            '-c:v',
+            'libx264',
+            // veryfast over ultrafast — ultrafast can emit odd profile combos
+            // that Chrome/Safari MSE rejects. veryfast produces main profile
+            // cleanly.
+            '-preset',
+            'veryfast',
+            '-profile:v',
+            'main',
+            '-level:v',
+            '4.0',
+            '-pix_fmt',
+            'yuv420p',
+            '-b:v',
+            `${videoBitrate}k`
+          ]
 
   // VP9 needs fMP4 segments (not allowed in MPEG-TS). AVC/HEVC use TS for
   // maximum hls.js / native compatibility.
@@ -345,5 +379,5 @@ export function buildDummyLiveArgs(opts: DummyLiveArgsOptions): string[] {
           `${outputDir}/playlist.m3u8`
         ]
 
-  return ['-y', ...input, ...gop, ...videoFlags, ...audioCodec, ...hlsFlags]
+  return ['-y', ...input, ...scaleFilter, ...gop, ...videoFlags, ...audioCodec, ...hlsFlags]
 }
