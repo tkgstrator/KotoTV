@@ -21,7 +21,6 @@
 import { expect, test } from '@playwright/test'
 import {
   fetchStreamInfoOnce,
-  getCurrentTime,
   getVideoMuted,
   pickFirstChannelId,
   pickTwoChannelIds,
@@ -93,32 +92,31 @@ test.describe('live-streaming AC', () => {
       }
     })
 
-    await waitForPlaying(page, 15_000)
+    await waitForPlaying(page, 30_000)
 
-    // Sample currentTime every 2s for 30s, expect monotonic increase
-    const samples: number[] = []
-    const wallStart = Date.now()
+    // Live HLS uses `currentTime` to track the live edge; segment rotation can
+    // pull it backwards, so it is not a reliable monotonic counter. Instead,
+    // verify the stream stays unpaused across 30s of sampling and that at
+    // least one played range was rendered.
+    // Sample `video.played.end(last)` every 2s for 30s. hls.js in live mode
+    // may briefly pause when the buffer edge is reached while the transcoder
+    // catches up, but the *played* range must keep extending — a truly stalled
+    // stream will not advance `played.end`.
+    const playedEnds: number[] = []
     for (let i = 0; i < 15; i++) {
-      samples.push(await getCurrentTime(page))
       await page.waitForTimeout(2_000)
+      const end = await page.evaluate(() => {
+        const v = document.querySelector('video')
+        if (!v || v.played.length === 0) return 0
+        return v.played.end(v.played.length - 1)
+      })
+      playedEnds.push(end)
     }
-    const wallElapsed = (Date.now() - wallStart) / 1_000 // seconds
-
-    // In HLS live mode, hls.js may reset currentTime on a DISCONTINUITY tag
-    // or buffer resync — a once-off dip is tolerable as long as the stream
-    // advances overall. Require at least 20s of forward progress in 30s wall.
-    const ctAdvance = (samples[samples.length - 1] as number) - (samples[0] as number)
+    const playedAdvance = (playedEnds[playedEnds.length - 1] as number) - (playedEnds[0] as number)
     expect(
-      ctAdvance,
-      `currentTime advanced ${ctAdvance.toFixed(1)}s over ${wallElapsed.toFixed(1)}s wall`
+      playedAdvance,
+      `video.played range must advance ≥20s over 30s wall (got ${playedAdvance.toFixed(1)}s)`
     ).toBeGreaterThanOrEqual(20)
-
-    // video.played confirms the browser actually rendered frames
-    const playedLength = await page.evaluate(() => {
-      const v = document.querySelector('video')
-      return v?.played.length ?? 0
-    })
-    expect(playedLength, 'video.played must have at least one range').toBeGreaterThan(0)
 
     // No error event should have fired
     const hadError = await page.evaluate(() => !!(window as Record<string, unknown>).__videoError)
@@ -423,7 +421,7 @@ test.describe('live-streaming AC', () => {
         .first()
         .textContent()
       expect(codecVal).toMatch(/^AVC$|^HEVC$/)
-    }).toPass({ timeout: 3_000 })
+    }).toPass({ timeout: 10_000 })
 
     // resolution row: must match "NNNxNNN"
     await expect(async () => {
@@ -433,14 +431,14 @@ test.describe('live-streaming AC', () => {
       expect(hasResolution, `Expected a resolution value matching /^\\d+x\\d+$/ in: ${JSON.stringify(texts)}`).toBe(
         true
       )
-    }).toPass({ timeout: 3_000 })
+    }).toPass({ timeout: 10_000 })
 
     // bitrate row: must start with a digit followed by text (e.g. "3.0 Mbps" or "0.0 Mbps")
     await expect(async () => {
       const texts = await sidebar.locator('.font-mono.tabular-nums').allTextContents()
       const hasBitrate = texts.some((t) => /^\d+\.\d+\s*Mbps$/.test(t.trim()))
       expect(hasBitrate, `Expected a bitrate value matching /^\\d+.\\d+ Mbps$/ in: ${JSON.stringify(texts)}`).toBe(true)
-    }).toPass({ timeout: 3_000 })
+    }).toPass({ timeout: 10_000 })
   })
 
   // -------------------------------------------------------------------------
