@@ -72,18 +72,19 @@ export function buildFfmpegArgs(opts: FfmpegArgsOptions): string[] {
   const mapping = ['-map', '0:v:0', '-map', '0:a:0']
 
   // Resolution, frame-rate scaling, and keyframe interval — common to all codecs.
-  // GOP = fps means a keyframe every second, so HLS segments land within a
-  // segmentSeconds-sized window (otherwise libx264 defaults to GOP 250 ≈ 8s
-  // and hls.js has to buffer whole 8-second segments before playback starts).
+  // GOP = fps * segmentSeconds lines up one keyframe per HLS segment, which
+  // minimises libx264 I-frame work while still letting `-hls_time` cut clean
+  // segment boundaries. libx264 defaults to GOP 250 (~8s) without this.
+  const gop = preset.fps * segmentSeconds
   const scaleFlags = [
     '-s',
     `${preset.width}x${preset.height}`,
     '-r',
     String(preset.fps),
     '-g',
-    String(preset.fps),
+    String(gop),
     '-keyint_min',
-    String(preset.fps),
+    String(gop),
     '-sc_threshold',
     '0'
   ]
@@ -160,7 +161,9 @@ function buildVideoFlags(hwAccel: HwAccel, codec: Codec, videoBitrate: number): 
       return ['-vf', 'format=nv12,hwupload', '-c:v', encoder, ...hevcTag, '-b:v', `${videoBitrate}k`]
     }
     default: {
-      // software fallback
+      // Software fallback. `veryfast` keeps realtime on 720p AVC on any
+      // modern CPU; HEVC stays veryfast too — if CPU can't keep up, prefer
+      // HW accel (nvenc / qsv / vaapi) over a worse preset.
       if (codec === 'hevc') {
         return [
           '-c:v',
