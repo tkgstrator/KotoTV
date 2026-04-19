@@ -8,7 +8,9 @@ function createClient() {
   const adapter = new PrismaPg({ connectionString: env.DATABASE_URL })
   return new PrismaClient({
     adapter,
-    log: env.NODE_ENV === 'development' ? ['query', 'warn', 'error'] : ['warn', 'error']
+    // Query-level logging floods stdout during EPG sync (~20k program
+    // upserts); keep it to warn/error unless DEBUG_PRISMA=1 is set.
+    log: Bun.env.DEBUG_PRISMA === '1' ? ['query', 'warn', 'error'] : ['warn', 'error']
   })
 }
 
