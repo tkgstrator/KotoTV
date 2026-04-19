@@ -31,6 +31,16 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
     const internalRef = useRef<HTMLVideoElement>(null)
     const videoRef = (ref as React.RefObject<HTMLVideoElement>) ?? internalRef
 
+    // Stash callbacks in refs so they don't retrigger the hls.js effect when
+    // a parent passes inline arrow functions. Previously the effect re-ran
+    // on every parent re-render (e.g. the 1 Hz useClock tick), destroying
+    // and recreating the Hls instance — each rebuild fires several playlist
+    // requests, which produced the "thousands of GET /playlist.m3u8" storm.
+    const onErrorRef = useRef(onError)
+    const onReadyRef = useRef(onReady)
+    onErrorRef.current = onError
+    onReadyRef.current = onReady
+
     useEffect(() => {
       const video = videoRef.current
       if (!video) return
@@ -41,12 +51,12 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = playlistUrl
         if (autoPlay) video.play().catch(() => {})
-        onReady?.()
+        onReadyRef.current?.()
         return
       }
 
       if (!Hls.isSupported()) {
-        onError?.(new Error('HLS not supported in this browser'))
+        onErrorRef.current?.(new Error('HLS not supported in this browser'))
         return
       }
 
@@ -72,7 +82,7 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
         if (!data.fatal) return
 
         if (retryCount >= MAX_RETRIES) {
-          onError?.(new Error(`hls fatal after ${MAX_RETRIES} retries: ${data.details}`))
+          onErrorRef.current?.(new Error(`hls fatal after ${MAX_RETRIES} retries: ${data.details}`))
           hls.destroy()
           return
         }
@@ -87,13 +97,13 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
             hls.recoverMediaError()
             break
           default:
-            onError?.(new Error(`hls fatal: ${data.details}`))
+            onErrorRef.current?.(new Error(`hls fatal: ${data.details}`))
             hls.destroy()
         }
       })
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        onReady?.()
+        onReadyRef.current?.()
         if (autoPlay) video.play().catch(() => {})
       })
 
@@ -103,7 +113,9 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
       return () => {
         hls.destroy()
       }
-    }, [playlistUrl, autoPlay, onError, onReady, videoRef, lowLatencyMode])
+      // videoRef is a RefObject (stable); onError/onReady are captured via refs above.
+      // Only playlistUrl, autoPlay, and lowLatencyMode should re-init the player.
+    }, [playlistUrl, autoPlay, videoRef, lowLatencyMode])
 
     return (
       <video
