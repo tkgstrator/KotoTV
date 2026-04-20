@@ -22,8 +22,16 @@ interface AppShellProps {
   children: React.ReactNode
 }
 
+// `/recordings/{id}` is playback, but `/recordings/{literalSegment}` is
+// a sibling list page — keep the sidebar open there. Add new literal
+// children of `/recordings/*` here as they get created.
+const RECORDINGS_NON_PLAYBACK = new Set(['rules', 'reservations'])
+
 function isPlaybackRoute(path: string): boolean {
-  return path.startsWith('/live/') || /^\/recordings\/[^/]+$/.test(path)
+  if (path.startsWith('/live/')) return true
+  const m = /^\/recordings\/([^/]+)$/.exec(path)
+  const segment = m?.[1]
+  return segment != null && !RECORDINGS_NON_PLAYBACK.has(segment)
 }
 
 export function AppShell({ children }: AppShellProps) {
