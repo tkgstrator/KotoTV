@@ -16,7 +16,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import type { LucideIcon } from 'lucide-react'
 import {
-  Activity,
   Archive,
   CalendarClock,
   CalendarDays,
@@ -57,13 +56,11 @@ const RECORDING_ITEMS: readonly NavItem[] = [
   { to: '/recordings/rules', label: '録画ルール', Icon: ListFilter }
 ]
 
-const STATUS_ITEMS: readonly NavItem[] = [{ to: '/status', label: 'システム状態', Icon: Activity }]
-
 const SETTINGS_ITEM: NavItem = { to: '/settings', label: '設定', Icon: SettingsIcon }
 
 // Flat list used both for the mobile tab bar (no grouping) and for
 // longest-prefix active-route detection.
-const ALL_ITEMS: readonly NavItem[] = [...MAIN_ITEMS, ...RECORDING_ITEMS, ...STATUS_ITEMS, SETTINGS_ITEM]
+const ALL_ITEMS: readonly NavItem[] = [...MAIN_ITEMS, ...RECORDING_ITEMS, SETTINGS_ITEM]
 
 function useIsActive() {
   const { location } = useRouterState()
@@ -130,10 +127,6 @@ export function AppSidebar() {
         <SidebarSeparator />
         <SidebarGroup className={MENU_CONTAINER_CLS}>
           <SidebarMenu>{RECORDING_ITEMS.map((item) => renderItem(item, isActive))}</SidebarMenu>
-        </SidebarGroup>
-        <SidebarSeparator />
-        <SidebarGroup className={MENU_CONTAINER_CLS}>
-          <SidebarMenu>{STATUS_ITEMS.map((item) => renderItem(item, isActive))}</SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
 

@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as StatusRouteImport } from './routes/status'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RecordingsRouteImport } from './routes/recordings'
 import { Route as EpgRouteImport } from './routes/epg'
@@ -26,11 +25,6 @@ import { Route as RecordingsRulesIndexRouteImport } from './routes/recordings.ru
 import { Route as RecordingsRulesNewRouteImport } from './routes/recordings.rules.new'
 import { Route as RecordingsRulesIdRouteImport } from './routes/recordings.rules.$id'
 
-const StatusRoute = StatusRouteImport.update({
-  id: '/status',
-  path: '/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -112,7 +106,6 @@ export interface FileRoutesByFullPath {
   '/epg': typeof EpgRoute
   '/recordings': typeof RecordingsRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/status': typeof StatusRoute
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
   '/recordings/completed': typeof RecordingsCompletedRoute
@@ -129,7 +122,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/epg': typeof EpgRoute
   '/settings': typeof SettingsRoute
-  '/status': typeof StatusRoute
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
   '/recordings/completed': typeof RecordingsCompletedRoute
@@ -147,7 +139,6 @@ export interface FileRoutesById {
   '/epg': typeof EpgRoute
   '/recordings': typeof RecordingsRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/status': typeof StatusRoute
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
   '/recordings/completed': typeof RecordingsCompletedRoute
@@ -167,7 +158,6 @@ export interface FileRouteTypes {
     | '/epg'
     | '/recordings'
     | '/settings'
-    | '/status'
     | '/live/$channelId'
     | '/recordings/$id'
     | '/recordings/completed'
@@ -184,7 +174,6 @@ export interface FileRouteTypes {
     | '/'
     | '/epg'
     | '/settings'
-    | '/status'
     | '/live/$channelId'
     | '/recordings/$id'
     | '/recordings/completed'
@@ -201,7 +190,6 @@ export interface FileRouteTypes {
     | '/epg'
     | '/recordings'
     | '/settings'
-    | '/status'
     | '/live/$channelId'
     | '/recordings/$id'
     | '/recordings/completed'
@@ -220,19 +208,11 @@ export interface RootRouteChildren {
   EpgRoute: typeof EpgRoute
   RecordingsRoute: typeof RecordingsRouteWithChildren
   SettingsRoute: typeof SettingsRoute
-  StatusRoute: typeof StatusRoute
   LiveChannelIdRoute: typeof LiveChannelIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: typeof StatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -386,7 +366,6 @@ const rootRouteChildren: RootRouteChildren = {
   EpgRoute: EpgRoute,
   RecordingsRoute: RecordingsRouteWithChildren,
   SettingsRoute: SettingsRoute,
-  StatusRoute: StatusRoute,
   LiveChannelIdRoute: LiveChannelIdRoute,
 }
 export const routeTree = rootRouteImport
