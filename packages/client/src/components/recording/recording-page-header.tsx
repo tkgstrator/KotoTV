@@ -33,7 +33,7 @@ const TONE_CLASSES: Record<NonNullable<RecordingHeaderStat['tone']>, string> = {
 export function RecordingPageHeader({ ariaLabel, stats, action }: Props) {
   return (
     <PageHeader ariaLabel={ariaLabel} className='items-center gap-4 pl-4 pr-3'>
-      <div className='flex min-w-0 items-center gap-4 text-footnote text-muted-foreground'>
+      <div className='flex min-w-0 items-center gap-4 text-body text-muted-foreground'>
         {stats?.map((s) => (
           <span key={s.label} className='shrink-0'>
             {s.label}{' '}
