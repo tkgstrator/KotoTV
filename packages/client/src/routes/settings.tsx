@@ -433,8 +433,8 @@ const ABOUT_ROWS = [
 ]
 
 const LINK_ROWS = [
-  { key: 'リポジトリ', val: 'GitHub', href: 'https://github.com' },
-  { key: 'ライセンス', val: 'MIT License', href: '#' },
+  { key: 'リポジトリ', val: 'GitHub', href: 'https://github.com/tkgstrator/KotoTV' },
+  { key: 'ライセンス', val: 'MIT License', href: 'https://github.com/tkgstrator/KotoTV/blob/master/LICENSE' },
   { key: '説明', val: 'KotoTV — 外出先ライブ視聴', href: null }
 ]
 
