@@ -158,6 +158,7 @@ function StatusTab() {
 
       <SectHead>System</SectHead>
       <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
+        <DiagRow status='ok' name='RUNTIME' detail={`${data.runtime.name} ${data.runtime.version}`} logTail={null} />
         <DiagRow
           status={data.disk.status}
           name='DISK'
@@ -426,16 +427,15 @@ function PlaybackTab() {
 // ─── About tab ────────────────────────────────────────────────────────────────
 
 const ABOUT_ROWS = [
-  { key: 'version', val: '0.1.0' },
-  { key: 'commit', val: 'dev' },
-  { key: 'built', val: '—' },
-  { key: 'bun', val: typeof Bun !== 'undefined' ? Bun.version : '—' }
+  { key: 'バージョン', val: '0.1.0' },
+  { key: 'コミット', val: 'dev' },
+  { key: 'ビルド日時', val: '—' }
 ]
 
 const LINK_ROWS = [
-  { key: 'repo', val: 'GitHub', href: 'https://github.com' },
-  { key: 'license', val: 'MIT License', href: '#' },
-  { key: 'desc', val: 'KotoTV — 外出先ライブ視聴', href: null }
+  { key: 'リポジトリ', val: 'GitHub', href: 'https://github.com' },
+  { key: 'ライセンス', val: 'MIT License', href: '#' },
+  { key: '説明', val: 'KotoTV — 外出先ライブ視聴', href: null }
 ]
 
 function AboutTab() {
@@ -451,7 +451,7 @@ function AboutTab() {
                   <dt className='w-[100px] shrink-0 font-semibold text-muted-foreground'>{key}</dt>
                   <dd className='flex min-w-0 items-center gap-1.5 text-foreground'>
                     <span className='truncate'>{val}</span>
-                    {key === 'version' && (
+                    {key === 'バージョン' && (
                       <StatusChip variant='info' size='sm'>
                         DEV
                       </StatusChip>
