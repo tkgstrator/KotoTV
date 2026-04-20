@@ -1,6 +1,6 @@
 import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import { useNavigate } from '@tanstack/react-router'
-import { PanelRightOpen, Trash2 } from 'lucide-react'
+import { ChevronDown, Trash2 } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -19,9 +19,9 @@ import {
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
@@ -182,32 +182,29 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   return (
     <div className='flex h-full w-full flex-col overflow-hidden'>
       <div className='flex flex-1 flex-col overflow-y-auto'>
-        <div className='flex items-center justify-end gap-2 border-b border-border/60 bg-background px-4 py-2'>
-          <Sheet>
-            <SheetTrigger asChild>
+        <Collapsible className='border-b border-border/60'>
+          <div className='flex items-center justify-end gap-2 bg-background px-4 py-2'>
+            <CollapsibleTrigger asChild>
               <Button
                 type='button'
                 variant='ghost'
                 size='sm'
-                className='h-8 gap-1.5 px-2.5 text-footnote text-muted-foreground hover:text-foreground'
+                className='group h-8 gap-1.5 px-2.5 text-footnote text-muted-foreground hover:text-foreground'
               >
-                <PanelRightOpen className='size-4' />
+                <ChevronDown className='size-4 transition-transform group-data-[state=open]:rotate-180' />
                 プレビュー
                 {previewHitCount != null && (
                   <span className='tabular-nums text-caption text-muted-foreground'>({previewHitCount} 件)</span>
                 )}
               </Button>
-            </SheetTrigger>
-            <SheetContent side='right' className='w-full gap-0 p-0 sm:max-w-md'>
-              <SheetHeader className='border-b border-border px-4 py-3'>
-                <SheetTitle className='text-body'>プレビュー（今週のヒット）</SheetTitle>
-              </SheetHeader>
-              <div className='flex-1 overflow-hidden'>
-                <RulePreviewPane rule={previewRule} />
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent>
+            <div className='max-h-[420px] overflow-hidden border-t border-border'>
+              <RulePreviewPane rule={previewRule} />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
         <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-5 p-4'>
           {/* ── 1. ルール名 */}
           <div className='flex flex-col gap-1.5'>
