@@ -1,8 +1,18 @@
 import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
-import { useMemo } from 'react'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
+import { Check, ChevronsUpDown, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator
+} from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 
 interface ChannelPickerProps {
   channels: Channel[]
@@ -11,9 +21,11 @@ interface ChannelPickerProps {
 }
 
 const TYPE_ORDER = ['GR', 'BS', 'CS']
-const TYPE_LABELS: Record<string, string> = { GR: '地上波 (GR)', BS: 'BS', CS: 'CS' }
+const TYPE_LABELS: Record<string, string> = { GR: '地上波', BS: 'BS', CS: 'CS' }
 
 export function ChannelPicker({ channels, value, onChange }: ChannelPickerProps) {
+  const [open, setOpen] = useState(false)
+
   const groups = useMemo(() => {
     const map: Record<string, Channel[]> = {}
     for (const ch of channels) {
@@ -29,80 +41,72 @@ export function ChannelPicker({ channels, value, onChange }: ChannelPickerProps)
     return [...known, ...others]
   }, [groups])
 
-  function isGroupAllSelected(type: string) {
-    return groups[type]?.every((ch) => value.includes(ch.id)) ?? false
-  }
-
-  function isGroupPartialSelected(type: string) {
-    const g = groups[type] ?? []
-    const selectedCount = g.filter((ch) => value.includes(ch.id)).length
-    return selectedCount > 0 && selectedCount < g.length
-  }
-
-  function toggleGroup(type: string) {
-    const g = groups[type] ?? []
-    if (isGroupAllSelected(type)) {
-      onChange(value.filter((id) => !g.some((ch) => ch.id === id)))
-    } else {
-      const toAdd = g.map((ch) => ch.id).filter((id) => !value.includes(id))
-      onChange([...value, ...toAdd])
-    }
-  }
-
   function toggleChannel(id: string) {
-    if (value.includes(id)) {
-      onChange(value.filter((v) => v !== id))
-    } else {
-      onChange([...value, id])
-    }
+    if (value.includes(id)) onChange(value.filter((v) => v !== id))
+    else onChange([...value, id])
   }
+
+  const selectedNames = channels.filter((c) => value.includes(c.id)).map((c) => c.name)
+  const triggerLabel =
+    value.length === 0 ? '全チャンネル対象' : value.length <= 2 ? selectedNames.join('、') : `${value.length} 局選択中`
 
   if (channels.length === 0) {
     return <p className='text-footnote text-muted-foreground'>チャンネルスキャンが完了していません</p>
   }
 
   return (
-    <Accordion type='multiple' defaultValue={types} className='grid w-full grid-cols-1 gap-x-4 lg:grid-cols-2'>
-      {types.map((type) => (
-        <AccordionItem key={type} value={type} className='border-border'>
-          <div className='flex items-center gap-2'>
-            <Checkbox
-              id={`group-${type}`}
-              checked={isGroupAllSelected(type) ? true : isGroupPartialSelected(type) ? 'indeterminate' : false}
-              onCheckedChange={() => toggleGroup(type)}
-              className='ml-1'
-            />
-            <AccordionTrigger className='flex-1 py-2 text-body font-semibold text-foreground hover:no-underline'>
-              <Label htmlFor={`group-${type}`} className='cursor-pointer text-body font-semibold'>
-                {TYPE_LABELS[type] ?? type}
-              </Label>
-            </AccordionTrigger>
-          </div>
-          <AccordionContent className='pb-1'>
-            {/* Inner grid — narrower when the outer groups flow in 2
-                columns on lg+, so the per-group channel grid doesn't
-                squeeze individual labels into ellipses. */}
-            <div className='grid grid-cols-2 gap-x-3 gap-y-1.5 pl-6 pr-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3'>
-              {(groups[type] ?? []).map((ch) => (
-                <div key={ch.id} className='flex min-w-0 items-center gap-2'>
-                  <Checkbox
-                    id={`ch-${ch.id}`}
-                    checked={value.includes(ch.id)}
-                    onCheckedChange={() => toggleChannel(ch.id)}
-                  />
-                  <Label
-                    htmlFor={`ch-${ch.id}`}
-                    className='cursor-pointer truncate text-footnote text-foreground'
-                    title={ch.name}
-                  >
-                    {ch.name}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type='button'
+          variant='outline'
+          role='combobox'
+          aria-expanded={open}
+          className='h-9 w-full justify-between px-3 text-body font-normal'
+        >
+          <span className={cn('truncate', value.length === 0 && 'text-muted-foreground')}>{triggerLabel}</span>
+          <ChevronsUpDown className='size-4 shrink-0 opacity-60' />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className='w-[--radix-popover-trigger-width] min-w-[280px] p-0' align='start'>
+        <Command>
+          <CommandInput placeholder='チャンネル検索' />
+          <CommandList>
+            <CommandEmpty>該当するチャンネルがありません</CommandEmpty>
+            {types.map((type) => (
+              <CommandGroup key={type} heading={TYPE_LABELS[type] ?? type}>
+                {(groups[type] ?? []).map((ch) => {
+                  const selected = value.includes(ch.id)
+                  return (
+                    <CommandItem
+                      key={ch.id}
+                      value={`${TYPE_LABELS[type] ?? type} ${ch.name} ${ch.id}`}
+                      onSelect={() => toggleChannel(ch.id)}
+                    >
+                      <Check className={cn('size-4', selected ? 'text-primary' : 'text-transparent')} />
+                      <span className='truncate'>{ch.name}</span>
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            ))}
+          </CommandList>
+          {value.length > 0 && (
+            <>
+              <CommandSeparator />
+              <div className='p-1'>
+                <CommandItem
+                  onSelect={() => onChange([])}
+                  className='justify-center text-destructive data-[selected=true]:text-destructive'
+                >
+                  <X className='size-4' />
+                  選択をクリア
+                </CommandItem>
+              </div>
+            </>
+          )}
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 }
