@@ -313,9 +313,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                 </StatusChip>
               )}
             </div>
-            <div className='rounded border border-border bg-card'>
-              <ChannelPicker channels={channels} value={channelIds} onChange={(ids) => setValue('channelIds', ids)} />
-            </div>
+            <ChannelPicker channels={channels} value={channelIds} onChange={(ids) => setValue('channelIds', ids)} />
           </div>
 
           {/* ── 6. ジャンル */}
