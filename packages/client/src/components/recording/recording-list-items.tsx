@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { useDeleteRecording } from '@/hooks/useRecordings'
-import { cn } from '@/lib/utils'
 
 export function formatDuration(sec: number): string {
   const dur = intervalToDuration({ start: 0, end: sec * 1000 })
@@ -173,38 +172,24 @@ export function RecordingRow({ rec }: { rec: Recording }) {
   )
 }
 
-// Gradient fill for thumbnail placeholders — lightly tinted by channel
-// type so the grid doesn't look like a wall of identical skeletons. Keys
-// match the `type` field on Channel; unknown types fall back to muted.
-const THUMB_TINTS: Record<string, string> = {
-  GR: 'from-[oklch(0.6_0.18_247/0.28)] to-[oklch(0.6_0.18_247/0.08)]',
-  BS: 'from-[oklch(0.6_0.18_150/0.28)] to-[oklch(0.6_0.18_150/0.08)]',
-  CS: 'from-[oklch(0.7_0.18_65/0.28)] to-[oklch(0.7_0.18_65/0.08)]',
-  SKY: 'from-[oklch(0.65_0.18_300/0.28)] to-[oklch(0.65_0.18_300/0.08)]'
-}
-
 interface DoneCardProps {
   rec: Recording
-  /** Channel band used to tint the thumbnail placeholder. */
-  channelType?: 'GR' | 'BS' | 'CS' | 'SKY' | undefined
   /** Friendly channel name to show under the title (e.g. "NHK総合"). */
   channelName?: string | undefined
 }
 
-export function DoneCard({ rec, channelType, channelName }: DoneCardProps) {
+export function DoneCard({ rec, channelName }: DoneCardProps) {
   const dateLabel = rec.endedAt ? format(new Date(rec.endedAt), 'yyyy/M/d', { locale: ja }) : '—'
   const durationLabel = rec.durationSec ? formatDuration(rec.durationSec) : null
   const sizeLabel = rec.sizeBytes ? formatBytes(rec.sizeBytes) : null
-  const tint = (channelType && THUMB_TINTS[channelType]) ?? 'from-muted to-muted/60'
 
   return (
     <Link to='/recordings/$id' params={{ id: rec.id }} className='group flex flex-col gap-2 focus-visible:outline-none'>
-      {/* 16:9 thumbnail with YouTube-style rounding. */}
+      {/* 16:9 thumbnail with YouTube-style rounding. Flat muted fill
+          when no image is available. */}
       <div className='relative aspect-video w-full overflow-hidden rounded-xl bg-muted transition-[border-radius] group-hover:rounded-lg group-focus-visible:rounded-lg group-focus-visible:ring-2 group-focus-visible:ring-ring'>
-        {rec.thumbnailUrl ? (
+        {rec.thumbnailUrl && (
           <img src={rec.thumbnailUrl} alt='' className='absolute inset-0 h-full w-full object-cover' />
-        ) : (
-          <div className={cn('absolute inset-0 bg-gradient-to-br', tint)} aria-hidden='true' />
         )}
         {durationLabel && (
           <span className='absolute right-2 bottom-2 rounded-md bg-foreground/85 px-1.5 py-0.5 text-caption font-semibold tabular-nums text-background'>

@@ -232,7 +232,7 @@ function CompletedPage() {
         <div className='grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-4 gap-y-8 px-4 py-4'>
           {items.map((r) => {
             const info = CHANNEL_LOOKUP.get(r.channelId)
-            return <DoneCard key={r.id} rec={r} channelType={info?.type} channelName={info?.name ?? r.channelId} />
+            return <DoneCard key={r.id} rec={r} channelName={info?.name ?? r.channelId} />
           })}
         </div>
       </div>
