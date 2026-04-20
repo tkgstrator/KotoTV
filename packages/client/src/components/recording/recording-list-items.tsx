@@ -17,8 +17,8 @@ import {
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useDeleteRecording } from '@/hooks/useRecordings'
+import { cn } from '@/lib/utils'
 
 export function formatDuration(sec: number): string {
   const dur = intervalToDuration({ start: 0, end: sec * 1000 })
@@ -173,41 +173,57 @@ export function RecordingRow({ rec }: { rec: Recording }) {
   )
 }
 
-export function DoneCard({ rec }: { rec: Recording }) {
-  const dateLabel = rec.endedAt ? format(new Date(rec.endedAt), 'yyyy-MM-dd', { locale: ja }) : '—'
+// Gradient fill for thumbnail placeholders — lightly tinted by channel
+// type so the grid doesn't look like a wall of identical skeletons. Keys
+// match the `type` field on Channel; unknown types fall back to muted.
+const THUMB_TINTS: Record<string, string> = {
+  GR: 'from-[oklch(0.6_0.18_247/0.28)] to-[oklch(0.6_0.18_247/0.08)]',
+  BS: 'from-[oklch(0.6_0.18_150/0.28)] to-[oklch(0.6_0.18_150/0.08)]',
+  CS: 'from-[oklch(0.7_0.18_65/0.28)] to-[oklch(0.7_0.18_65/0.08)]',
+  SKY: 'from-[oklch(0.65_0.18_300/0.28)] to-[oklch(0.65_0.18_300/0.08)]'
+}
+
+interface DoneCardProps {
+  rec: Recording
+  /** Channel band used to tint the thumbnail placeholder. */
+  channelType?: 'GR' | 'BS' | 'CS' | 'SKY' | undefined
+  /** Friendly channel name to show under the title (e.g. "NHK総合"). */
+  channelName?: string | undefined
+}
+
+export function DoneCard({ rec, channelType, channelName }: DoneCardProps) {
+  const dateLabel = rec.endedAt ? format(new Date(rec.endedAt), 'yyyy/M/d', { locale: ja }) : '—'
   const durationLabel = rec.durationSec ? formatDuration(rec.durationSec) : null
   const sizeLabel = rec.sizeBytes ? formatBytes(rec.sizeBytes) : null
+  const tint = (channelType && THUMB_TINTS[channelType]) ?? 'from-muted to-muted/60'
 
   return (
-    <Link
-      to='/recordings/$id'
-      params={{ id: rec.id }}
-      className='flex flex-col bg-card transition-colors hover:bg-muted/40 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring'
-    >
-      <div className='relative w-full pt-[56.25%]'>
+    <Link to='/recordings/$id' params={{ id: rec.id }} className='group flex flex-col gap-2 focus-visible:outline-none'>
+      {/* 16:9 thumbnail with YouTube-style rounding. */}
+      <div className='relative aspect-video w-full overflow-hidden rounded-xl bg-muted transition-[border-radius] group-hover:rounded-lg group-focus-visible:rounded-lg group-focus-visible:ring-2 group-focus-visible:ring-ring'>
         {rec.thumbnailUrl ? (
-          <img src={rec.thumbnailUrl} alt={rec.title} className='absolute inset-0 h-full w-full object-cover' />
+          <img src={rec.thumbnailUrl} alt='' className='absolute inset-0 h-full w-full object-cover' />
         ) : (
-          <Skeleton className='absolute inset-0 h-full w-full rounded-none' />
+          <div className={cn('absolute inset-0 bg-gradient-to-br', tint)} aria-hidden='true' />
         )}
-        <span className='absolute left-1.5 top-1.5 rounded-sm bg-foreground/75 px-1 py-0.5 font-mono text-caption2 font-bold text-background backdrop-blur-sm'>
-          {rec.channelId}
-        </span>
         {durationLabel && (
-          <span className='absolute bottom-1.5 right-1.5 rounded-sm bg-foreground/80 px-1 py-0.5 font-mono text-caption2 font-bold text-background'>
+          <span className='absolute right-2 bottom-2 rounded-md bg-foreground/85 px-1.5 py-0.5 text-caption font-semibold tabular-nums text-background'>
             {durationLabel}
           </span>
         )}
       </div>
-      <div className='flex flex-col gap-1 px-2.5 py-2'>
-        <span className='truncate font-mono text-footnote font-semibold text-foreground'>{rec.title}</span>
-        <div className='flex items-center gap-1.5'>
-          <StatusChip variant='done' size='sm'>
-            DONE
-          </StatusChip>
-          <span className='font-mono text-caption text-muted-foreground'>{dateLabel}</span>
-          {sizeLabel && <span className='ml-auto font-mono text-caption text-muted-foreground'>{sizeLabel}</span>}
-        </div>
+
+      {/* Meta rows — title, channel, date + size. Matches YouTube's
+          two-line title + muted metadata below. */}
+      <div className='flex flex-col gap-0.5 px-0.5'>
+        <h3 className='line-clamp-2 text-subheadline font-semibold leading-[1.3] text-foreground group-hover:text-foreground'>
+          {rec.title}
+        </h3>
+        {channelName && <p className='truncate text-footnote text-muted-foreground'>{channelName}</p>}
+        <p className='truncate text-footnote text-muted-foreground'>
+          {dateLabel}
+          {sizeLabel && ` · ${sizeLabel}`}
+        </p>
       </div>
     </Link>
   )
