@@ -93,78 +93,25 @@ function DiagRow({ status, name, detail, sub, extra, logTail }: DiagRowProps) {
   )
 }
 
-// ─── Tuner device list ───────────────────────────────────────────────────────
-
-interface TunerDevice {
-  name: string
-  types: string[]
-  command: string | null
-  isFree: boolean
-}
-
 // mirakc names tuners like "PLEX PX-MLT8PE #1" — the trailing "#N" is a
-// per-device index, not part of the model, so strip it to group siblings
-// under a single hardware row.
-function tunerModel(name: string): string {
-  return name.replace(/\s*#\d+\s*$/, '').trim() || name
-}
-
-interface TunerModelGroup {
-  model: string
-  types: string[]
-  total: number
-  free: number
-}
-
-function groupTunersByModel(devices: TunerDevice[]): TunerModelGroup[] {
-  const byModel = new Map<string, TunerModelGroup>()
+// per-device index, not part of the model. Strip it and pick the most
+// common model since typical setups ship one physical card.
+function primaryTunerModel(devices: { name: string; types: string[] }[]): string | null {
+  if (devices.length === 0) return null
+  const counts = new Map<string, { count: number; types: Set<string> }>()
   for (const d of devices) {
-    const model = tunerModel(d.name)
-    const existing = byModel.get(model)
-    if (existing) {
-      existing.total += 1
-      if (d.isFree) existing.free += 1
-      for (const t of d.types) if (!existing.types.includes(t)) existing.types.push(t)
-    } else {
-      byModel.set(model, {
-        model,
-        types: [...d.types],
-        total: 1,
-        free: d.isFree ? 1 : 0
-      })
-    }
+    const model = d.name.replace(/\s*#\d+\s*$/, '').trim() || d.name
+    const entry = counts.get(model) ?? { count: 0, types: new Set() }
+    entry.count += 1
+    for (const t of d.types) entry.types.add(t)
+    counts.set(model, entry)
   }
-  return Array.from(byModel.values())
-}
-
-function TunerList({ devices }: { devices: TunerDevice[] }) {
-  const groups = groupTunersByModel(devices)
-  // The DiagRow detail already prints the aggregate "N/M free", so hide
-  // per-group counts when there's only one model (single-card setups) —
-  // they'd duplicate the same number. Multi-model setups still get them.
-  const showCounts = groups.length > 1
-  return (
-    <ul className='mt-2 flex flex-col gap-0.5 font-sans text-footnote'>
-      {groups.map((g) => (
-        <li key={g.model} className='flex items-baseline gap-2'>
-          <span className='min-w-0 flex-1 truncate font-semibold text-foreground'>{g.model}</span>
-          {g.types.length > 0 && (
-            <span className='shrink-0 font-mono text-caption text-muted-foreground'>{g.types.join('/')}</span>
-          )}
-          {showCounts && (
-            <span
-              className={cn(
-                'shrink-0 font-mono text-caption tabular-nums',
-                g.free === 0 ? 'text-amber-500' : 'text-muted-foreground'
-              )}
-            >
-              {g.free}/{g.total} free
-            </span>
-          )}
-        </li>
-      ))}
-    </ul>
-  )
+  // Highest count wins; ties keep insertion order so the first reported
+  // model stays first.
+  const [top] = [...counts.entries()].sort((a, b) => b[1].count - a[1].count)
+  if (!top) return null
+  const [model, { types }] = top
+  return types.size > 0 ? `${model} · ${[...types].join('/')}` : model
 }
 
 // ─── Status tab ──────────────────────────────────────────────────────────────
@@ -182,6 +129,7 @@ function StatusTab() {
     data.disk.breakdown.total > 0
       ? Math.round(((data.disk.breakdown.total - data.disk.breakdown.free) / data.disk.breakdown.total) * 100)
       : 0
+  const tunerModel = primaryTunerModel(data.tuners.devices)
 
   return (
     <div className='px-5 pb-10 max-[480px]:px-2.5'>
@@ -203,7 +151,7 @@ function StatusTab() {
           status={data.tuners.status}
           name='TUNERS'
           detail={data.tuners.detail}
-          extra={data.tuners.devices.length > 0 ? <TunerList devices={data.tuners.devices} /> : undefined}
+          sub={tunerModel ?? ''}
           logTail={<HealthLogTail subsystem='tuners' status={data.tuners.status} />}
         />
       </div>
