@@ -14,11 +14,30 @@ export const DiskStatusSchema = SubsystemStatusSchema.extend({
   })
 })
 
+export const MirakcStatusSchema = SubsystemStatusSchema.extend({
+  version: z.string().nullable()
+})
+
+export const PostgresStatusSchema = SubsystemStatusSchema.extend({
+  version: z.string().nullable()
+})
+
+export const TunerDeviceSchema = z.object({
+  name: z.string(),
+  types: z.array(z.string()),
+  command: z.string().nullable(),
+  isFree: z.boolean()
+})
+
+export const TunersStatusSchema = SubsystemStatusSchema.extend({
+  devices: z.array(TunerDeviceSchema)
+})
+
 export const HealthResponseSchema = z.object({
-  mirakc: SubsystemStatusSchema,
-  postgres: SubsystemStatusSchema,
+  mirakc: MirakcStatusSchema,
+  postgres: PostgresStatusSchema,
   ffmpeg: SubsystemStatusSchema,
-  tuners: SubsystemStatusSchema,
+  tuners: TunersStatusSchema,
   disk: DiskStatusSchema
 })
 
