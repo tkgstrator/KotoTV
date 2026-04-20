@@ -1,7 +1,7 @@
 import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import { useNavigate } from '@tanstack/react-router'
-import { Trash2 } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { PanelRightClose, PanelRightOpen, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { ChannelPicker } from '@/components/recording/ChannelPicker'
@@ -94,6 +94,10 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   const createMutation = useCreateRecordingRule()
   const updateMutation = useUpdateRecordingRule()
   const deleteMutation = useDeleteRecordingRule()
+  // Preview is hidden by default — the live "N 件ヒット" counter next to
+  // the keyword input already covers the quick-feedback case, and users
+  // can open the full list only when they want to inspect specific hits.
+  const [showPreview, setShowPreview] = useState(false)
 
   const { register, watch, setValue, handleSubmit, reset } = useForm<CreateRecordingRule>({
     defaultValues: existing ? toCreateRule(existing) : DEFAULT_VALUES
@@ -176,10 +180,31 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   const hasRegexError = Boolean(keywordRegexError || excludeKeywordRegexError)
   const isPending = createMutation.isPending || updateMutation.isPending
 
+  const previewHitCount = previewRule ? (isPreviewPending ? '…' : (previewData?.matchCount ?? 0)) : null
+
   return (
-    <div className='flex h-full w-full flex-col overflow-hidden lg:grid lg:grid-cols-[55%_45%]'>
+    <div
+      className={cn('flex h-full w-full flex-col overflow-hidden', showPreview && 'lg:grid lg:grid-cols-[1fr_360px]')}
+    >
       {/* Form pane */}
       <div className='flex-1 overflow-y-auto border-b border-border lg:min-w-0 lg:border-b-0 lg:border-r'>
+        <div className='flex items-center justify-end gap-2 border-b border-border/60 bg-background px-4 py-2'>
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            className='h-8 gap-1.5 px-2.5 text-footnote text-muted-foreground hover:text-foreground'
+            onClick={() => setShowPreview((v) => !v)}
+            aria-pressed={showPreview}
+            aria-label={showPreview ? 'プレビューを閉じる' : 'プレビューを開く'}
+          >
+            {showPreview ? <PanelRightClose className='size-4' /> : <PanelRightOpen className='size-4' />}
+            プレビュー
+            {previewHitCount != null && (
+              <span className='tabular-nums text-caption text-muted-foreground'>({previewHitCount} 件)</span>
+            )}
+          </Button>
+        </div>
         <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-5 p-4'>
           {/* ── 1. ルール名 */}
           <div className='flex flex-col gap-1.5'>
@@ -493,15 +518,17 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
         </form>
       </div>
 
-      {/* Preview pane */}
-      <div className='flex w-full flex-col lg:min-w-0 lg:overflow-hidden'>
-        <div className='border-b border-border px-4 py-2'>
-          <span className='text-footnote font-semibold text-muted-foreground'>プレビュー（今週のヒット）</span>
+      {/* Preview pane — hidden by default, opened via the toolbar toggle */}
+      {showPreview && (
+        <div className='flex w-full flex-col lg:min-w-0 lg:overflow-hidden'>
+          <div className='flex items-center justify-between border-b border-border px-4 py-2'>
+            <span className='text-footnote font-semibold text-muted-foreground'>プレビュー（今週のヒット）</span>
+          </div>
+          <div className='flex-1 overflow-hidden'>
+            <RulePreviewPane rule={previewRule} />
+          </div>
         </div>
-        <div className='flex-1 overflow-hidden'>
-          <RulePreviewPane rule={previewRule} />
-        </div>
-      </div>
+      )}
     </div>
   )
 }
