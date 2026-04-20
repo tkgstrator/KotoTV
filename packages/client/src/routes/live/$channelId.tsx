@@ -229,7 +229,10 @@ function LivePage() {
   const typeLabel = channel ? (TYPE_LABEL[channel.type] ?? channel.type) : null
 
   return (
-    <div className='flex flex-1 flex-col overflow-hidden'>
+    // min-h-0 so this flex-1 child can shrink below its intrinsic content
+    // height; without it the video column's aspect-video well makes the
+    // page spill past the AppShell <main> and creates a meaningless scroll.
+    <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
       {/* App bar */}
       <header className='flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3'>
         <Link
