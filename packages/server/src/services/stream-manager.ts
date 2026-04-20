@@ -36,6 +36,9 @@ type Session = {
   /** Timer scheduled to kill the session after all viewers leave. */
   idleTimer: ReturnType<typeof setTimeout> | null
   createdAt: number
+  /** Last time a client fetched playlist.m3u8 or a segment. Updated by
+   * getSessionDir(); consulted by the access watchdog. */
+  lastAccessAt: number
 }
 
 /** (channelId|codec|quality) → Session */
@@ -197,6 +200,8 @@ export const streamManager = {
     const sessions = [...byKey.values()]
     managerLogger.info({ count: sessions.length }, 'shutting down all sessions')
 
+    stopWatchdog()
+
     await Promise.all(
       sessions.map(async (session) => {
         if (session.idleTimer !== null) clearTimeout(session.idleTimer)
@@ -208,11 +213,72 @@ export const streamManager = {
   /**
    * Resolve a sessionId to its output directory path.
    * Returns null if the session does not exist.
+   *
+   * Side effect: bumps the session's lastAccessAt so the access watchdog
+   * knows the client is still pulling bytes.
    */
   getSessionDir(sessionId: string): string | null {
     const key = bySession.get(sessionId)
     if (!key) return null
-    return byKey.get(key)?.outputDir ?? null
+    const session = byKey.get(key)
+    if (!session) return null
+    session.lastAccessAt = Date.now()
+    return session.outputDir
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Access watchdog
+// ---------------------------------------------------------------------------
+
+/** Lazily-started interval that kills sessions with no recent client access.
+ * Started on first bootSession, stopped on shutdownAll or when the map empties
+ * naturally (the scan itself clears the timer when no sessions remain). */
+let watchdogTimer: ReturnType<typeof setInterval> | null = null
+
+function startWatchdog(): void {
+  if (watchdogTimer !== null) return
+  watchdogTimer = setInterval(watchdogScan, env.HLS_WATCHDOG_INTERVAL_MS)
+  // Don't keep the event loop alive just for this timer.
+  watchdogTimer.unref?.()
+}
+
+function stopWatchdog(): void {
+  if (watchdogTimer === null) return
+  clearInterval(watchdogTimer)
+  watchdogTimer = null
+}
+
+function watchdogScan(): void {
+  if (byKey.size === 0) {
+    stopWatchdog()
+    return
+  }
+
+  const now = Date.now()
+  const threshold = env.HLS_ACCESS_TIMEOUT_MS
+
+  for (const session of [...byKey.values()]) {
+    const idleMs = now - session.lastAccessAt
+    if (idleMs <= threshold) continue
+
+    managerLogger.warn(
+      {
+        sessionId: session.sessionId,
+        channelId: session.channelId,
+        codec: session.codec,
+        quality: session.quality,
+        viewerCount: session.viewerCount,
+        idleSec: Math.round(idleMs / 1000)
+      },
+      'watchdog: no client access — killing orphaned session'
+    )
+
+    if (session.idleTimer !== null) {
+      clearTimeout(session.idleTimer)
+      session.idleTimer = null
+    }
+    void killSession(session)
   }
 }
 
@@ -303,6 +369,7 @@ async function bootSession(channelId: string, codec: Codec, quality: Quality): P
     throw err
   }
 
+  const now = Date.now()
   const session: Session = {
     sessionId,
     channelId,
@@ -313,11 +380,13 @@ async function bootSession(channelId: string, codec: Codec, quality: Quality): P
     handle,
     viewerCount: 1,
     idleTimer: null,
-    createdAt: Date.now()
+    createdAt: now,
+    lastAccessAt: now
   }
 
   byKey.set(key, session)
   bySession.set(sessionId, key)
+  startWatchdog()
 
   managerLogger.info({ sessionId, channelId, codec, quality }, 'live session ready')
 
