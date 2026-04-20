@@ -240,29 +240,41 @@ function DisplayTab() {
   const { theme, setTheme } = useTheme()
   return (
     <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
-      <SectHead
-        action={
-          <OptionPicker<ThemeChoice> ariaLabel='テーマ選択' value={theme} options={THEME_OPTIONS} onChange={setTheme} />
-        }
-      >
-        テーマ
-      </SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
-          {THEME_OPTIONS.map((o) => (
-            <div key={o.value} className='flex h-7 items-center gap-3'>
-              <dt
-                className={cn(
-                  'w-[64px] shrink-0 font-semibold',
-                  theme === o.value ? 'text-primary' : 'text-muted-foreground'
-                )}
-              >
-                {o.label}
-              </dt>
-              <dd className='min-w-0 truncate text-muted-foreground'>{THEME_LABELS[o.value]}</dd>
-            </div>
-          ))}
-        </dl>
+      {/* Single section today, but keep the 2-column grid so テーマ stays
+          a half-width card on wide viewports instead of stretching edge
+          to edge. Matches the Playback / About layout. */}
+      <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
+        <div>
+          <SectHead
+            action={
+              <OptionPicker<ThemeChoice>
+                ariaLabel='テーマ選択'
+                value={theme}
+                options={THEME_OPTIONS}
+                onChange={setTheme}
+              />
+            }
+          >
+            テーマ
+          </SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+            <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
+              {THEME_OPTIONS.map((o) => (
+                <div key={o.value} className='flex h-7 items-center gap-3'>
+                  <dt
+                    className={cn(
+                      'w-[64px] shrink-0 font-semibold',
+                      theme === o.value ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  >
+                    {o.label}
+                  </dt>
+                  <dd className='min-w-0 truncate text-muted-foreground'>{THEME_LABELS[o.value]}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -372,30 +384,36 @@ function PlaybackTab() {
         </div>
       </div>
 
-      <SectHead>再生動作</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <Row title='自動再生' sub='チャンネル/録画を開いた直後に再生を開始'>
-          <Switch checked={prefs.autoplay} onCheckedChange={(v) => update({ autoplay: v })} aria-label='自動再生' />
-        </Row>
-        <Row title='低遅延モード' sub='ライブ時にバッファを最小化 (帯域不安定だとカクつく可能性)'>
-          <Switch
-            checked={prefs.lowLatency}
-            onCheckedChange={(v) => update({ lowLatency: v })}
-            aria-label='低遅延モード'
-          />
-        </Row>
-        <Row title='デフォルト音量' sub={`${Math.round(prefs.defaultVolume * 100)}%`}>
-          <input
-            type='range'
-            min={0}
-            max={100}
-            step={5}
-            value={Math.round(prefs.defaultVolume * 100)}
-            onChange={(e) => update({ defaultVolume: Number(e.target.value) / 100 })}
-            aria-label='デフォルト音量'
-            className='h-[22px] w-[140px] accent-primary'
-          />
-        </Row>
+      {/* 再生動作 sits in the same 2-col rhythm so its card doesn't
+          stretch across the full width on wide viewports. */}
+      <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
+        <div>
+          <SectHead>再生動作</SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+            <Row title='自動再生' sub='チャンネル/録画を開いた直後に再生を開始'>
+              <Switch checked={prefs.autoplay} onCheckedChange={(v) => update({ autoplay: v })} aria-label='自動再生' />
+            </Row>
+            <Row title='低遅延モード' sub='ライブ時にバッファを最小化 (帯域不安定だとカクつく可能性)'>
+              <Switch
+                checked={prefs.lowLatency}
+                onCheckedChange={(v) => update({ lowLatency: v })}
+                aria-label='低遅延モード'
+              />
+            </Row>
+            <Row title='デフォルト音量' sub={`${Math.round(prefs.defaultVolume * 100)}%`}>
+              <input
+                type='range'
+                min={0}
+                max={100}
+                step={5}
+                value={Math.round(prefs.defaultVolume * 100)}
+                onChange={(e) => update({ defaultVolume: Number(e.target.value) / 100 })}
+                aria-label='デフォルト音量'
+                className='h-[22px] w-[140px] accent-primary'
+              />
+            </Row>
+          </div>
+        </div>
       </div>
 
       <p className='mt-3 text-footnote text-muted-foreground'>
