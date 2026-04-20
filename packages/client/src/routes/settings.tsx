@@ -110,7 +110,7 @@ function StatusTab() {
       : 0
 
   return (
-    <div className='mx-auto max-w-[1200px] px-5 pb-10 max-[480px]:px-2.5'>
+    <div className='px-5 pb-10 max-[480px]:px-2.5'>
       <SectHead>Streaming</SectHead>
       <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2 xl:grid-cols-3'>
         <DiagRow
@@ -202,7 +202,7 @@ function ThemeSegment() {
 
 function DisplayTab() {
   return (
-    <div className='mx-auto max-w-[1200px] px-5 pb-10 font-sans max-[480px]:px-2.5'>
+    <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
       <SectHead>テーマ</SectHead>
       <div className='overflow-hidden rounded-[4px] border border-border bg-card lg:max-w-[600px]'>
         <div className='flex items-center justify-between gap-4 px-3.5 py-3'>
@@ -287,7 +287,7 @@ function PlaybackTab() {
   const { prefs, update } = usePlaybackPrefs()
 
   return (
-    <div className='mx-auto max-w-[1200px] px-5 pb-10 font-sans max-[480px]:px-2.5'>
+    <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
       {/* Quality + codec share a row on wide screens — their cards are
           similarly shaped (segment + detail table) and naturally pair. */}
       <div className='grid grid-cols-1 items-start gap-x-6 lg:grid-cols-2'>
@@ -403,7 +403,7 @@ const LINK_ROWS = [
 
 function AboutTab() {
   return (
-    <div className='mx-auto max-w-[1200px] px-5 pb-10 max-[480px]:px-2.5'>
+    <div className='px-5 pb-10 max-[480px]:px-2.5'>
       <div className='grid grid-cols-1 items-start gap-x-6 lg:grid-cols-2'>
         <div>
           <SectHead>Version</SectHead>
