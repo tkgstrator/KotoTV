@@ -3,8 +3,8 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { addDays, addHours, startOfMinute } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
-import { type FilterValue, TypeFilter } from '@/components/channel/TypeFilter'
 import { EPGGrid } from '@/components/epg/EPGGrid'
+import { SegmentedFilter } from '@/components/shared/segmented-filter'
 import { StatusChip } from '@/components/shared/status-chip'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -12,21 +12,20 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import type { Program } from '@/hooks/usePrograms'
 import { usePrograms } from '@/hooks/usePrograms'
-
-const FILTER_VALUES: FilterValue[] = ['ALL', 'GR', 'BS', 'CS']
+import { CHANNEL_TYPE_TABS, CHANNEL_TYPE_VALUES, type ChannelType } from '@/lib/channel-type'
 
 interface EpgSearch {
   at?: string | undefined
   channel?: string | undefined
-  type?: FilterValue | undefined
+  type?: ChannelType | undefined
 }
 
 function validateEpgSearch(raw: Record<string, unknown>): EpgSearch {
   const result: EpgSearch = {}
   if (typeof raw.at === 'string') result.at = raw.at
   if (typeof raw.channel === 'string') result.channel = raw.channel
-  if (typeof raw.type === 'string' && (FILTER_VALUES as string[]).includes(raw.type)) {
-    result.type = raw.type as FilterValue
+  if (typeof raw.type === 'string' && (CHANNEL_TYPE_VALUES as string[]).includes(raw.type)) {
+    result.type = raw.type as ChannelType
   }
   return result
 }
@@ -39,17 +38,19 @@ export const Route = createFileRoute('/epg')({
 function EpgPage() {
   const { at, channel: highlightChannelId, type: typeParam } = Route.useSearch()
   const navigate = useNavigate({ from: '/epg' })
-  const type: FilterValue = typeParam ?? 'ALL'
+  const type: ChannelType = typeParam ?? 'GR'
 
+  // Rolling window: starts at the current 30-min boundary (or `at` when
+  // navigating other days) and extends 12 h forward. Past programs are not
+  // shown — the window always begins at "now" on the default view.
   const windowStart = useMemo(() => {
     const base = at ? new Date(at) : new Date()
-    // Snap to the most recent 30-min boundary for a clean grid start
     const ms = base.getTime()
     const snapped = Math.floor(ms / (30 * 60_000)) * (30 * 60_000)
     return startOfMinute(new Date(snapped))
   }, [at])
 
-  const windowEnd = useMemo(() => addHours(windowStart, 8), [windowStart])
+  const windowEnd = useMemo(() => addHours(windowStart, 12), [windowStart])
 
   // ISO strings for query keys and API calls
   const startAtISO = windowStart.toISOString()
@@ -59,7 +60,7 @@ function EpgPage() {
 
   const channels: Channel[] = useMemo(() => {
     const all = channelsData?.channels ?? []
-    return type === 'ALL' ? all : all.filter((c) => c.type === type)
+    return all.filter((c) => c.type === type)
   }, [channelsData, type])
 
   const channelIds = useMemo(() => channels.map((c) => c.id), [channels])
@@ -97,8 +98,9 @@ function EpgPage() {
     navigate({ search: (prev) => ({ ...prev, at: undefined }) })
   }
 
-  function setType(value: FilterValue) {
-    navigate({ search: (prev) => ({ ...prev, type: value === 'ALL' ? undefined : value }) })
+  function setType(value: ChannelType) {
+    // GR is the default — omit it from the URL so the path stays clean.
+    navigate({ search: (prev) => ({ ...prev, type: value === 'GR' ? undefined : value }) })
   }
 
   if (channelsPending) {
@@ -123,7 +125,7 @@ function EpgPage() {
         <EpgTypeBar type={type} onChange={setType} />
         <div className='flex flex-col items-center justify-center gap-2 py-16'>
           <StatusChip variant='err'>サーバーに接続できません</StatusChip>
-          <p className='text-[0.75rem] text-muted-foreground'>mirakc が起動しているか確認してください</p>
+          <p className='text-footnote text-muted-foreground'>mirakc が起動しているか確認してください</p>
         </div>
       </>
     )
@@ -134,7 +136,7 @@ function EpgPage() {
       <>
         <EpgHeader windowStart={windowStart} onPrevDay={goToPrevDay} onNextDay={goToNextDay} onNow={goToNow} />
         <EpgTypeBar type={type} onChange={setType} />
-        <p className='px-4 py-8 text-[0.875rem] text-muted-foreground'>チャンネルが見つかりません</p>
+        <p className='px-4 py-8 text-body text-muted-foreground'>チャンネルが見つかりません</p>
       </>
     )
   }
@@ -154,10 +156,10 @@ function EpgPage() {
   )
 }
 
-function EpgTypeBar({ type, onChange }: { type: FilterValue; onChange: (v: FilterValue) => void }) {
+function EpgTypeBar({ type, onChange }: { type: ChannelType; onChange: (v: ChannelType) => void }) {
   return (
     <div className='sticky top-page-header z-20 flex h-page-header shrink-0 border-b border-border bg-background'>
-      <TypeFilter value={type} onChange={onChange} />
+      <SegmentedFilter ariaLabel='チャンネル種別' tabs={CHANNEL_TYPE_TABS} value={type} onChange={onChange} />
     </div>
   )
 }
@@ -187,18 +189,18 @@ function EpgHeader({ windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps)
         <Button
           variant='outline'
           size='sm'
-          className='h-7 gap-1 px-2 text-[0.75rem]'
+          className='h-7 gap-1 px-2 text-footnote'
           onClick={onPrevDay}
           aria-label='前日'
         >
           <ChevronLeft className='size-3' />
           前日
         </Button>
-        <span className='min-w-[6rem] text-center font-mono text-[0.8rem] font-semibold tabular-nums'>{dateLabel}</span>
+        <span className='min-w-[6rem] text-center font-mono text-footnote font-semibold tabular-nums'>{dateLabel}</span>
         <Button
           variant='outline'
           size='sm'
-          className='h-7 gap-1 px-2 text-[0.75rem]'
+          className='h-7 gap-1 px-2 text-footnote'
           onClick={onNextDay}
           aria-label='翌日'
         >
@@ -210,7 +212,7 @@ function EpgHeader({ windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps)
       <Button
         variant='default'
         size='sm'
-        className='h-7 px-3 text-[0.75rem] font-bold'
+        className='h-7 px-3 text-footnote font-bold'
         onClick={onNow}
         aria-label='現在時刻へジャンプ'
       >
