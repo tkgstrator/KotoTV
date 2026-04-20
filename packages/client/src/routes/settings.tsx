@@ -240,7 +240,13 @@ function DisplayTab() {
   const { theme, setTheme } = useTheme()
   return (
     <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
-      <SectHead>テーマ</SectHead>
+      <SectHead
+        action={
+          <OptionPicker<ThemeChoice> ariaLabel='テーマ選択' value={theme} options={THEME_OPTIONS} onChange={setTheme} />
+        }
+      >
+        テーマ
+      </SectHead>
       <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
         <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
           {THEME_OPTIONS.map((o) => (
@@ -257,9 +263,6 @@ function DisplayTab() {
             </div>
           ))}
         </dl>
-        <div className='flex justify-end border-t border-border/60 px-3 py-2'>
-          <OptionPicker<ThemeChoice> ariaLabel='テーマ選択' value={theme} options={THEME_OPTIONS} onChange={setTheme} />
-        </div>
       </div>
     </div>
   )
@@ -302,7 +305,18 @@ function PlaybackTab() {
           Status so the settings page has a single visual rhythm. */}
       <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
         <div>
-          <SectHead>画質</SectHead>
+          <SectHead
+            action={
+              <OptionPicker<QualityChoice>
+                ariaLabel='画質プリセット'
+                value={prefs.quality}
+                options={QUALITY_OPTIONS}
+                onChange={(v) => update({ quality: v })}
+              />
+            }
+          >
+            画質
+          </SectHead>
           <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
             {/* Fixed h-7 per row so CJK glyphs in 可変 don't push the AUTO
                 line taller than the ASCII-only rows below it. */}
@@ -322,19 +336,22 @@ function PlaybackTab() {
                 </div>
               ))}
             </dl>
-            <div className='flex justify-end border-t border-border/60 px-3 py-2'>
-              <OptionPicker<QualityChoice>
-                ariaLabel='画質プリセット'
-                value={prefs.quality}
-                options={QUALITY_OPTIONS}
-                onChange={(v) => update({ quality: v })}
-              />
-            </div>
           </div>
         </div>
 
         <div>
-          <SectHead>コーデック</SectHead>
+          <SectHead
+            action={
+              <OptionPicker<CodecChoice>
+                ariaLabel='コーデック'
+                value={prefs.codec}
+                options={CODEC_OPTIONS}
+                onChange={(v) => update({ codec: v })}
+              />
+            }
+          >
+            コーデック
+          </SectHead>
           <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
             <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
               {CODEC_OPTIONS.map((o) => (
@@ -351,14 +368,6 @@ function PlaybackTab() {
                 </div>
               ))}
             </dl>
-            <div className='flex justify-end border-t border-border/60 px-3 py-2'>
-              <OptionPicker<CodecChoice>
-                ariaLabel='コーデック'
-                value={prefs.codec}
-                options={CODEC_OPTIONS}
-                onChange={(v) => update({ codec: v })}
-              />
-            </div>
           </div>
         </div>
       </div>
