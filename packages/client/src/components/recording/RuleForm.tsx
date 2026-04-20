@@ -20,8 +20,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
@@ -74,9 +74,7 @@ const DEFAULT_VALUES: CreateRecordingRule = {
   newOnly: false,
   marginStartMinutes: 0,
   marginEndMinutes: 0,
-  // 0 = 未設定（最小長フィルタを無効）
   minDurationMinutes: 0,
-  // 0 = 世代制限なし
   keepLatestN: 0,
   postEncode: false,
   postEncodeCodec: 'avc',
@@ -112,21 +110,32 @@ function toCreateRule(existing: RecordingRule): CreateRecordingRule {
   }
 }
 
+// Shared className for the selected toggle — blue primary fill across
+// every ToggleGroupItem used in this form.
+const TOGGLE_ON =
+  'data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+
 export function RuleForm({ channels, existing }: RuleFormProps) {
   const navigate = useNavigate()
   const createMutation = useCreateRecordingRule()
   const updateMutation = useUpdateRecordingRule()
   const deleteMutation = useDeleteRecordingRule()
 
-  const { register, watch, setValue, handleSubmit, reset } = useForm<CreateRecordingRule>({
+  const form = useForm<CreateRecordingRule>({
     defaultValues: existing ? toCreateRule(existing) : DEFAULT_VALUES
   })
 
   useEffect(() => {
-    if (existing) reset(toCreateRule(existing))
-  }, [existing, reset])
+    if (existing) form.reset(toCreateRule(existing))
+  }, [existing, form])
 
-  const watched = watch()
+  const watched = form.watch()
+  const keyword = watched.keyword
+  const keywordMode = watched.keywordMode
+  const excludeKeyword = watched.excludeKeyword
+  const timeStart = watched.timeStartMinutes
+  const timeEnd = watched.timeEndMinutes
+  const postEncode = watched.postEncode
 
   const previewRule = useMemo((): CreateRecordingRule | null => {
     if (!watched.keyword && watched.channelIds.length === 0) return null
@@ -172,23 +181,6 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
     }
   }
 
-  const channelIds = watch('channelIds')
-  const genres = watch('genres')
-  const dayOfWeek = watch('dayOfWeek')
-  const timeStart = watch('timeStartMinutes')
-  const timeEnd = watch('timeEndMinutes')
-  const avoidDuplicates = watch('avoidDuplicates')
-  const excludeReruns = watch('excludeReruns')
-  const newOnly = watch('newOnly')
-  const postEncode = watch('postEncode')
-  const postEncodeCodec = watch('postEncodeCodec')
-  const postEncodeQuality = watch('postEncodeQuality')
-  const postEncodeTiming = watch('postEncodeTiming')
-  const keywordMode = watch('keywordMode')
-  const keywordTarget = watch('keywordTarget')
-  const keyword = watch('keyword')
-  const excludeKeyword = watch('excludeKeyword')
-
   const keywordRegexError = useMemo(
     () => (keywordMode === 'regex' ? regexError(keyword) : null),
     [keywordMode, keyword]
@@ -233,511 +225,638 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             </div>
           </CollapsibleContent>
         </Collapsible>
-        <form onSubmit={handleSubmit(onSubmit)} className='grid grid-cols-1 gap-x-6 gap-y-5 p-4 md:grid-cols-2'>
-          {/* Left column — 検索条件. Independent flex stack so the
-              taller right column doesn't drag row heights around. */}
-          <div className='flex flex-col gap-5'>
-            {/* ── 1. ルール名 */}
-            <div className='flex flex-col gap-1.5'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>ルール名</Label>
-              <Input
-                {...register('name', { required: true })}
-                className='h-9 text-body'
-                placeholder='例: NHKスペシャル'
-                autoFocus
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className='grid grid-cols-1 gap-x-6 gap-y-5 p-4 md:grid-cols-2'>
+            {/* Left column — 検索条件 */}
+            <div className='flex flex-col gap-5'>
+              <FormField
+                control={form.control}
+                name='name'
+                rules={{ required: true }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className='text-footnote font-semibold text-muted-foreground'>ルール名</FormLabel>
+                    <FormControl>
+                      <Input {...field} className='h-9 text-body' placeholder='例: NHKスペシャル' autoFocus />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='keyword'
+                render={({ field }) => (
+                  <FormItem className='gap-2'>
+                    <div className='flex items-center justify-between gap-2'>
+                      <FormLabel className='text-footnote font-semibold text-muted-foreground'>キーワード</FormLabel>
+                      <span
+                        className={cn('tabular-nums text-footnote text-muted-foreground', !previewRule && 'invisible')}
+                      >
+                        {previewRule
+                          ? isPreviewPending
+                            ? '…'
+                            : `${previewData?.matchCount ?? 0} 件ヒット`
+                          : '0 件ヒット'}
+                      </span>
+                    </div>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ''}
+                        className={cn(
+                          'h-9 text-body',
+                          keywordRegexError && 'border-destructive focus-visible:ring-destructive'
+                        )}
+                        placeholder='検索キーワード'
+                        aria-invalid={keywordRegexError ? true : undefined}
+                      />
+                    </FormControl>
+                    {keywordRegexError && (
+                      <p className='text-footnote text-destructive'>正規表現エラー: {keywordRegexError}</p>
+                    )}
+                    <div className='flex flex-wrap gap-2'>
+                      <FormField
+                        control={form.control}
+                        name='keywordMode'
+                        render={({ field: modeField }) => (
+                          <FormItem className='min-w-0 flex-1 gap-1 sm:flex-none'>
+                            <FormLabel className='text-footnote font-semibold text-muted-foreground'>
+                              マッチ方法
+                            </FormLabel>
+                            <FormControl>
+                              <ToggleGroup
+                                type='single'
+                                variant='outline'
+                                value={modeField.value}
+                                onValueChange={(v) => v && modeField.onChange(v)}
+                                className='w-full gap-1 sm:w-auto'
+                              >
+                                <ToggleGroupItem
+                                  value='literal'
+                                  className={cn('h-8 flex-1 px-3 text-footnote sm:flex-none', TOGGLE_ON)}
+                                >
+                                  部分一致
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                  value='regex'
+                                  className={cn('h-8 flex-1 px-3 text-footnote sm:flex-none', TOGGLE_ON)}
+                                >
+                                  正規表現
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name='keywordTarget'
+                        render={({ field: targetField }) => (
+                          <FormItem className='min-w-0 flex-1 gap-1 sm:flex-none'>
+                            <FormLabel className='text-footnote font-semibold text-muted-foreground'>対象</FormLabel>
+                            <FormControl>
+                              <ToggleGroup
+                                type='single'
+                                variant='outline'
+                                value={targetField.value}
+                                onValueChange={(v) => v && targetField.onChange(v)}
+                                className='w-full gap-1 sm:w-auto'
+                              >
+                                <ToggleGroupItem
+                                  value='title'
+                                  className={cn('h-8 flex-1 px-3 text-footnote sm:flex-none', TOGGLE_ON)}
+                                >
+                                  タイトル
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                  value='title_description'
+                                  className={cn('h-8 flex-1 px-3 text-footnote sm:flex-none', TOGGLE_ON)}
+                                >
+                                  タイトル+説明
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='excludeKeyword'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className='text-footnote font-semibold text-muted-foreground'>除外キーワード</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ''}
+                        className={cn(
+                          'h-9 text-body',
+                          excludeKeywordRegexError && 'border-destructive focus-visible:ring-destructive'
+                        )}
+                        placeholder='除外したいキーワード (任意)'
+                        aria-invalid={excludeKeywordRegexError ? true : undefined}
+                      />
+                    </FormControl>
+                    {excludeKeywordRegexError && (
+                      <p className='text-footnote text-destructive'>正規表現エラー: {excludeKeywordRegexError}</p>
+                    )}
+                  </FormItem>
+                )}
               />
             </div>
 
-            {/* ── 2. キーワード */}
-            <div className='flex flex-col gap-2'>
-              <div className='flex items-center justify-between gap-2'>
-                <Label className='text-footnote font-semibold text-muted-foreground'>キーワード</Label>
-                <span className={cn('tabular-nums text-footnote text-muted-foreground', !previewRule && 'invisible')}>
-                  {previewRule ? (isPreviewPending ? '…' : `${previewData?.matchCount ?? 0} 件ヒット`) : '0 件ヒット'}
-                </span>
-              </div>
-              <Input
-                {...register('keyword')}
-                className={cn(
-                  'h-9 text-body',
-                  keywordRegexError && 'border-destructive focus-visible:ring-destructive'
+            {/* Right column — 対象・スケジュール・録画設定 */}
+            <div className='flex flex-col gap-5'>
+              <FormField
+                control={form.control}
+                name='channelIds'
+                render={({ field }) => (
+                  <FormItem className='gap-2'>
+                    <div className='flex items-center gap-2'>
+                      <FormLabel className='text-footnote font-semibold text-muted-foreground'>チャンネル</FormLabel>
+                      {field.value.length === 0 ? (
+                        <StatusChip variant='muted' size='sm'>
+                          全て
+                        </StatusChip>
+                      ) : (
+                        <StatusChip variant='info' size='sm'>
+                          {field.value.length} 局
+                        </StatusChip>
+                      )}
+                    </div>
+                    <FormControl>
+                      <ChannelPicker channels={channels} value={field.value} onChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
                 )}
-                placeholder='検索キーワード'
-                aria-invalid={keywordRegexError ? true : undefined}
               />
-              {keywordRegexError && (
-                <p className='text-footnote text-destructive'>正規表現エラー: {keywordRegexError}</p>
-              )}
-              <div className='flex flex-wrap gap-2'>
-                <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
-                  <span className='text-footnote font-semibold text-muted-foreground'>マッチ方法</span>
-                  <ToggleGroup
-                    type='single'
-                    value={keywordMode}
-                    variant='outline'
-                    onValueChange={(v) => v && setValue('keywordMode', v as 'literal' | 'regex')}
-                    className='w-full gap-1 sm:w-auto'
-                  >
-                    <ToggleGroupItem
-                      value='literal'
-                      className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                    >
-                      部分一致
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value='regex'
-                      className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                    >
-                      正規表現
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+
+              <FormField
+                control={form.control}
+                name='genres'
+                render={({ field }) => (
+                  <FormItem className='gap-2'>
+                    <FormLabel className='text-footnote font-semibold text-muted-foreground'>ジャンル</FormLabel>
+                    <div className='flex flex-wrap gap-1.5'>
+                      {ARIB_GENRES.map((g) => {
+                        const active = field.value.includes(g.value)
+                        return (
+                          <button
+                            key={g.value}
+                            type='button'
+                            onClick={() =>
+                              field.onChange(
+                                active ? field.value.filter((v) => v !== g.value) : [...field.value, g.value]
+                              )
+                            }
+                            className={cn(
+                              'rounded border px-2.5 py-1 text-footnote transition-colors',
+                              active
+                                ? 'border-primary/40 bg-primary/12 text-primary'
+                                : 'border-border bg-muted/60 text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'
+                            )}
+                          >
+                            {g.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <p className={cn('text-footnote text-muted-foreground', field.value.length > 0 && 'invisible')}>
+                      未選択 = 全ジャンル対象
+                    </p>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='dayOfWeek'
+                render={({ field }) => (
+                  <FormItem className='gap-2'>
+                    <FormLabel className='text-footnote font-semibold text-muted-foreground'>曜日</FormLabel>
+                    <div className='flex gap-1.5'>
+                      {DOW_LABELS.map((label, idx) => {
+                        const active = field.value.includes(idx)
+                        return (
+                          <button
+                            key={label}
+                            type='button'
+                            onClick={() =>
+                              field.onChange(
+                                active ? field.value.filter((d) => d !== idx) : [...field.value, idx].sort()
+                              )
+                            }
+                            className={cn(
+                              'flex h-9 flex-1 items-center justify-center rounded border text-footnote font-semibold transition-colors sm:h-8 sm:w-8 sm:flex-none',
+                              active
+                                ? 'border-primary/40 bg-primary/12 text-primary'
+                                : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                            )}
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <FormItem className='gap-2'>
+                <FormLabel className='text-footnote font-semibold text-muted-foreground'>時刻範囲</FormLabel>
+                <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap'>
+                  {TIME_PRESETS.map((p) => {
+                    const isActive = activePreset?.label === p.label
+                    return (
+                      <button
+                        key={p.label}
+                        type='button'
+                        onClick={() => {
+                          if (isActive) {
+                            form.setValue('timeStartMinutes', null)
+                            form.setValue('timeEndMinutes', null)
+                          } else {
+                            form.setValue('timeStartMinutes', p.start)
+                            form.setValue('timeEndMinutes', p.end)
+                          }
+                        }}
+                        className={cn(
+                          'h-8 rounded border px-2.5 text-footnote transition-colors',
+                          isActive
+                            ? 'border-primary/40 bg-primary/12 text-primary'
+                            : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                      >
+                        {p.label}
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
-                  <span className='text-footnote font-semibold text-muted-foreground'>対象</span>
-                  <ToggleGroup
-                    type='single'
-                    variant='outline'
-                    value={keywordTarget}
-                    onValueChange={(v) => v && setValue('keywordTarget', v as 'title' | 'title_description')}
-                    className='w-full gap-1 sm:w-auto'
-                  >
-                    <ToggleGroupItem
-                      value='title'
-                      className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                    >
-                      タイトル
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value='title_description'
-                      className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                    >
-                      タイトル+説明
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                </div>
-              </div>
-            </div>
-
-            {/* ── 3. 除外キーワード */}
-            <div className='flex flex-col gap-1.5'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>除外キーワード</Label>
-              <Input
-                {...register('excludeKeyword')}
-                className={cn(
-                  'h-9 text-body',
-                  excludeKeywordRegexError && 'border-destructive focus-visible:ring-destructive'
-                )}
-                placeholder='除外したいキーワード (任意)'
-                aria-invalid={excludeKeywordRegexError ? true : undefined}
-              />
-              {excludeKeywordRegexError && (
-                <p className='text-footnote text-destructive'>正規表現エラー: {excludeKeywordRegexError}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Right column — 対象・スケジュール・録画設定 */}
-          <div className='flex flex-col gap-5'>
-            {/* ── 4. チャンネルピッカー */}
-            <div className='flex flex-col gap-2'>
-              <div className='flex items-center gap-2'>
-                <Label className='text-footnote font-semibold text-muted-foreground'>チャンネル</Label>
-                {channelIds.length === 0 ? (
-                  <StatusChip variant='muted' size='sm'>
-                    全て
-                  </StatusChip>
-                ) : (
-                  <StatusChip variant='info' size='sm'>
-                    {channelIds.length} 局
-                  </StatusChip>
-                )}
-              </div>
-              <ChannelPicker channels={channels} value={channelIds} onChange={(ids) => setValue('channelIds', ids)} />
-            </div>
-
-            {/* ── 5. ジャンル */}
-            <div className='flex flex-col gap-2'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>ジャンル</Label>
-              <div className='flex flex-wrap gap-1.5'>
-                {ARIB_GENRES.map((g) => {
-                  const active = genres.includes(g.value)
-                  return (
-                    <button
-                      key={g.value}
-                      type='button'
-                      onClick={() => {
-                        if (active) {
-                          setValue(
-                            'genres',
-                            genres.filter((v) => v !== g.value)
-                          )
-                        } else {
-                          setValue('genres', [...genres, g.value])
-                        }
-                      }}
-                      className={cn(
-                        'rounded border px-2.5 py-1 text-footnote transition-colors',
-                        active
-                          ? 'border-primary/40 bg-primary/12 text-primary'
-                          : 'border-border bg-muted/60 text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'
-                      )}
-                    >
-                      {g.label}
-                    </button>
-                  )
-                })}
-              </div>
-              <p className={cn('text-footnote text-muted-foreground', genres.length > 0 && 'invisible')}>
-                未選択 = 全ジャンル対象
-              </p>
-            </div>
-
-            {/* ── 6. 曜日 */}
-            <div className='flex flex-col gap-2'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>曜日</Label>
-              <div className='flex gap-1.5'>
-                {DOW_LABELS.map((label, idx) => {
-                  const active = dayOfWeek.includes(idx)
-                  return (
-                    <button
-                      key={label}
-                      type='button'
-                      onClick={() => {
-                        if (active) {
-                          setValue(
-                            'dayOfWeek',
-                            dayOfWeek.filter((d) => d !== idx)
-                          )
-                        } else {
-                          setValue('dayOfWeek', [...dayOfWeek, idx].sort())
-                        }
-                      }}
-                      className={cn(
-                        'flex h-9 flex-1 items-center justify-center rounded border text-footnote font-semibold transition-colors sm:h-8 sm:w-8 sm:flex-none',
-                        active
-                          ? 'border-primary/40 bg-primary/12 text-primary'
-                          : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
-                      )}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* ── 7. 時刻範囲 */}
-            <div className='flex flex-col gap-2'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>時刻範囲</Label>
-              <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap'>
-                {TIME_PRESETS.map((p) => {
-                  const isActive = activePreset?.label === p.label
-                  return (
-                    <button
-                      key={p.label}
-                      type='button'
-                      onClick={() => {
-                        if (isActive) {
-                          setValue('timeStartMinutes', null)
-                          setValue('timeEndMinutes', null)
-                        } else {
-                          setValue('timeStartMinutes', p.start)
-                          setValue('timeEndMinutes', p.end)
-                        }
-                      }}
-                      className={cn(
-                        'h-8 rounded border px-2.5 text-footnote transition-colors',
-                        isActive
-                          ? 'border-primary/40 bg-primary/12 text-primary'
-                          : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
-                      )}
-                    >
-                      {p.label}
-                    </button>
-                  )
-                })}
-              </div>
-              <div className='flex items-center gap-2'>
-                <Input
-                  className='h-8 w-24 font-mono tabular-nums text-footnote'
-                  placeholder='HH:MM'
-                  value={timeStart != null ? minutesToHHMM(timeStart) : ''}
-                  onChange={(e) => {
-                    const mins = HHMMToMinutes(e.target.value)
-                    setValue('timeStartMinutes', mins)
-                  }}
-                />
-                <span className='text-footnote text-muted-foreground'>〜</span>
-                <Input
-                  className='h-8 w-24 font-mono tabular-nums text-footnote'
-                  placeholder='HH:MM'
-                  value={timeEnd != null ? minutesToHHMM(timeEnd) : ''}
-                  onChange={(e) => {
-                    const mins = HHMMToMinutes(e.target.value)
-                    setValue('timeEndMinutes', mins)
-                  }}
-                />
-                {(timeStart != null || timeEnd != null) && (
-                  <button
-                    type='button'
-                    className='text-footnote text-muted-foreground hover:text-destructive'
-                    onClick={() => {
-                      setValue('timeStartMinutes', null)
-                      setValue('timeEndMinutes', null)
-                    }}
-                  >
-                    クリア
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* ── 8. 優先度 */}
-            <div className='flex flex-col gap-1.5'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>
-                優先度
-                <span className='ml-1.5 text-footnote text-muted-foreground'>(1=低 100=高、デフォルト50)</span>
-              </Label>
-              <Input
-                type='number'
-                min={1}
-                max={100}
-                {...register('priority', { valueAsNumber: true })}
-                className='h-8 w-24 tabular-nums text-body'
-              />
-            </div>
-
-            {/* ── 9. 録画オプション（真理値スイッチまとめ） */}
-            <div className='flex flex-col gap-2'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>録画オプション</Label>
-              <div className='flex flex-col gap-2 rounded-md border border-border bg-card/40 px-3 py-2.5'>
-                <div className='flex items-center justify-between gap-3'>
-                  <Label htmlFor='avoidDuplicates' className='cursor-pointer text-footnote text-foreground'>
-                    タイトル重複は録画しない
-                  </Label>
-                  <Switch
-                    id='avoidDuplicates'
-                    checked={avoidDuplicates}
-                    onCheckedChange={(v) => setValue('avoidDuplicates', v)}
+                <div className='flex items-center gap-2'>
+                  <FormField
+                    control={form.control}
+                    name='timeStartMinutes'
+                    render={({ field }) => (
+                      <Input
+                        className='h-8 w-24 font-mono tabular-nums text-footnote'
+                        placeholder='HH:MM'
+                        value={field.value != null ? minutesToHHMM(field.value) : ''}
+                        onChange={(e) => field.onChange(HHMMToMinutes(e.target.value))}
+                      />
+                    )}
                   />
-                </div>
-                <div className='flex items-center justify-between gap-3'>
-                  <Label htmlFor='excludeReruns' className='cursor-pointer text-footnote text-foreground'>
-                    再放送を録画しない
-                  </Label>
-                  <Switch
-                    id='excludeReruns'
-                    checked={excludeReruns}
-                    onCheckedChange={(v) => setValue('excludeReruns', v)}
+                  <span className='text-footnote text-muted-foreground'>〜</span>
+                  <FormField
+                    control={form.control}
+                    name='timeEndMinutes'
+                    render={({ field }) => (
+                      <Input
+                        className='h-8 w-24 font-mono tabular-nums text-footnote'
+                        placeholder='HH:MM'
+                        value={field.value != null ? minutesToHHMM(field.value) : ''}
+                        onChange={(e) => field.onChange(HHMMToMinutes(e.target.value))}
+                      />
+                    )}
                   />
+                  {(timeStart != null || timeEnd != null) && (
+                    <button
+                      type='button'
+                      className='text-footnote text-muted-foreground hover:text-destructive'
+                      onClick={() => {
+                        form.setValue('timeStartMinutes', null)
+                        form.setValue('timeEndMinutes', null)
+                      }}
+                    >
+                      クリア
+                    </button>
+                  )}
                 </div>
-                <div className='flex items-center justify-between gap-3'>
-                  <Label htmlFor='newOnly' className='cursor-pointer text-footnote text-foreground'>
-                    新番組のみ
-                  </Label>
-                  <Switch id='newOnly' checked={newOnly} onCheckedChange={(v) => setValue('newOnly', v)} />
-                </div>
-              </div>
-            </div>
+              </FormItem>
 
-            {/* ── 10. マージン / 最小長 / 世代数 */}
-            <div className='flex flex-col gap-2'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>細かい挙動</Label>
-              <div className='flex flex-col gap-2.5 rounded-md border border-border bg-card/40 px-3 py-2.5'>
-                <div className='flex items-center justify-between gap-3'>
-                  <Label className='text-footnote text-foreground'>開始マージン</Label>
-                  <div className='flex items-center gap-1.5'>
-                    <Input
-                      type='number'
-                      min={0}
-                      max={60}
-                      {...register('marginStartMinutes', { valueAsNumber: true })}
-                      className='h-8 w-20 tabular-nums text-footnote'
-                    />
-                    <span className='text-footnote text-muted-foreground'>分</span>
-                  </div>
-                </div>
-                <div className='flex items-center justify-between gap-3'>
-                  <Label className='text-footnote text-foreground'>終了マージン</Label>
-                  <div className='flex items-center gap-1.5'>
-                    <Input
-                      type='number'
-                      min={0}
-                      max={60}
-                      {...register('marginEndMinutes', { valueAsNumber: true })}
-                      className='h-8 w-20 tabular-nums text-footnote'
-                    />
-                    <span className='text-footnote text-muted-foreground'>分</span>
-                  </div>
-                </div>
-                <div className='flex items-center justify-between gap-3'>
-                  <Label className='text-footnote text-foreground'>最小番組長</Label>
-                  <div className='flex items-center gap-1.5'>
-                    <Input
-                      type='number'
-                      min={0}
-                      max={1440}
-                      {...register('minDurationMinutes', { valueAsNumber: true })}
-                      className='h-8 w-20 tabular-nums text-footnote'
-                    />
-                    <span className='text-footnote text-muted-foreground'>分 (0 で無効)</span>
-                  </div>
-                </div>
-                <div className='flex items-center justify-between gap-3'>
-                  <Label className='text-footnote text-foreground'>保存世代数</Label>
-                  <div className='flex items-center gap-1.5'>
-                    <Input
-                      type='number'
-                      min={0}
-                      max={999}
-                      {...register('keepLatestN', { valueAsNumber: true })}
-                      className='h-8 w-20 tabular-nums text-footnote'
-                    />
-                    <span className='text-footnote text-muted-foreground'>本 (0 で無制限)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+              <FormField
+                control={form.control}
+                name='priority'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className='text-footnote font-semibold text-muted-foreground'>
+                      優先度
+                      <span className='ml-1.5 text-footnote text-muted-foreground'>(1=低 100=高、デフォルト50)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        min={1}
+                        max={100}
+                        value={field.value}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        className='h-8 w-24 tabular-nums text-body'
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
-            {/* ── 11. 録画後にエンコード */}
-            <div className='flex flex-col gap-2'>
-              <div className='flex items-center justify-between gap-3'>
-                <Label
-                  htmlFor='postEncode'
-                  className='cursor-pointer text-footnote font-semibold text-muted-foreground'
-                >
-                  録画後にエンコード
-                </Label>
-                <Switch id='postEncode' checked={postEncode} onCheckedChange={(v) => setValue('postEncode', v)} />
-              </div>
-              {postEncode && (
+              <FormItem className='gap-2'>
+                <FormLabel className='text-footnote font-semibold text-muted-foreground'>録画オプション</FormLabel>
                 <div className='flex flex-col gap-2 rounded-md border border-border bg-card/40 px-3 py-2.5'>
-                  <div className='flex items-center justify-between gap-3'>
-                    <Label className='text-footnote text-foreground'>コーデック</Label>
-                    <ToggleGroup
-                      type='single'
-                      variant='outline'
-                      value={postEncodeCodec}
-                      onValueChange={(v) => v && setValue('postEncodeCodec', v as 'avc' | 'hevc' | 'vp9')}
-                      className='gap-1'
-                    >
-                      {(['avc', 'hevc', 'vp9'] as const).map((codec) => (
-                        <ToggleGroupItem
-                          key={codec}
-                          value={codec}
-                          className='h-8 px-3 text-footnote uppercase data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                        >
-                          {codec}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
-                  </div>
-                  <div className='flex items-center justify-between gap-3'>
-                    <Label className='text-footnote text-foreground'>画質</Label>
-                    <ToggleGroup
-                      type='single'
-                      variant='outline'
-                      value={postEncodeQuality}
-                      onValueChange={(v) => v && setValue('postEncodeQuality', v as 'high' | 'medium' | 'low')}
-                      className='gap-1'
-                    >
-                      <ToggleGroupItem
-                        value='high'
-                        className='h-8 px-3 text-footnote data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                      >
-                        高
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value='medium'
-                        className='h-8 px-3 text-footnote data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                      >
-                        中
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value='low'
-                        className='h-8 px-3 text-footnote data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                      >
-                        低
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-                  <div className='flex items-center justify-between gap-3'>
-                    <Label className='text-footnote text-foreground'>タイミング</Label>
-                    <ToggleGroup
-                      type='single'
-                      variant='outline'
-                      value={postEncodeTiming}
-                      onValueChange={(v) => v && setValue('postEncodeTiming', v as 'immediate' | 'idle')}
-                      className='gap-1'
-                    >
-                      <ToggleGroupItem
-                        value='immediate'
-                        className='h-8 px-3 text-footnote data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                      >
-                        録画直後
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value='idle'
-                        className='h-8 px-3 text-footnote data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                      >
-                        アイドル時
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name='avoidDuplicates'
+                    render={({ field }) => (
+                      <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                        <FormLabel className='cursor-pointer text-footnote text-foreground'>
+                          タイトル重複は録画しない
+                        </FormLabel>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name='excludeReruns'
+                    render={({ field }) => (
+                      <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                        <FormLabel className='cursor-pointer text-footnote text-foreground'>
+                          再放送を録画しない
+                        </FormLabel>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name='newOnly'
+                    render={({ field }) => (
+                      <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                        <FormLabel className='cursor-pointer text-footnote text-foreground'>新番組のみ</FormLabel>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                 </div>
+              </FormItem>
+
+              <FormItem className='gap-2'>
+                <FormLabel className='text-footnote font-semibold text-muted-foreground'>細かい挙動</FormLabel>
+                <div className='flex flex-col gap-2.5 rounded-md border border-border bg-card/40 px-3 py-2.5'>
+                  <FormField
+                    control={form.control}
+                    name='marginStartMinutes'
+                    render={({ field }) => (
+                      <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                        <FormLabel className='text-footnote text-foreground'>開始マージン</FormLabel>
+                        <div className='flex items-center gap-1.5'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              min={0}
+                              max={60}
+                              value={field.value}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              className='h-8 w-20 tabular-nums text-footnote'
+                            />
+                          </FormControl>
+                          <span className='text-footnote text-muted-foreground'>分</span>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name='marginEndMinutes'
+                    render={({ field }) => (
+                      <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                        <FormLabel className='text-footnote text-foreground'>終了マージン</FormLabel>
+                        <div className='flex items-center gap-1.5'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              min={0}
+                              max={60}
+                              value={field.value}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              className='h-8 w-20 tabular-nums text-footnote'
+                            />
+                          </FormControl>
+                          <span className='text-footnote text-muted-foreground'>分</span>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name='minDurationMinutes'
+                    render={({ field }) => (
+                      <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                        <FormLabel className='text-footnote text-foreground'>最小番組長</FormLabel>
+                        <div className='flex items-center gap-1.5'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              min={0}
+                              max={1440}
+                              value={field.value}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              className='h-8 w-20 tabular-nums text-footnote'
+                            />
+                          </FormControl>
+                          <span className='text-footnote text-muted-foreground'>分 (0 で無効)</span>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name='keepLatestN'
+                    render={({ field }) => (
+                      <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                        <FormLabel className='text-footnote text-foreground'>保存世代数</FormLabel>
+                        <div className='flex items-center gap-1.5'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              min={0}
+                              max={999}
+                              value={field.value}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              className='h-8 w-20 tabular-nums text-footnote'
+                            />
+                          </FormControl>
+                          <span className='text-footnote text-muted-foreground'>本 (0 で無制限)</span>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </FormItem>
+
+              <div className='flex flex-col gap-2'>
+                <FormField
+                  control={form.control}
+                  name='postEncode'
+                  render={({ field }) => (
+                    <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                      <FormLabel className='cursor-pointer text-footnote font-semibold text-muted-foreground'>
+                        録画後にエンコード
+                      </FormLabel>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {postEncode && (
+                  <div className='flex flex-col gap-2 rounded-md border border-border bg-card/40 px-3 py-2.5'>
+                    <FormField
+                      control={form.control}
+                      name='postEncodeCodec'
+                      render={({ field }) => (
+                        <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                          <FormLabel className='text-footnote text-foreground'>コーデック</FormLabel>
+                          <FormControl>
+                            <ToggleGroup
+                              type='single'
+                              variant='outline'
+                              value={field.value}
+                              onValueChange={(v) => v && field.onChange(v)}
+                              className='gap-1'
+                            >
+                              {(['avc', 'hevc', 'vp9'] as const).map((codec) => (
+                                <ToggleGroupItem
+                                  key={codec}
+                                  value={codec}
+                                  className={cn('h-8 px-3 text-footnote uppercase', TOGGLE_ON)}
+                                >
+                                  {codec}
+                                </ToggleGroupItem>
+                              ))}
+                            </ToggleGroup>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name='postEncodeQuality'
+                      render={({ field }) => (
+                        <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                          <FormLabel className='text-footnote text-foreground'>画質</FormLabel>
+                          <FormControl>
+                            <ToggleGroup
+                              type='single'
+                              variant='outline'
+                              value={field.value}
+                              onValueChange={(v) => v && field.onChange(v)}
+                              className='gap-1'
+                            >
+                              <ToggleGroupItem value='high' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                高
+                              </ToggleGroupItem>
+                              <ToggleGroupItem value='medium' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                中
+                              </ToggleGroupItem>
+                              <ToggleGroupItem value='low' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                低
+                              </ToggleGroupItem>
+                            </ToggleGroup>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name='postEncodeTiming'
+                      render={({ field }) => (
+                        <FormItem className='flex-row items-center justify-between gap-3 space-y-0'>
+                          <FormLabel className='text-footnote text-foreground'>タイミング</FormLabel>
+                          <FormControl>
+                            <ToggleGroup
+                              type='single'
+                              variant='outline'
+                              value={field.value}
+                              onValueChange={(v) => v && field.onChange(v)}
+                              className='gap-1'
+                            >
+                              <ToggleGroupItem value='immediate' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                録画直後
+                              </ToggleGroupItem>
+                              <ToggleGroupItem value='idle' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                アイドル時
+                              </ToggleGroupItem>
+                            </ToggleGroup>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Button row — span both columns */}
+            <div className='flex flex-wrap items-center gap-2 border-t border-border pt-4 md:col-span-2'>
+              <Button
+                type='submit'
+                size='sm'
+                className='flex-1 text-footnote sm:flex-none'
+                disabled={isPending || hasRegexError}
+              >
+                {isPending ? '保存中...' : existing ? '更新' : '作成'}
+              </Button>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                className='flex-1 text-footnote sm:flex-none'
+                onClick={() => navigate({ to: '/recordings/rules' })}
+              >
+                キャンセル
+              </Button>
+              {existing && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      className='ml-auto h-8 gap-1.5 px-2.5 text-footnote text-destructive hover:bg-destructive/10 hover:text-destructive'
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className='size-3.5' />
+                      削除
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>ルールを削除しますか？</AlertDialogTitle>
+                      <AlertDialogDescription>この操作は元に戻せません。</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className='text-footnote'>キャンセル</AlertDialogCancel>
+                      <AlertDialogAction variant='destructive' className='text-footnote' onClick={onDelete}>
+                        削除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
-          </div>
-
-          {/* ── 12. ボタン群 — span both columns */}
-          <div className='flex flex-wrap items-center gap-2 border-t border-border pt-4 md:col-span-2'>
-            <Button
-              type='submit'
-              size='sm'
-              className='flex-1 text-footnote sm:flex-none'
-              disabled={isPending || hasRegexError}
-            >
-              {isPending ? '保存中...' : existing ? '更新' : '作成'}
-            </Button>
-            <Button
-              type='button'
-              variant='outline'
-              size='sm'
-              className='flex-1 text-footnote sm:flex-none'
-              onClick={() => navigate({ to: '/recordings/rules' })}
-            >
-              キャンセル
-            </Button>
-            {existing && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='sm'
-                    className='ml-auto h-8 gap-1.5 px-2.5 text-footnote text-destructive hover:bg-destructive/10 hover:text-destructive'
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 className='size-3.5' />
-                    削除
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>ルールを削除しますか？</AlertDialogTitle>
-                    <AlertDialogDescription>この操作は元に戻せません。</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className='text-footnote'>キャンセル</AlertDialogCancel>
-                    <AlertDialogAction variant='destructive' className='text-footnote' onClick={onDelete}>
-                      削除
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
-        </form>
+          </form>
+        </Form>
       </div>
     </div>
   )
