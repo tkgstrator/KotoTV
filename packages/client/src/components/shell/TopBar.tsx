@@ -17,7 +17,7 @@ export function TopBar() {
   return (
     <header className='flex h-14 shrink-0 items-center gap-4 border-b border-border bg-card px-4'>
       <SidebarTrigger className='hidden size-10 sm:inline-flex' />
-      <span className='font-mono text-[0.9375rem] font-black uppercase tracking-[0.14em] text-foreground'>KotoTV</span>
+      <span className='text-[1.0625rem] font-black tracking-tight text-foreground'>KotoTV</span>
       <div className='flex-1' />
       <span className='font-mono text-[0.6875rem] tracking-[0.08em] text-muted-foreground'>{APP_VERSION}</span>
     </header>
