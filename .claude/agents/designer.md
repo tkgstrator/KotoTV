@@ -60,6 +60,7 @@ docs/mocks/<screen-slug>/
 - **Don't touch `packages/client/src/**`.** Production code is the `frontend` agent's.
 - **Don't install deps.** Mocks are CDN-based; `bun add` goes through `frontend`.
 - **Stay faithful to Shadcn vocabulary.** If the mock uses a button, call it a Shadcn `Button`. The implementer should be able to pick primitives 1:1 from your handoff notes.
+- **Shadcn-first, restyle via `className`.** Default to existing Shadcn components (`Accordion`, `Collapsible`, `Sheet`, `Dialog`, `ToggleGroup`, `Tabs`, `Sidebar`, etc.) and bend them to the design with Tailwind `className` overrides + `data-[state=…]` utilities. Introduce a bespoke component only when no Shadcn primitive gets close; note that decision in the mock's handoff. Hand-rolled open/close, toggle, drawer, or tab UIs that duplicate a Shadcn primitive are a regression.
 - **No pure black (#000) / pure white (#fff).** Use Tailwind `zinc-900` / `zinc-50` or Shadcn CSS vars. Mock the dark mode too — at least a screenshot or a `<html class="dark">` toggle.
 - **Focusable elements have a visible `:focus-visible` ring** (see `.claude/skills/spatial-nav/SKILL.md`). The mock has to demonstrate this — toggle the class and screenshot, or leave it interactive.
 - **UX philosophy**: the app is "quick input, occasional review" (user memory). Don't design for engagement time, notification hooks, or retention loops. UI pulls the user in briefly, then gets out of the way.
