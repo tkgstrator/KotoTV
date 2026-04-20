@@ -1,8 +1,10 @@
 /**
  * Two nav surfaces exported from one file:
- *   - `AppSidebar`: desktop left sidebar, rendered inside `SidebarProvider`.
- *     Collapses to 48 px "icon" mode automatically on playback routes
- *     (handled in AppShell via controlled `open` prop).
+ *   - `AppSidebar`: desktop left sidebar. `collapsible="icon"` keeps a
+ *     72 px rail of 24 px icons visible even when collapsed, so the user
+ *     always has the nav affordances. Padding is tuned so the icon
+ *     column sits at 24 px from the viewport edge in both expanded and
+ *     collapsed states, matching the TopBar hamburger.
  *   - `MobileTabs`: mobile bottom tab bar (bottom-fixed), unchanged.
  * Active-route detection uses TanStack Router's `useRouterState`.
  */
@@ -33,6 +35,21 @@ function useIsActive() {
   return (to: string) => (to === '/' ? path === '/' : path.startsWith(to))
 }
 
+// Row class applied to every SidebarMenuButton so icons are 24 px and the
+// button is tall enough to fit them with matching vertical padding, in
+// both expanded and icon-only modes. Shadcn forces `size-8 p-2` in icon
+// mode with `!`, so we override with our own `!size-10 !p-2` to hold the
+// 24 px icon without clipping.
+const MENU_BUTTON_CLS = 'h-10 [&>svg]:size-6 group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-2'
+
+// SidebarGroup/Footer override: `px-4` lines the icon column up with the
+// TopBar hamburger and centers the 40 px button inside the 72 px icon
+// rail. Math:
+//   TopBar icon left = viewport-px-4 (16) + (size-10 button - size-6 icon) / 2 (8) = 24 px
+//   Sidebar icon left (expanded) = sidebar-px-4 (16) + button-p-2 (8) = 24 px
+//   Sidebar icon left (icon rail) = sidebar-px-4 (16) + button-p-2 (8) = 24 px
+const MENU_CONTAINER_CLS = 'px-4'
+
 export function AppSidebar() {
   const isActive = useIsActive()
 
@@ -41,11 +58,11 @@ export function AppSidebar() {
     // the 56 px TopBar; without this override it would overlap the header.
     <Sidebar collapsible='icon' className='top-14 !h-[calc(100svh-3.5rem)]'>
       <SidebarContent>
-        <SidebarGroup>
+        <SidebarGroup className={MENU_CONTAINER_CLS}>
           <SidebarMenu>
             {NAV_ITEMS.map(({ to, label, Icon }) => (
               <SidebarMenuItem key={to}>
-                <SidebarMenuButton asChild isActive={isActive(to)} tooltip={label}>
+                <SidebarMenuButton asChild isActive={isActive(to)} className={MENU_BUTTON_CLS}>
                   <Link to={to}>
                     <Icon aria-hidden='true' />
                     <span>{label}</span>
@@ -56,10 +73,10 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className={MENU_CONTAINER_CLS}>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive(SETTINGS_ITEM.to)} tooltip={SETTINGS_ITEM.label}>
+            <SidebarMenuButton asChild isActive={isActive(SETTINGS_ITEM.to)} className={MENU_BUTTON_CLS}>
               <Link to={SETTINGS_ITEM.to}>
                 <SETTINGS_ITEM.Icon aria-hidden='true' />
                 <span>{SETTINGS_ITEM.label}</span>
