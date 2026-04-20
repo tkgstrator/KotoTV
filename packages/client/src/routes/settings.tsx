@@ -65,7 +65,7 @@ function DiagRow({ status, name, detail, sub, extra, logTail }: DiagRowProps) {
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-[4px] border border-border',
+        'overflow-hidden rounded-[4px] border border-border bg-card',
         status === 'warn' && 'border-l-[3px] border-l-amber-500',
         status === 'err' && 'border-l-[3px] border-l-destructive'
       )}
