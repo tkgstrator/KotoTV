@@ -804,8 +804,8 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             <div className='flex flex-wrap items-center gap-2 border-t border-border pt-4 xl:col-span-2'>
               <Button
                 type='submit'
-                size='lg'
-                className='h-12 flex-1 px-6 text-body font-semibold sm:flex-none sm:min-w-[160px]'
+                size='sm'
+                className='h-8 flex-1 gap-1.5 px-3 text-footnote sm:flex-none sm:min-w-[120px]'
                 disabled={isPending || hasRegexError}
               >
                 {isPending ? '保存中...' : existing ? '更新' : '作成'}
@@ -813,8 +813,8 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
               <Button
                 type='button'
                 variant='outline'
-                size='lg'
-                className='h-12 flex-1 px-6 text-body sm:flex-none sm:min-w-[160px]'
+                size='sm'
+                className='h-8 flex-1 gap-1.5 px-3 text-footnote sm:flex-none sm:min-w-[120px]'
                 onClick={() => navigate({ to: '/recordings/rules' })}
               >
                 キャンセル
