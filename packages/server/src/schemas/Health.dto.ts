@@ -33,12 +33,18 @@ export const TunersStatusSchema = SubsystemStatusSchema.extend({
   devices: z.array(TunerDeviceSchema)
 })
 
+export const RuntimeStatusSchema = z.object({
+  name: z.string(),
+  version: z.string()
+})
+
 export const HealthResponseSchema = z.object({
   mirakc: MirakcStatusSchema,
   postgres: PostgresStatusSchema,
   ffmpeg: SubsystemStatusSchema,
   tuners: TunersStatusSchema,
-  disk: DiskStatusSchema
+  disk: DiskStatusSchema,
+  runtime: RuntimeStatusSchema
 })
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>

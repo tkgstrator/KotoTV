@@ -202,8 +202,12 @@ const healthRoute = new Hono()
       checkTuners(),
       checkDisk()
     ])
+    const runtime: HealthResponse['runtime'] =
+      typeof Bun !== 'undefined'
+        ? { name: 'Bun', version: Bun.version }
+        : { name: 'Node', version: process.versions.node }
 
-    return c.json({ mirakc, postgres, ffmpeg, tuners, disk } satisfies HealthResponse)
+    return c.json({ mirakc, postgres, ffmpeg, tuners, disk, runtime } satisfies HealthResponse)
   })
   .get('/logs', zValidator('query', LogSubsystemParamSchema), (c) => {
     const { subsystem } = c.req.valid('query')
