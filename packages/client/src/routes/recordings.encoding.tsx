@@ -6,7 +6,7 @@ import { RecordingsReserveAction } from '@/components/recording/recordings-reser
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
-export const Route = createFileRoute('/recordings/failed')({
+export const Route = createFileRoute('/recordings/encoding')({
   component: EncodePage
 })
 
