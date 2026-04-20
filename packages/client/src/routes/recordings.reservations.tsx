@@ -1,9 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { addDays, addMinutes, format, setHours, setMinutes, startOfHour } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { CalendarPlus } from 'lucide-react'
 import { useState } from 'react'
+import { RecordingPageHeader } from '@/components/recording/recording-page-header'
 import { RecordingsReserveAction } from '@/components/recording/recordings-reserve-action'
 import { StatusChip } from '@/components/shared/status-chip'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/recordings/reservations')({
@@ -172,9 +175,25 @@ function ReservationRow({ r }: { r: Reservation }) {
 function ReservationsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const groups = groupByDay(DUMMY_RESERVATIONS)
+  const totalCount = DUMMY_RESERVATIONS.length
+  const ruleCount = DUMMY_RESERVATIONS.filter((r) => r.ruleName != null).length
 
   return (
     <>
+      <RecordingPageHeader
+        ariaLabel='録画予約ヘッダー'
+        stats={[
+          { label: '予約', value: totalCount },
+          { label: 'ルール由来', value: ruleCount },
+          { label: '手動', value: totalCount - ruleCount }
+        ]}
+        action={
+          <Button size='sm' className='h-8 gap-1.5 px-3 text-footnote' onClick={() => setFormOpen(true)}>
+            <CalendarPlus className='size-4' />
+            新規予約
+          </Button>
+        }
+      />
       <div className='flex-1 overflow-y-auto pb-16'>
         {groups.length === 0 ? (
           <div className='px-4 py-12'>

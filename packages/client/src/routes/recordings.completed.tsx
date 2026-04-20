@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { addMinutes, startOfHour, subDays, subHours } from 'date-fns'
 import { useMemo, useState } from 'react'
 import { DoneCard } from '@/components/recording/recording-list-items'
+import { RecordingPageHeader } from '@/components/recording/recording-page-header'
 import { RecordingsReserveAction } from '@/components/recording/recordings-reserve-action'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRecordingEvents, useRecordings } from '@/hooks/useRecordings'
@@ -224,8 +225,17 @@ function CompletedPage() {
     )
   }
 
+  const totalSizeGB = items.reduce((sum, r) => sum + (r.sizeBytes ?? 0), 0) / (1024 * 1024 * 1024)
+
   return (
     <>
+      <RecordingPageHeader
+        ariaLabel='録画済みヘッダー'
+        stats={[
+          { label: '件数', value: items.length },
+          { label: '合計', value: `${totalSizeGB.toFixed(1)} GB` }
+        ]}
+      />
       <div className='flex-1 overflow-y-auto pb-16'>
         {/* YouTube-style responsive grid: ~260px min card, gap tuned so
             the rows breathe like the YT home feed. */}

@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { format, subMinutes } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { useState } from 'react'
+import { RecordingPageHeader } from '@/components/recording/recording-page-header'
 import { RecordingsReserveAction } from '@/components/recording/recordings-reserve-action'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -210,24 +211,21 @@ function EncodePage() {
 
   return (
     <>
+      <RecordingPageHeader
+        ariaLabel='エンコードヘッダー'
+        stats={[
+          { label: 'エンコード中', value: activeCount, tone: activeCount > 0 ? 'primary' : 'default' },
+          { label: '待機', value: waitingCount }
+        ]}
+      />
       <div className='flex-1 overflow-y-auto pb-16'>
-        {/* Summary strip */}
-        <div className='flex items-center gap-4 px-4 pt-4 pb-3 text-footnote text-muted-foreground'>
-          <span>
-            エンコード中 <span className='font-semibold text-foreground'>{activeCount}</span>
-          </span>
-          <span>
-            待機 <span className='font-semibold text-foreground'>{waitingCount}</span>
-          </span>
-        </div>
-
         {/* Queue list */}
         {jobs.length === 0 ? (
           <div className='px-4 py-12'>
             <p className='text-footnote text-muted-foreground'>キューは空です</p>
           </div>
         ) : (
-          <div className='mx-4 overflow-hidden rounded-[4px] border border-border'>
+          <div className='mx-4 mt-4 overflow-hidden rounded-[4px] border border-border'>
             {jobs.map((j) => (
               <EncodeRow key={j.id} job={j} />
             ))}
