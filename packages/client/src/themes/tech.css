@@ -29,6 +29,17 @@
   --radius-action: calc(var(--radius) - 2px);
   --text-status: 0.75rem;
   --tracking-status: 0.05em;
+
+  /* Typography scale — names follow SwiftUI's standard font text styles so
+   * the semantic hierarchy is familiar (caption2 smallest, title3 largest
+   * currently in use). Prefer these over `text-[0.75rem]` bracket notation
+   * so a future size bump only needs to edit this file. */
+  --text-caption2: 0.625rem; /* 10px — badge counts, micro metadata */
+  --text-caption: 0.6875rem; /* 11px — small uppercase labels, dense chrome */
+  --text-footnote: 0.75rem; /* 12px — tab labels, sub text, section headings */
+  --text-subheadline: 0.8125rem; /* 13px — list row primary text */
+  --text-body: 0.875rem; /* 14px — body, settings row title */
+  --text-title3: 0.9375rem; /* 15px — page header title */
 }
 
 @layer base {
@@ -68,8 +79,8 @@
     /* Every page that declares a <PageHeader> gets this height. Content of the
      * header (title / filter / tabs / back button) is page-specific, but the
      * vertical budget is theme-controlled so the visual rhythm across pages
-     * stays consistent. The channel-list TypeFilter uses this slot. */
-    --page-header-h: 48px;
+     * stays consistent. SegmentedFilter is the primary content for this slot. */
+    --page-header-h: 40px;
 
     /* ── Player surfaces ───────────────────────────────────────────── */
     /* live-player v10: permanent diagnostic sidebar on desktop. */
