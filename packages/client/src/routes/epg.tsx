@@ -106,8 +106,14 @@ function EpgPage() {
   if (channelsPending) {
     return (
       <>
-        <EpgHeader windowStart={windowStart} onPrevDay={goToPrevDay} onNextDay={goToNextDay} onNow={goToNow} />
-        <EpgTypeBar type={type} onChange={setType} />
+        <EpgHeader
+          type={type}
+          onChangeType={setType}
+          windowStart={windowStart}
+          onPrevDay={goToPrevDay}
+          onNextDay={goToNextDay}
+          onNow={goToNow}
+        />
         <div className='flex flex-col gap-2 p-4'>
           {Array.from({ length: 8 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton
@@ -121,8 +127,14 @@ function EpgPage() {
   if (channelsError) {
     return (
       <>
-        <EpgHeader windowStart={windowStart} onPrevDay={goToPrevDay} onNextDay={goToNextDay} onNow={goToNow} />
-        <EpgTypeBar type={type} onChange={setType} />
+        <EpgHeader
+          type={type}
+          onChangeType={setType}
+          windowStart={windowStart}
+          onPrevDay={goToPrevDay}
+          onNextDay={goToNextDay}
+          onNow={goToNow}
+        />
         <div className='flex flex-col items-center justify-center gap-2 py-16'>
           <StatusChip variant='err'>サーバーに接続できません</StatusChip>
           <p className='text-footnote text-muted-foreground'>mirakc が起動しているか確認してください</p>
@@ -134,8 +146,14 @@ function EpgPage() {
   if (channels.length === 0) {
     return (
       <>
-        <EpgHeader windowStart={windowStart} onPrevDay={goToPrevDay} onNextDay={goToNextDay} onNow={goToNow} />
-        <EpgTypeBar type={type} onChange={setType} />
+        <EpgHeader
+          type={type}
+          onChangeType={setType}
+          windowStart={windowStart}
+          onPrevDay={goToPrevDay}
+          onNextDay={goToNextDay}
+          onNow={goToNow}
+        />
         <p className='px-4 py-8 text-body text-muted-foreground'>チャンネルが見つかりません</p>
       </>
     )
@@ -143,8 +161,14 @@ function EpgPage() {
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <EpgHeader windowStart={windowStart} onPrevDay={goToPrevDay} onNextDay={goToNextDay} onNow={goToNow} />
-      <EpgTypeBar type={type} onChange={setType} />
+      <EpgHeader
+        type={type}
+        onChangeType={setType}
+        windowStart={windowStart}
+        onPrevDay={goToPrevDay}
+        onNextDay={goToNextDay}
+        onNow={goToNow}
+      />
       <EPGGrid
         channels={channels}
         programsByChannel={programsByChannel}
@@ -156,24 +180,18 @@ function EpgPage() {
   )
 }
 
-function EpgTypeBar({ type, onChange }: { type: ChannelType; onChange: (v: ChannelType) => void }) {
-  return (
-    <div className='sticky top-page-header z-20 flex h-page-header shrink-0 border-b border-border bg-background'>
-      <SegmentedFilter ariaLabel='チャンネル種別' tabs={CHANNEL_TYPE_TABS} value={type} onChange={onChange} />
-    </div>
-  )
-}
-
 // ─── Page header sub-component ─────────────────────────────────────────────────
 
 interface EpgHeaderProps {
+  type: ChannelType
+  onChangeType: (v: ChannelType) => void
   windowStart: Date
   onPrevDay: () => void
   onNextDay: () => void
   onNow: () => void
 }
 
-function EpgHeader({ windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps) {
+function EpgHeader({ type, onChangeType, windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps) {
   const dateLabel = windowStart.toLocaleDateString('ja-JP', {
     month: 'numeric',
     day: 'numeric',
@@ -181,11 +199,16 @@ function EpgHeader({ windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps)
   })
 
   return (
-    <PageHeader ariaLabel='番組表ヘッダー' className='items-center gap-2 px-3'>
-      <div className='flex-1' />
+    <PageHeader ariaLabel='番組表ヘッダー' className='items-center gap-2 pr-3'>
+      {/* Left half: channel-type filter — takes the free space so the tabs
+          stretch to fill the available width without growing into the
+          date-navigation cluster on the right. */}
+      <div className='flex min-w-0 flex-1'>
+        <SegmentedFilter ariaLabel='チャンネル種別' tabs={CHANNEL_TYPE_TABS} value={type} onChange={onChangeType} />
+      </div>
 
-      {/* Date navigation */}
-      <div className='flex items-center gap-1'>
+      {/* Right half: date navigation + 今すぐ jump */}
+      <div className='flex shrink-0 items-center gap-1'>
         <Button
           variant='outline'
           size='sm'
@@ -212,7 +235,7 @@ function EpgHeader({ windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps)
       <Button
         variant='default'
         size='sm'
-        className='h-7 px-3 text-footnote font-bold'
+        className='h-7 shrink-0 px-3 text-footnote font-bold'
         onClick={onNow}
         aria-label='現在時刻へジャンプ'
       >
