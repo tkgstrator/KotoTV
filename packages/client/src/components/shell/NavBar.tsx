@@ -39,11 +39,11 @@ function useIsActive() {
 // button is tall enough to fit them with matching vertical padding, in
 // both expanded and icon-only modes. Shadcn forces `size-8 p-2` in icon
 // mode with `!`, so we override with our own `!size-10 !p-2` to hold the
-// 24 px icon without clipping. `gap-4` between icon and label matches the
-// TopBar's `gap-4` between hamburger and wordmark so the two clusters
-// share the same internal spacing.
+// 24 px icon without clipping. `gap-6` (24 px) between icon and label
+// matches the visual gap in the TopBar: 8 px of post-icon button padding
+// + 16 px of `gap-4` between the hamburger and KotoTV = 24 px.
 const MENU_BUTTON_CLS =
-  'h-10 gap-4 [&>svg]:size-6 group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-2'
+  'h-10 gap-6 [&>svg]:size-6 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-2!'
 
 // SidebarGroup/Footer override: `px-4` lines the icon column up with the
 // TopBar hamburger and centers the 40 px button inside the 72 px icon
@@ -59,7 +59,7 @@ export function AppSidebar() {
   return (
     // top-14 + the matching height lift the fixed sidebar container below
     // the 56 px TopBar; without this override it would overlap the header.
-    <Sidebar collapsible='icon' className='top-14 !h-[calc(100svh-3.5rem)]'>
+    <Sidebar collapsible='icon' className='top-14 h-[calc(100svh-3.5rem)]!'>
       <SidebarContent>
         <SidebarGroup className={MENU_CONTAINER_CLS}>
           <SidebarMenu>
