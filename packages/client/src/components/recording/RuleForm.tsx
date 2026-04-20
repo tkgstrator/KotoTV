@@ -205,282 +205,295 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             </div>
           </CollapsibleContent>
         </Collapsible>
-        <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-5 p-4'>
-          {/* ── 1. ルール名 */}
-          <div className='flex flex-col gap-1.5'>
-            <Label className='text-footnote font-semibold text-muted-foreground'>ルール名</Label>
-            <Input
-              {...register('name', { required: true })}
-              className='h-9 text-body'
-              placeholder='例: NHKスペシャル'
-              autoFocus
-            />
-          </div>
-
-          {/* ── 3. キーワード */}
-          <div className='flex flex-col gap-2'>
-            <div className='flex items-center justify-between gap-2'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>キーワード</Label>
-              <span className={cn('tabular-nums text-footnote text-muted-foreground', !previewRule && 'invisible')}>
-                {previewRule ? (isPreviewPending ? '…' : `${previewData?.matchCount ?? 0} 件ヒット`) : '0 件ヒット'}
-              </span>
+        <form onSubmit={handleSubmit(onSubmit)} className='grid grid-cols-1 gap-x-6 gap-y-5 p-4 md:grid-cols-2'>
+          {/* Left column — 検索条件. Independent flex stack so the
+              taller right column doesn't drag row heights around. */}
+          <div className='flex flex-col gap-5'>
+            {/* ── 1. ルール名 */}
+            <div className='flex flex-col gap-1.5'>
+              <Label className='text-footnote font-semibold text-muted-foreground'>ルール名</Label>
+              <Input
+                {...register('name', { required: true })}
+                className='h-9 text-body'
+                placeholder='例: NHKスペシャル'
+                autoFocus
+              />
             </div>
-            <Input
-              {...register('keyword')}
-              className={cn('h-9 text-body', keywordRegexError && 'border-destructive focus-visible:ring-destructive')}
-              placeholder='検索キーワード'
-              aria-invalid={keywordRegexError ? true : undefined}
-            />
-            {keywordRegexError && <p className='text-footnote text-destructive'>正規表現エラー: {keywordRegexError}</p>}
-            <div className='flex flex-wrap gap-2'>
-              <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
-                <span className='text-footnote font-semibold text-muted-foreground'>マッチ方法</span>
-                <ToggleGroup
-                  type='single'
-                  value={keywordMode}
-                  variant='outline'
-                  onValueChange={(v) => v && setValue('keywordMode', v as 'literal' | 'regex')}
-                  className='w-full gap-1 sm:w-auto'
-                >
-                  <ToggleGroupItem
-                    value='literal'
-                    className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                  >
-                    部分一致
-                  </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value='regex'
-                    className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                  >
-                    正規表現
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-              <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
-                <span className='text-footnote font-semibold text-muted-foreground'>対象</span>
-                <ToggleGroup
-                  type='single'
-                  variant='outline'
-                  value={keywordTarget}
-                  onValueChange={(v) => v && setValue('keywordTarget', v as 'title' | 'title_description')}
-                  className='w-full gap-1 sm:w-auto'
-                >
-                  <ToggleGroupItem
-                    value='title'
-                    className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                  >
-                    タイトル
-                  </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value='title_description'
-                    className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
-                  >
-                    タイトル+説明
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-            </div>
-          </div>
 
-          {/* ── 4. 除外キーワード */}
-          <div className='flex flex-col gap-1.5'>
-            <Label className='text-footnote font-semibold text-muted-foreground'>除外キーワード</Label>
-            <Input
-              {...register('excludeKeyword')}
-              className={cn(
-                'h-9 text-body',
-                excludeKeywordRegexError && 'border-destructive focus-visible:ring-destructive'
+            {/* ── 2. キーワード */}
+            <div className='flex flex-col gap-2'>
+              <div className='flex items-center justify-between gap-2'>
+                <Label className='text-footnote font-semibold text-muted-foreground'>キーワード</Label>
+                <span className={cn('tabular-nums text-footnote text-muted-foreground', !previewRule && 'invisible')}>
+                  {previewRule ? (isPreviewPending ? '…' : `${previewData?.matchCount ?? 0} 件ヒット`) : '0 件ヒット'}
+                </span>
+              </div>
+              <Input
+                {...register('keyword')}
+                className={cn(
+                  'h-9 text-body',
+                  keywordRegexError && 'border-destructive focus-visible:ring-destructive'
+                )}
+                placeholder='検索キーワード'
+                aria-invalid={keywordRegexError ? true : undefined}
+              />
+              {keywordRegexError && (
+                <p className='text-footnote text-destructive'>正規表現エラー: {keywordRegexError}</p>
               )}
-              placeholder='除外したいキーワード (任意)'
-              aria-invalid={excludeKeywordRegexError ? true : undefined}
-            />
-            {excludeKeywordRegexError && (
-              <p className='text-footnote text-destructive'>正規表現エラー: {excludeKeywordRegexError}</p>
-            )}
-          </div>
+              <div className='flex flex-wrap gap-2'>
+                <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
+                  <span className='text-footnote font-semibold text-muted-foreground'>マッチ方法</span>
+                  <ToggleGroup
+                    type='single'
+                    value={keywordMode}
+                    variant='outline'
+                    onValueChange={(v) => v && setValue('keywordMode', v as 'literal' | 'regex')}
+                    className='w-full gap-1 sm:w-auto'
+                  >
+                    <ToggleGroupItem
+                      value='literal'
+                      className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                    >
+                      部分一致
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value='regex'
+                      className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                    >
+                      正規表現
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+                <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
+                  <span className='text-footnote font-semibold text-muted-foreground'>対象</span>
+                  <ToggleGroup
+                    type='single'
+                    variant='outline'
+                    value={keywordTarget}
+                    onValueChange={(v) => v && setValue('keywordTarget', v as 'title' | 'title_description')}
+                    className='w-full gap-1 sm:w-auto'
+                  >
+                    <ToggleGroupItem
+                      value='title'
+                      className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                    >
+                      タイトル
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value='title_description'
+                      className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                    >
+                      タイトル+説明
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+              </div>
+            </div>
 
-          {/* ── 5. チャンネルピッカー */}
-          <div className='flex flex-col gap-2'>
-            <div className='flex items-center gap-2'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>チャンネル</Label>
-              {channelIds.length === 0 ? (
-                <StatusChip variant='muted' size='sm'>
-                  全て
-                </StatusChip>
-              ) : (
-                <StatusChip variant='info' size='sm'>
-                  {channelIds.length} 局
-                </StatusChip>
+            {/* ── 3. 除外キーワード */}
+            <div className='flex flex-col gap-1.5'>
+              <Label className='text-footnote font-semibold text-muted-foreground'>除外キーワード</Label>
+              <Input
+                {...register('excludeKeyword')}
+                className={cn(
+                  'h-9 text-body',
+                  excludeKeywordRegexError && 'border-destructive focus-visible:ring-destructive'
+                )}
+                placeholder='除外したいキーワード (任意)'
+                aria-invalid={excludeKeywordRegexError ? true : undefined}
+              />
+              {excludeKeywordRegexError && (
+                <p className='text-footnote text-destructive'>正規表現エラー: {excludeKeywordRegexError}</p>
               )}
             </div>
-            <ChannelPicker channels={channels} value={channelIds} onChange={(ids) => setValue('channelIds', ids)} />
           </div>
 
-          {/* ── 6. ジャンル */}
-          <div className='flex flex-col gap-2'>
-            <Label className='text-footnote font-semibold text-muted-foreground'>ジャンル</Label>
-            <div className='flex flex-wrap gap-1.5'>
-              {ARIB_GENRES.map((g) => {
-                const active = genres.includes(g.value)
-                return (
-                  <button
-                    key={g.value}
-                    type='button'
-                    onClick={() => {
-                      if (active) {
-                        setValue(
-                          'genres',
-                          genres.filter((v) => v !== g.value)
-                        )
-                      } else {
-                        setValue('genres', [...genres, g.value])
-                      }
-                    }}
-                    className={cn(
-                      'rounded border px-2.5 py-1 text-footnote transition-colors',
-                      active
-                        ? 'border-primary/40 bg-primary/12 text-primary'
-                        : 'border-border bg-muted/60 text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    {g.label}
-                  </button>
-                )
-              })}
+          {/* Right column — 対象・スケジュール・録画設定 */}
+          <div className='flex flex-col gap-5'>
+            {/* ── 4. チャンネルピッカー */}
+            <div className='flex flex-col gap-2'>
+              <div className='flex items-center gap-2'>
+                <Label className='text-footnote font-semibold text-muted-foreground'>チャンネル</Label>
+                {channelIds.length === 0 ? (
+                  <StatusChip variant='muted' size='sm'>
+                    全て
+                  </StatusChip>
+                ) : (
+                  <StatusChip variant='info' size='sm'>
+                    {channelIds.length} 局
+                  </StatusChip>
+                )}
+              </div>
+              <ChannelPicker channels={channels} value={channelIds} onChange={(ids) => setValue('channelIds', ids)} />
             </div>
-            <p className={cn('text-footnote text-muted-foreground', genres.length > 0 && 'invisible')}>
-              未選択 = 全ジャンル対象
-            </p>
-          </div>
 
-          {/* ── 7. 曜日 */}
-          <div className='flex flex-col gap-2'>
-            <Label className='text-footnote font-semibold text-muted-foreground'>曜日</Label>
-            <div className='flex gap-1.5'>
-              {DOW_LABELS.map((label, idx) => {
-                const active = dayOfWeek.includes(idx)
-                return (
-                  <button
-                    key={label}
-                    type='button'
-                    onClick={() => {
-                      if (active) {
-                        setValue(
-                          'dayOfWeek',
-                          dayOfWeek.filter((d) => d !== idx)
-                        )
-                      } else {
-                        setValue('dayOfWeek', [...dayOfWeek, idx].sort())
-                      }
-                    }}
-                    className={cn(
-                      'flex h-9 flex-1 items-center justify-center rounded border text-footnote font-semibold transition-colors sm:h-8 sm:w-8 sm:flex-none',
-                      active
-                        ? 'border-primary/40 bg-primary/12 text-primary'
-                        : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
+            {/* ── 5. ジャンル */}
+            <div className='flex flex-col gap-2'>
+              <Label className='text-footnote font-semibold text-muted-foreground'>ジャンル</Label>
+              <div className='flex flex-wrap gap-1.5'>
+                {ARIB_GENRES.map((g) => {
+                  const active = genres.includes(g.value)
+                  return (
+                    <button
+                      key={g.value}
+                      type='button'
+                      onClick={() => {
+                        if (active) {
+                          setValue(
+                            'genres',
+                            genres.filter((v) => v !== g.value)
+                          )
+                        } else {
+                          setValue('genres', [...genres, g.value])
+                        }
+                      }}
+                      className={cn(
+                        'rounded border px-2.5 py-1 text-footnote transition-colors',
+                        active
+                          ? 'border-primary/40 bg-primary/12 text-primary'
+                          : 'border-border bg-muted/60 text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'
+                      )}
+                    >
+                      {g.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className={cn('text-footnote text-muted-foreground', genres.length > 0 && 'invisible')}>
+                未選択 = 全ジャンル対象
+              </p>
             </div>
-          </div>
 
-          {/* ── 8. 時刻範囲 */}
-          <div className='flex flex-col gap-2'>
-            <Label className='text-footnote font-semibold text-muted-foreground'>時刻範囲</Label>
-            <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap'>
-              {TIME_PRESETS.map((p) => {
-                const isActive = activePreset?.label === p.label
-                return (
-                  <button
-                    key={p.label}
-                    type='button'
-                    onClick={() => {
-                      if (isActive) {
-                        setValue('timeStartMinutes', null)
-                        setValue('timeEndMinutes', null)
-                      } else {
-                        setValue('timeStartMinutes', p.start)
-                        setValue('timeEndMinutes', p.end)
-                      }
-                    }}
-                    className={cn(
-                      'h-8 rounded border px-2.5 text-footnote transition-colors',
-                      isActive
-                        ? 'border-primary/40 bg-primary/12 text-primary'
-                        : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    {p.label}
-                  </button>
-                )
-              })}
+            {/* ── 6. 曜日 */}
+            <div className='flex flex-col gap-2'>
+              <Label className='text-footnote font-semibold text-muted-foreground'>曜日</Label>
+              <div className='flex gap-1.5'>
+                {DOW_LABELS.map((label, idx) => {
+                  const active = dayOfWeek.includes(idx)
+                  return (
+                    <button
+                      key={label}
+                      type='button'
+                      onClick={() => {
+                        if (active) {
+                          setValue(
+                            'dayOfWeek',
+                            dayOfWeek.filter((d) => d !== idx)
+                          )
+                        } else {
+                          setValue('dayOfWeek', [...dayOfWeek, idx].sort())
+                        }
+                      }}
+                      className={cn(
+                        'flex h-9 flex-1 items-center justify-center rounded border text-footnote font-semibold transition-colors sm:h-8 sm:w-8 sm:flex-none',
+                        active
+                          ? 'border-primary/40 bg-primary/12 text-primary'
+                          : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                      )}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-            <div className='flex items-center gap-2'>
-              <Input
-                className='h-8 w-24 font-mono tabular-nums text-footnote'
-                placeholder='HH:MM'
-                value={timeStart != null ? minutesToHHMM(timeStart) : ''}
-                onChange={(e) => {
-                  const mins = HHMMToMinutes(e.target.value)
-                  setValue('timeStartMinutes', mins)
-                }}
-              />
-              <span className='text-footnote text-muted-foreground'>〜</span>
-              <Input
-                className='h-8 w-24 font-mono tabular-nums text-footnote'
-                placeholder='HH:MM'
-                value={timeEnd != null ? minutesToHHMM(timeEnd) : ''}
-                onChange={(e) => {
-                  const mins = HHMMToMinutes(e.target.value)
-                  setValue('timeEndMinutes', mins)
-                }}
-              />
-              {(timeStart != null || timeEnd != null) && (
-                <button
-                  type='button'
-                  className='text-footnote text-muted-foreground hover:text-destructive'
-                  onClick={() => {
-                    setValue('timeStartMinutes', null)
-                    setValue('timeEndMinutes', null)
+
+            {/* ── 7. 時刻範囲 */}
+            <div className='flex flex-col gap-2'>
+              <Label className='text-footnote font-semibold text-muted-foreground'>時刻範囲</Label>
+              <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap'>
+                {TIME_PRESETS.map((p) => {
+                  const isActive = activePreset?.label === p.label
+                  return (
+                    <button
+                      key={p.label}
+                      type='button'
+                      onClick={() => {
+                        if (isActive) {
+                          setValue('timeStartMinutes', null)
+                          setValue('timeEndMinutes', null)
+                        } else {
+                          setValue('timeStartMinutes', p.start)
+                          setValue('timeEndMinutes', p.end)
+                        }
+                      }}
+                      className={cn(
+                        'h-8 rounded border px-2.5 text-footnote transition-colors',
+                        isActive
+                          ? 'border-primary/40 bg-primary/12 text-primary'
+                          : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className='flex items-center gap-2'>
+                <Input
+                  className='h-8 w-24 font-mono tabular-nums text-footnote'
+                  placeholder='HH:MM'
+                  value={timeStart != null ? minutesToHHMM(timeStart) : ''}
+                  onChange={(e) => {
+                    const mins = HHMMToMinutes(e.target.value)
+                    setValue('timeStartMinutes', mins)
                   }}
-                >
-                  クリア
-                </button>
-              )}
+                />
+                <span className='text-footnote text-muted-foreground'>〜</span>
+                <Input
+                  className='h-8 w-24 font-mono tabular-nums text-footnote'
+                  placeholder='HH:MM'
+                  value={timeEnd != null ? minutesToHHMM(timeEnd) : ''}
+                  onChange={(e) => {
+                    const mins = HHMMToMinutes(e.target.value)
+                    setValue('timeEndMinutes', mins)
+                  }}
+                />
+                {(timeStart != null || timeEnd != null) && (
+                  <button
+                    type='button'
+                    className='text-footnote text-muted-foreground hover:text-destructive'
+                    onClick={() => {
+                      setValue('timeStartMinutes', null)
+                      setValue('timeEndMinutes', null)
+                    }}
+                  >
+                    クリア
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* ── 8. 優先度 */}
+            <div className='flex flex-col gap-1.5'>
+              <Label className='text-footnote font-semibold text-muted-foreground'>
+                優先度
+                <span className='ml-1.5 text-footnote text-muted-foreground'>(1=低 100=高、デフォルト50)</span>
+              </Label>
+              <Input
+                type='number'
+                min={1}
+                max={100}
+                {...register('priority', { valueAsNumber: true })}
+                className='h-8 w-24 tabular-nums text-body'
+              />
+            </div>
+
+            {/* ── 9. 重複回避 */}
+            <div className='flex items-center gap-3'>
+              <Switch
+                id='avoidDuplicates'
+                checked={avoidDuplicates}
+                onCheckedChange={(v) => setValue('avoidDuplicates', v)}
+              />
+              <Label htmlFor='avoidDuplicates' className='cursor-pointer text-footnote text-foreground'>
+                重複回避
+              </Label>
             </div>
           </div>
 
-          {/* ── 9. 優先度 */}
-          <div className='flex flex-col gap-1.5'>
-            <Label className='text-footnote font-semibold text-muted-foreground'>
-              優先度<span className='ml-1.5 text-footnote text-muted-foreground'>(1=低 100=高、デフォルト50)</span>
-            </Label>
-            <Input
-              type='number'
-              min={1}
-              max={100}
-              {...register('priority', { valueAsNumber: true })}
-              className='h-8 w-24 tabular-nums text-body'
-            />
-          </div>
-
-          {/* ── 10. 重複回避 */}
-          <div className='flex items-center gap-3'>
-            <Switch
-              id='avoidDuplicates'
-              checked={avoidDuplicates}
-              onCheckedChange={(v) => setValue('avoidDuplicates', v)}
-            />
-            <Label htmlFor='avoidDuplicates' className='cursor-pointer text-footnote text-foreground'>
-              重複回避
-            </Label>
-          </div>
-
-          {/* ── 11. ボタン群 */}
-          <div className='flex flex-wrap items-center gap-2 border-t border-border pt-4'>
+          {/* ── 10. ボタン群 — span both columns */}
+          <div className='flex flex-wrap items-center gap-2 border-t border-border pt-4 md:col-span-2'>
             <Button
               type='submit'
               size='sm'
