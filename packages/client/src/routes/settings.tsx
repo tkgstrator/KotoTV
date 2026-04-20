@@ -158,7 +158,6 @@ function StatusTab() {
 
       <SectHead>System</SectHead>
       <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
-        <DiagRow status='ok' name='RUNTIME' detail={`${data.runtime.name} ${data.runtime.version}`} logTail={null} />
         <DiagRow
           status={data.disk.status}
           name='DISK'
@@ -185,6 +184,7 @@ function StatusTab() {
           detail={data.postgres.detail}
           logTail={<HealthLogTail subsystem='postgres' status={data.postgres.status} />}
         />
+        <DiagRow status='ok' name='RUNTIME' detail={`${data.runtime.name} ${data.runtime.version}`} logTail={null} />
       </div>
     </div>
   )
