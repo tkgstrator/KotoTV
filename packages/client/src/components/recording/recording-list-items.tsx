@@ -57,10 +57,7 @@ function DeleteScheduleButton({ scheduleId }: { scheduleId: string }) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel className='text-footnote'>キャンセル</AlertDialogCancel>
-          <AlertDialogAction
-            className='bg-destructive text-footnote text-destructive-foreground hover:bg-destructive/90'
-            onClick={() => mutate(scheduleId)}
-          >
+          <AlertDialogAction variant='destructive' className='text-footnote' onClick={() => mutate(scheduleId)}>
             削除
           </AlertDialogAction>
         </AlertDialogFooter>
