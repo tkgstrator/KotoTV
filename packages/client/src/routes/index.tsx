@@ -14,10 +14,11 @@ function IndexPage() {
 
   return (
     <>
-      {/* Cap the filter at 480px (≈160px per tab) to match the EPG
-          header, so 2-char labels don't splay across the full width. */}
+      {/* Fixed 480px (≈160px per tab) — EPG mirrors this width so the
+          two pages feel like the same filter bar. `max-w-full` keeps it
+          safe on narrow viewports. */}
       <PageHeader ariaLabel='チャンネル種別フィルタ'>
-        <div className='flex min-w-0 max-w-[480px] flex-1 self-stretch'>
+        <div className='flex h-full w-[480px] max-w-full self-stretch'>
           <SegmentedFilter ariaLabel='チャンネル種別' tabs={CHANNEL_TYPE_TABS} value={filter} onChange={setFilter} />
         </div>
       </PageHeader>
