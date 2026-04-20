@@ -24,6 +24,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { type EncodePrefs, useEncodePrefs } from '@/hooks/useEncodePrefs'
 import {
   useCreateRecordingRule,
   useDeleteRecordingRule,
@@ -56,30 +57,32 @@ interface RuleFormProps {
   existing?: RecordingRule
 }
 
-const DEFAULT_VALUES: CreateRecordingRule = {
-  name: '',
-  enabled: true,
-  keyword: '',
-  keywordMode: 'literal',
-  keywordTarget: 'title',
-  excludeKeyword: '',
-  channelIds: [],
-  genres: [],
-  dayOfWeek: [0, 1, 2, 3, 4, 5, 6],
-  timeStartMinutes: null,
-  timeEndMinutes: null,
-  priority: 50,
-  avoidDuplicates: true,
-  excludeReruns: false,
-  newOnly: false,
-  marginStartMinutes: 0,
-  marginEndMinutes: 0,
-  minDurationMinutes: 0,
-  keepLatestN: 0,
-  postEncode: false,
-  postEncodeCodec: 'avc',
-  postEncodeQuality: 'medium',
-  postEncodeTiming: 'immediate'
+function buildDefaultValues(encodeDefaults: EncodePrefs): CreateRecordingRule {
+  return {
+    name: '',
+    enabled: true,
+    keyword: '',
+    keywordMode: 'literal',
+    keywordTarget: 'title',
+    excludeKeyword: '',
+    channelIds: [],
+    genres: [],
+    dayOfWeek: [0, 1, 2, 3, 4, 5, 6],
+    timeStartMinutes: null,
+    timeEndMinutes: null,
+    priority: 50,
+    avoidDuplicates: true,
+    excludeReruns: false,
+    newOnly: false,
+    marginStartMinutes: 0,
+    marginEndMinutes: 0,
+    minDurationMinutes: 0,
+    keepLatestN: 0,
+    postEncode: encodeDefaults.enabled,
+    postEncodeCodec: encodeDefaults.codec,
+    postEncodeQuality: encodeDefaults.quality,
+    postEncodeTiming: encodeDefaults.timing
+  }
 }
 
 function toCreateRule(existing: RecordingRule): CreateRecordingRule {
@@ -120,9 +123,10 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   const createMutation = useCreateRecordingRule()
   const updateMutation = useUpdateRecordingRule()
   const deleteMutation = useDeleteRecordingRule()
+  const { prefs: encodePrefs } = useEncodePrefs()
 
   const form = useForm<CreateRecordingRule>({
-    defaultValues: existing ? toCreateRule(existing) : DEFAULT_VALUES
+    defaultValues: existing ? toCreateRule(existing) : buildDefaultValues(encodePrefs)
   })
 
   useEffect(() => {

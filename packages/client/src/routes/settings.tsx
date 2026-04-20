@@ -4,10 +4,12 @@ import { StatusChip } from '@/components/shared/status-chip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useEncodePrefs } from '@/hooks/useEncodePrefs'
 import { useHealth } from '@/hooks/useHealth'
 import { type CodecChoice, type QualityChoice, usePlaybackPrefs } from '@/hooks/usePlaybackPrefs'
 import { type ThemeChoice, useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
+import type { EncodeCodec, EncodeQuality, EncodeTiming } from '@/types/RecordingRule'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage
@@ -424,6 +426,152 @@ function PlaybackTab() {
   )
 }
 
+// ─── Encode tab ───────────────────────────────────────────────────────────────
+
+const ENCODE_CODEC_OPTIONS: { value: EncodeCodec; label: string; detail: string }[] = [
+  { value: 'avc', label: 'AVC', detail: '最も互換性が高い。同画質だとサイズ大きめ' },
+  { value: 'hevc', label: 'HEVC', detail: 'AVC より 30-50% 省サイズ。対応 GPU 推奨' },
+  { value: 'vp9', label: 'VP9', detail: 'オープン規格で HEVC 同等の圧縮率' }
+]
+
+const ENCODE_QUALITY_OPTIONS: { value: EncodeQuality; label: string; detail: string }[] = [
+  { value: 'high', label: 'HIGH', detail: '画質優先。ファイルサイズ大' },
+  { value: 'medium', label: 'MED', detail: '画質とサイズのバランス型' },
+  { value: 'low', label: 'LOW', detail: '省容量。モバイル視聴向け' }
+]
+
+const ENCODE_TIMING_OPTIONS: { value: EncodeTiming; label: string; detail: string }[] = [
+  { value: 'immediate', label: '録画直後', detail: '録画完了後すぐにエンコード開始' },
+  { value: 'idle', label: 'アイドル時', detail: '他の録画がない時間帯にまとめて処理' }
+]
+
+function EncodeTab() {
+  const { prefs, update } = useEncodePrefs()
+
+  return (
+    <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
+      <SectHead
+        action={
+          <Switch
+            checked={prefs.enabled}
+            onCheckedChange={(v) => update({ enabled: v })}
+            aria-label='デフォルトで録画後にエンコード'
+          />
+        }
+      >
+        録画後エンコードをデフォルトで有効化
+      </SectHead>
+      <p className='mb-4 text-footnote text-muted-foreground'>
+        新規ルール作成時の「録画後にエンコード」の初期値になります。既存ルールには影響しません。
+      </p>
+
+      <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
+        <div>
+          <SectHead
+            action={
+              <OptionPicker<EncodeCodec>
+                ariaLabel='デフォルトコーデック'
+                value={prefs.codec}
+                options={ENCODE_CODEC_OPTIONS}
+                onChange={(v) => update({ codec: v })}
+              />
+            }
+          >
+            コーデック
+          </SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+            <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
+              {ENCODE_CODEC_OPTIONS.map((o) => (
+                <div key={o.value} className='flex h-7 items-center gap-3'>
+                  <dt
+                    className={cn(
+                      'w-[64px] shrink-0 font-semibold',
+                      prefs.codec === o.value ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  >
+                    {o.label}
+                  </dt>
+                  <dd className='min-w-0 truncate text-muted-foreground'>{o.detail}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+
+        <div>
+          <SectHead
+            action={
+              <OptionPicker<EncodeQuality>
+                ariaLabel='デフォルト画質'
+                value={prefs.quality}
+                options={ENCODE_QUALITY_OPTIONS}
+                onChange={(v) => update({ quality: v })}
+              />
+            }
+          >
+            画質
+          </SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+            <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
+              {ENCODE_QUALITY_OPTIONS.map((o) => (
+                <div key={o.value} className='flex h-7 items-center gap-3'>
+                  <dt
+                    className={cn(
+                      'w-[64px] shrink-0 font-semibold',
+                      prefs.quality === o.value ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  >
+                    {o.label}
+                  </dt>
+                  <dd className='min-w-0 truncate text-muted-foreground'>{o.detail}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </div>
+
+      <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
+        <div>
+          <SectHead
+            action={
+              <OptionPicker<EncodeTiming>
+                ariaLabel='デフォルトタイミング'
+                value={prefs.timing}
+                options={ENCODE_TIMING_OPTIONS}
+                onChange={(v) => update({ timing: v })}
+              />
+            }
+          >
+            タイミング
+          </SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+            <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
+              {ENCODE_TIMING_OPTIONS.map((o) => (
+                <div key={o.value} className='flex h-7 items-center gap-3'>
+                  <dt
+                    className={cn(
+                      'w-[84px] shrink-0 font-semibold',
+                      prefs.timing === o.value ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  >
+                    {o.label}
+                  </dt>
+                  <dd className='min-w-0 truncate text-muted-foreground'>{o.detail}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </div>
+
+      <p className='mt-3 text-footnote text-muted-foreground'>
+        ブラウザのローカルストレージに保存されます (端末ごと・アカウント同期なし)
+      </p>
+    </div>
+  )
+}
+
 // ─── About tab ────────────────────────────────────────────────────────────────
 
 const ABOUT_ROWS = [
@@ -504,7 +652,7 @@ function SettingsPage() {
           ~160px cell width used elsewhere. `variant="line"` swaps the
           pill-style active state for an underline via the trigger's
           ::after, which is what the channel/EPG filter uses visually. */}
-      <div className='sticky top-0 z-10 flex h-page-header w-[480px] max-w-full shrink-0 bg-background'>
+      <div className='sticky top-0 z-10 flex h-page-header w-[600px] max-w-full shrink-0 bg-background'>
         <TabsList variant='line' className='h-full! w-full gap-0 p-0'>
           <TabsTrigger
             value='status'
@@ -517,6 +665,12 @@ function SettingsPage() {
             className='h-full rounded-none px-0 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:after:bottom-0'
           >
             再生
+          </TabsTrigger>
+          <TabsTrigger
+            value='encode'
+            className='h-full rounded-none px-0 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:after:bottom-0'
+          >
+            エンコード
           </TabsTrigger>
           <TabsTrigger
             value='display'
@@ -538,6 +692,9 @@ function SettingsPage() {
       </TabsContent>
       <TabsContent value='playback' className='mt-0 flex-1'>
         <PlaybackTab />
+      </TabsContent>
+      <TabsContent value='encode' className='mt-0 flex-1'>
+        <EncodeTab />
       </TabsContent>
       <TabsContent value='display' className='mt-0 flex-1'>
         <DisplayTab />
