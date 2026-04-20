@@ -435,7 +435,7 @@ const ABOUT_ROWS = [
 const LINK_ROWS = [
   { key: 'repo', val: 'GitHub', href: 'https://github.com' },
   { key: 'license', val: 'MIT License', href: '#' },
-  { key: 'desc', val: 'KonomiTV clone — 外出先ライブ視聴', href: null }
+  { key: 'desc', val: 'KotoTV — 外出先ライブ視聴', href: null }
 ]
 
 function AboutTab() {
