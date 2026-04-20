@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { HealthLogTail } from '@/components/settings/HealthLogTail'
 import { StatusChip } from '@/components/shared/status-chip'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useHealth } from '@/hooks/useHealth'
 import { type CodecChoice, type QualityChoice, usePlaybackPrefs } from '@/hooks/usePlaybackPrefs'
 import { type ThemeChoice, useTheme } from '@/hooks/useTheme'
@@ -189,7 +189,7 @@ function StatusTab() {
   )
 }
 
-// ─── Theme segment control ────────────────────────────────────────────────────
+// ─── Option picker (shared) ──────────────────────────────────────────────────
 
 const THEME_OPTIONS: { value: ThemeChoice; label: string }[] = [
   { value: 'light', label: 'LIGHT' },
@@ -197,27 +197,34 @@ const THEME_OPTIONS: { value: ThemeChoice; label: string }[] = [
   { value: 'system', label: 'AUTO' }
 ]
 
-const SEGMENT_ITEM_CLASS =
-  'bg-muted text-muted-foreground hover:bg-background/60 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:font-semibold data-[state=on]:hover:bg-primary'
+interface OptionPickerProps<T extends string> {
+  ariaLabel: string
+  value: T
+  options: readonly { value: T; label: string }[]
+  onChange: (v: T) => void
+}
 
-function ThemeSegment() {
-  const { theme, setTheme } = useTheme()
-
+/**
+ * The card above already shows every option + its description as a
+ * breakdown row; the picker only needs to surface which one is active
+ * and let the user change it. A compact Select stays out of the way,
+ * works at any viewport width, and avoids the alignment juggling a
+ * horizontal segment bar required.
+ */
+function OptionPicker<T extends string>({ ariaLabel, value, options, onChange }: OptionPickerProps<T>) {
   return (
-    <ToggleGroup
-      type='single'
-      value={theme}
-      onValueChange={(v) => v && setTheme(v as ThemeChoice)}
-      aria-label='テーマ選択'
-      size='sm'
-      className='shrink-0'
-    >
-      {THEME_OPTIONS.map((opt) => (
-        <ToggleGroupItem key={opt.value} value={opt.value} className={SEGMENT_ITEM_CLASS}>
-          {opt.label}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
+    <Select value={value} onValueChange={(v) => onChange(v as T)}>
+      <SelectTrigger size='sm' aria-label={ariaLabel} className='w-[120px]'>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent align='end'>
+        {options.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -230,10 +237,10 @@ const THEME_LABELS: Record<ThemeChoice, string> = {
 }
 
 function DisplayTab() {
-  const { theme } = useTheme()
+  const { theme, setTheme } = useTheme()
   return (
     <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
-      <SectHead action={<ThemeSegment />}>テーマ</SectHead>
+      <SectHead>テーマ</SectHead>
       <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
         <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
           {THEME_OPTIONS.map((o) => (
@@ -250,6 +257,9 @@ function DisplayTab() {
             </div>
           ))}
         </dl>
+        <div className='flex justify-end border-t border-border/60 px-3 py-2'>
+          <OptionPicker<ThemeChoice> ariaLabel='テーマ選択' value={theme} options={THEME_OPTIONS} onChange={setTheme} />
+        </div>
       </div>
     </div>
   )
@@ -270,32 +280,6 @@ const CODEC_OPTIONS: { value: CodecChoice; label: string; detail: string }[] = [
   { value: 'hevc', label: 'HEVC', detail: 'AVC より 30-50% 省帯域。iOS/macOS Safari と対応 GPU 環境で再生可' },
   { value: 'vp9', label: 'VP9', detail: 'オープン規格で HEVC 同等の圧縮率。Chrome / Firefox / Edge で広くサポート' }
 ]
-
-interface SegmentProps<T extends string> {
-  ariaLabel: string
-  value: T
-  options: readonly { value: T; label: string }[]
-  onChange: (v: T) => void
-}
-
-function Segment<T extends string>({ ariaLabel, value, options, onChange }: SegmentProps<T>) {
-  return (
-    <ToggleGroup
-      type='single'
-      value={value}
-      onValueChange={(v) => v && onChange(v as T)}
-      aria-label={ariaLabel}
-      size='sm'
-      className='shrink-0'
-    >
-      {options.map((opt) => (
-        <ToggleGroupItem key={opt.value} value={opt.value} className={SEGMENT_ITEM_CLASS}>
-          {opt.label}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
-  )
-}
 
 function Row({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
@@ -318,18 +302,7 @@ function PlaybackTab() {
           Status so the settings page has a single visual rhythm. */}
       <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
         <div>
-          <SectHead
-            action={
-              <Segment<QualityChoice>
-                ariaLabel='画質プリセット'
-                value={prefs.quality}
-                options={QUALITY_OPTIONS}
-                onChange={(v) => update({ quality: v })}
-              />
-            }
-          >
-            画質
-          </SectHead>
+          <SectHead>画質</SectHead>
           <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
             {/* Fixed h-7 per row so CJK glyphs in 可変 don't push the AUTO
                 line taller than the ASCII-only rows below it. */}
@@ -349,22 +322,19 @@ function PlaybackTab() {
                 </div>
               ))}
             </dl>
+            <div className='flex justify-end border-t border-border/60 px-3 py-2'>
+              <OptionPicker<QualityChoice>
+                ariaLabel='画質プリセット'
+                value={prefs.quality}
+                options={QUALITY_OPTIONS}
+                onChange={(v) => update({ quality: v })}
+              />
+            </div>
           </div>
         </div>
 
         <div>
-          <SectHead
-            action={
-              <Segment<CodecChoice>
-                ariaLabel='コーデック'
-                value={prefs.codec}
-                options={CODEC_OPTIONS}
-                onChange={(v) => update({ codec: v })}
-              />
-            }
-          >
-            コーデック
-          </SectHead>
+          <SectHead>コーデック</SectHead>
           <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
             <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
               {CODEC_OPTIONS.map((o) => (
@@ -381,6 +351,14 @@ function PlaybackTab() {
                 </div>
               ))}
             </dl>
+            <div className='flex justify-end border-t border-border/60 px-3 py-2'>
+              <OptionPicker<CodecChoice>
+                ariaLabel='コーデック'
+                value={prefs.codec}
+                options={CODEC_OPTIONS}
+                onChange={(v) => update({ codec: v })}
+              />
+            </div>
           </div>
         </div>
       </div>
