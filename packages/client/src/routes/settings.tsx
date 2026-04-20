@@ -31,11 +31,21 @@ function statusVariant(s: SubStatus) {
 
 // ─── Section heading ─────────────────────────────────────────────────────────
 
-function SectHead({ children }: { children: React.ReactNode }) {
+/**
+ * Uppercase label + divider line that matches the ステータス page rhythm.
+ * `action` lets a tab drop its primary control (segment, switch…) into the
+ * heading row instead of burying it in a bigger settings Row below — keeps
+ * every card in the settings page feeling like the Status cards: compact
+ * detail table in the card, chrome lives outside it.
+ */
+function SectHead({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className='flex items-center gap-2 pb-[7px] pt-[18px] font-sans text-footnote font-bold uppercase tracking-[0.12em] text-muted-foreground'>
-      {children}
+    <div className='flex items-center gap-3 pb-[7px] pt-[18px]'>
+      <span className='shrink-0 font-sans text-footnote font-bold uppercase tracking-[0.12em] text-muted-foreground'>
+        {children}
+      </span>
       <div className='h-px flex-1 bg-border' />
+      {action && <div className='shrink-0'>{action}</div>}
     </div>
   )
 }
@@ -123,7 +133,7 @@ function StatusTab() {
   const tunerModel = primaryTunerModel(data.tuners.devices)
 
   return (
-    <div className='px-5 pb-10 max-[480px]:px-2.5'>
+    <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
       <SectHead>Streaming</SectHead>
       <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2 xl:grid-cols-3'>
         <DiagRow
@@ -213,18 +223,33 @@ function ThemeSegment() {
 
 // ─── Display tab ─────────────────────────────────────────────────────────────
 
+const THEME_LABELS: Record<ThemeChoice, string> = {
+  light: 'ブラウザのライトテーマを適用',
+  dark: 'ブラウザのダークテーマを適用',
+  system: 'OS のダーク設定に追従して自動切替'
+}
+
 function DisplayTab() {
+  const { theme } = useTheme()
   return (
     <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
-      <SectHead>テーマ</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card lg:max-w-[600px]'>
-        <div className='flex items-center justify-between gap-4 px-3.5 py-3'>
-          <div>
-            <p className='text-body font-medium text-foreground'>テーマ</p>
-            <p className='mt-0.5 text-footnote text-muted-foreground'>Light / Dark / システム設定に従う</p>
-          </div>
-          <ThemeSegment />
-        </div>
+      <SectHead action={<ThemeSegment />}>テーマ</SectHead>
+      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+        <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
+          {THEME_OPTIONS.map((o) => (
+            <div key={o.value} className='flex h-7 items-center gap-3'>
+              <dt
+                className={cn(
+                  'w-[64px] shrink-0 font-semibold',
+                  theme === o.value ? 'text-primary' : 'text-muted-foreground'
+                )}
+              >
+                {o.label}
+              </dt>
+              <dd className='min-w-0 truncate text-muted-foreground'>{THEME_LABELS[o.value]}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </div>
   )
@@ -289,37 +314,38 @@ function PlaybackTab() {
 
   return (
     <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
-      {/* Quality + codec share a row on wide screens — their cards are
-          similarly shaped (segment + detail table) and naturally pair. */}
-      <div className='grid grid-cols-1 items-start gap-x-6 lg:grid-cols-2'>
+      {/* Quality + codec share a row on wide screens — same grid gutter as
+          Status so the settings page has a single visual rhythm. */}
+      <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
         <div>
-          <SectHead>画質</SectHead>
-          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-            <Row title='デフォルト画質'>
+          <SectHead
+            action={
               <Segment<QualityChoice>
                 ariaLabel='画質プリセット'
                 value={prefs.quality}
                 options={QUALITY_OPTIONS}
                 onChange={(v) => update({ quality: v })}
               />
-            </Row>
+            }
+          >
+            画質
+          </SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
             {/* Fixed h-7 per row so CJK glyphs in 可変 don't push the AUTO
                 line taller than the ASCII-only rows below it. */}
-            <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-1 text-footnote'>
+            <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
               {QUALITY_OPTIONS.map((o) => (
                 <div key={o.value} className='flex h-7 items-center gap-3'>
                   <dt
                     className={cn(
-                      'w-[64px] shrink-0 font-sans text-footnote font-semibold',
+                      'w-[64px] shrink-0 font-semibold',
                       prefs.quality === o.value ? 'text-primary' : 'text-muted-foreground'
                     )}
                   >
                     {o.label}
                   </dt>
-                  <dd className='w-[56px] shrink-0 font-sans tabular-nums text-footnote text-foreground'>
-                    {o.resolution}
-                  </dd>
-                  <dd className='min-w-0 text-footnote text-muted-foreground'>{o.detail}</dd>
+                  <dd className='w-[56px] shrink-0 tabular-nums text-foreground'>{o.resolution}</dd>
+                  <dd className='min-w-0 truncate text-muted-foreground'>{o.detail}</dd>
                 </div>
               ))}
             </dl>
@@ -327,28 +353,31 @@ function PlaybackTab() {
         </div>
 
         <div>
-          <SectHead>コーデック</SectHead>
-          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-            <Row title='優先コーデック'>
+          <SectHead
+            action={
               <Segment<CodecChoice>
                 ariaLabel='コーデック'
                 value={prefs.codec}
                 options={CODEC_OPTIONS}
                 onChange={(v) => update({ codec: v })}
               />
-            </Row>
-            <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-1 text-footnote'>
+            }
+          >
+            コーデック
+          </SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+            <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
               {CODEC_OPTIONS.map((o) => (
                 <div key={o.value} className='flex h-7 items-center gap-3'>
                   <dt
                     className={cn(
-                      'w-[90px] shrink-0 font-sans text-footnote font-semibold',
+                      'w-[64px] shrink-0 font-semibold',
                       prefs.codec === o.value ? 'text-primary' : 'text-muted-foreground'
                     )}
                   >
                     {o.label}
                   </dt>
-                  <dd className='min-w-0 text-footnote text-muted-foreground'>{o.detail}</dd>
+                  <dd className='min-w-0 truncate text-muted-foreground'>{o.detail}</dd>
                 </div>
               ))}
             </dl>
@@ -382,7 +411,7 @@ function PlaybackTab() {
         </Row>
       </div>
 
-      <p className='mt-3 font-sans text-footnote text-muted-foreground'>
+      <p className='mt-3 text-footnote text-muted-foreground'>
         ブラウザのローカルストレージに保存されます (端末ごと・アカウント同期なし)
       </p>
     </div>
@@ -407,7 +436,7 @@ const LINK_ROWS = [
 function AboutTab() {
   return (
     <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
-      <div className='grid grid-cols-1 items-start gap-x-6 lg:grid-cols-2'>
+      <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
         <div>
           <SectHead>バージョン</SectHead>
           <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
