@@ -62,7 +62,7 @@ export function ChannelPicker({ channels, value, onChange }: ChannelPickerProps)
   }
 
   return (
-    <Accordion type='multiple' defaultValue={types} className='w-full'>
+    <Accordion type='multiple' defaultValue={types} className='grid w-full grid-cols-1 gap-x-4 lg:grid-cols-2'>
       {types.map((type) => (
         <AccordionItem key={type} value={type} className='border-border'>
           <div className='flex items-center gap-2'>
@@ -79,8 +79,10 @@ export function ChannelPicker({ channels, value, onChange }: ChannelPickerProps)
             </AccordionTrigger>
           </div>
           <AccordionContent className='pb-1'>
-            {/* Fixed grid so rows align perfectly; labels truncate within cells. */}
-            <div className='grid grid-cols-2 gap-x-3 gap-y-1.5 pl-6 pr-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>
+            {/* Inner grid — narrower when the outer groups flow in 2
+                columns on lg+, so the per-group channel grid doesn't
+                squeeze individual labels into ellipses. */}
+            <div className='grid grid-cols-2 gap-x-3 gap-y-1.5 pl-6 pr-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3'>
               {(groups[type] ?? []).map((ch) => (
                 <div key={ch.id} className='flex min-w-0 items-center gap-2'>
                   <Checkbox
