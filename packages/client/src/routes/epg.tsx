@@ -180,10 +180,6 @@ function EpgHeader({ windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps)
 
   return (
     <PageHeader ariaLabel='番組表ヘッダー' className='items-center gap-2 px-3'>
-      <StatusChip variant='live' dot size='sm'>
-        LIVE
-      </StatusChip>
-
       <div className='flex-1' />
 
       {/* Date navigation */}
