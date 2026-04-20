@@ -2,7 +2,7 @@ import type { Recording, RecordingSchedule } from '@kototv/server/src/schemas/Re
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { format, intervalToDuration } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { CalendarPlus, ListFilter, Trash2 } from 'lucide-react'
+import { CalendarPlus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { RecordingScheduleForm } from '@/components/recording/RecordingScheduleForm'
 import { StatusChip } from '@/components/shared/status-chip'
@@ -340,7 +340,6 @@ function RecordingsPage() {
   return (
     <>
       <PageHeader ariaLabel='録画ヘッダー' className='items-center gap-2 px-3'>
-        <h1 className='font-mono text-[0.9375rem] font-bold leading-none'>録画</h1>
         {data && (
           <span className='font-mono text-[0.625rem] text-muted-foreground'>
             {recordings.filter((r) => r.status === 'recording').length} REC ·{' '}
@@ -349,17 +348,6 @@ function RecordingsPage() {
           </span>
         )}
         <div className='flex-1' />
-        <Link to='/recordings/rules'>
-          <Button
-            variant='outline'
-            size='sm'
-            className='h-7 gap-1.5 px-3 font-mono text-[0.75rem] font-bold'
-            aria-label='ルール管理'
-          >
-            <ListFilter className='size-3.5' />
-            ルール管理
-          </Button>
-        </Link>
         <Button
           size='sm'
           className='h-7 gap-1.5 px-3 font-mono text-[0.75rem] font-bold'
