@@ -227,7 +227,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
         </Collapsible>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className='grid grid-cols-1 gap-x-6 gap-y-5 p-4 md:grid-cols-2'>
+          <form onSubmit={form.handleSubmit(onSubmit)} className='grid grid-cols-1 gap-x-6 gap-y-5 p-4 xl:grid-cols-2'>
             {/* Left column — 検索条件 */}
             <div className='flex flex-col gap-5'>
               <FormField
@@ -808,7 +808,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             </div>
 
             {/* Button row — span both columns */}
-            <div className='flex flex-wrap items-center gap-2 border-t border-border pt-4 md:col-span-2'>
+            <div className='flex flex-wrap items-center gap-2 border-t border-border pt-4 xl:col-span-2'>
               <Button
                 type='submit'
                 size='sm'
