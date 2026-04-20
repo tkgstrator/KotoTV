@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { RuleForm } from '@/components/recording/RuleForm'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import { useRecordingRule } from '@/hooks/useRecordingRules'
@@ -17,10 +16,6 @@ function EditRulePage() {
 
   return (
     <div className='flex h-full flex-col overflow-hidden'>
-      <PageHeader ariaLabel='ルール編集ヘッダー' className='items-center px-4'>
-        <h1 className='min-w-0 truncate text-body font-bold text-foreground'>{rule?.name ?? id}</h1>
-      </PageHeader>
-
       {isPending && (
         <div className='flex flex-col gap-2 p-4'>
           {Array.from({ length: 6 }).map((_, i) => (
@@ -38,11 +33,7 @@ function EditRulePage() {
         </div>
       )}
 
-      {!isPending && !isError && rule && (
-        <div className='flex flex-1 overflow-hidden'>
-          <RuleForm channels={channels} existing={rule} />
-        </div>
-      )}
+      {!isPending && !isError && rule && <RuleForm channels={channels} existing={rule} />}
     </div>
   )
 }
