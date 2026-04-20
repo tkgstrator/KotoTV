@@ -489,7 +489,7 @@ function SettingsPage() {
             value='about'
             className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
           >
-            About
+            情報
           </TabsTrigger>
         </TabsList>
       </div>
