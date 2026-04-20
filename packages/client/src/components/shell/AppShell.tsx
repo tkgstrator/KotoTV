@@ -79,7 +79,7 @@ export function AppShell({ children }: AppShellProps) {
         <SidebarInset
           id='main-content'
           className={cn(
-            'flex min-h-0 flex-1 flex-col bg-background pb-[var(--mobile-nav-h)] sm:min-w-0 sm:pb-0 sm:pr-3',
+            'flex min-h-0 flex-1 flex-col bg-background pb-[var(--mobile-nav-h)] sm:min-w-0 sm:pb-0 sm:pr-4',
             playback ? 'overflow-hidden' : 'overflow-y-auto'
           )}
         >
