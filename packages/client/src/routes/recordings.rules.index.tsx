@@ -166,10 +166,7 @@ const DUMMY_DEFAULTS = {
   marginEndMinutes: 0,
   minDurationMinutes: 0,
   keepLatestN: 0,
-  postEncode: false,
-  postEncodeCodec: 'avc',
-  postEncodeQuality: 'medium',
-  postEncodeTiming: 'immediate'
+  encodeProfileId: null
 } as const
 
 const DUMMY_RULES: RecordingRule[] = [
@@ -209,8 +206,6 @@ const DUMMY_RULES: RecordingRule[] = [
     avoidDuplicates: true,
     ...DUMMY_DEFAULTS,
     excludeReruns: true,
-    postEncode: true,
-    postEncodeCodec: 'hevc',
     createdAt: '2026-03-22T12:00:00.000Z',
     updatedAt: '2026-04-18T03:00:00.000Z'
   },

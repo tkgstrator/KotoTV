@@ -1,0 +1,108 @@
+import { zValidator } from '@hono/zod-validator'
+import { Hono } from 'hono'
+import { HTTPException } from 'hono/http-exception'
+import { z } from 'zod'
+import { prisma } from '../lib/prisma'
+import {
+  CreateEncodeProfileSchema,
+  type EncodeProfile,
+  EncodeProfileSchema,
+  UpdateEncodeProfileSchema
+} from '../schemas/EncodeProfile.dto'
+
+const IdParamSchema = z.object({ id: z.string().uuid() })
+
+function serialize(row: {
+  id: string
+  name: string
+  codec: string
+  quality: string
+  timing: string
+  hwAccel: string
+  isDefault: boolean
+  createdAt: Date
+  updatedAt: Date
+}): EncodeProfile {
+  return EncodeProfileSchema.parse({
+    id: row.id,
+    name: row.name,
+    codec: row.codec,
+    quality: row.quality,
+    timing: row.timing,
+    hwAccel: row.hwAccel,
+    isDefault: row.isDefault,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString()
+  })
+}
+
+// When the caller sets isDefault=true, clear the flag on every other row so
+// "default" is always a single profile.
+async function promoteAsDefault(id: string): Promise<void> {
+  await prisma.encodeProfile.updateMany({
+    where: { id: { not: id }, isDefault: true },
+    data: { isDefault: false }
+  })
+}
+
+const encodeProfilesRoute = new Hono()
+  .get('/', async (c) => {
+    const rows = await prisma.encodeProfile.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] })
+    return c.json({ profiles: rows.map(serialize) })
+  })
+
+  .post('/', zValidator('json', CreateEncodeProfileSchema), async (c) => {
+    const body = c.req.valid('json')
+    const row = await prisma.encodeProfile.create({
+      data: {
+        name: body.name,
+        codec: body.codec,
+        quality: body.quality,
+        timing: body.timing,
+        hwAccel: body.hwAccel,
+        isDefault: body.isDefault
+      }
+    })
+    if (row.isDefault) await promoteAsDefault(row.id)
+    return c.json(serialize(row), 201)
+  })
+
+  .get('/:id', zValidator('param', IdParamSchema), async (c) => {
+    const { id } = c.req.valid('param')
+    const row = await prisma.encodeProfile.findUnique({ where: { id } })
+    if (!row) throw new HTTPException(404, { message: 'encode profile not found' })
+    return c.json(serialize(row))
+  })
+
+  .patch('/:id', zValidator('param', IdParamSchema), zValidator('json', UpdateEncodeProfileSchema), async (c) => {
+    const { id } = c.req.valid('param')
+    const body = c.req.valid('json')
+
+    const existing = await prisma.encodeProfile.findUnique({ where: { id } })
+    if (!existing) throw new HTTPException(404, { message: 'encode profile not found' })
+
+    const row = await prisma.encodeProfile.update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.codec !== undefined ? { codec: body.codec } : {}),
+        ...(body.quality !== undefined ? { quality: body.quality } : {}),
+        ...(body.timing !== undefined ? { timing: body.timing } : {}),
+        ...(body.hwAccel !== undefined ? { hwAccel: body.hwAccel } : {}),
+        ...(body.isDefault !== undefined ? { isDefault: body.isDefault } : {})
+      }
+    })
+    if (row.isDefault) await promoteAsDefault(row.id)
+    return c.json(serialize(row))
+  })
+
+  .delete('/:id', zValidator('param', IdParamSchema), async (c) => {
+    const { id } = c.req.valid('param')
+    const existing = await prisma.encodeProfile.findUnique({ where: { id } })
+    if (!existing) throw new HTTPException(404, { message: 'encode profile not found' })
+    // onDelete: SetNull on rule.encodeProfileId / schedule.encodeProfileId
+    await prisma.encodeProfile.delete({ where: { id } })
+    return new Response(null, { status: 204 })
+  })
+
+export default encodeProfilesRoute

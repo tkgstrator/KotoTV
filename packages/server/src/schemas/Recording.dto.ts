@@ -12,6 +12,7 @@ export const RecordingScheduleSchema = z.object({
   endAt: z.string().datetime(),
   status: ScheduleStatusSchema,
   ruleId: z.string().uuid().nullable(),
+  encodeProfileId: z.string().uuid().nullable(),
   failureReason: z.string().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
@@ -39,7 +40,8 @@ export const CreateRecordingScheduleSchema = z
     programId: z.string().min(1),
     title: z.string().min(1),
     startAt: z.string().datetime(),
-    endAt: z.string().datetime()
+    endAt: z.string().datetime(),
+    encodeProfileId: z.string().uuid().nullable().optional()
   })
   .refine((v) => new Date(v.endAt) > new Date(v.startAt), { message: 'endAt must be after startAt' })
 

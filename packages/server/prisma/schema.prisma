@@ -57,6 +57,30 @@ enum RuleEncodeTiming {
   idle
 }
 
+enum HwAccelType {
+  cpu
+  nvenc
+  vaapi
+}
+
+model EncodeProfile {
+  id        String            @id @default(uuid())
+  name      String            @unique
+  codec     RuleEncodeCodec   @default(avc)
+  quality   RuleEncodeQuality @default(medium)
+  timing    RuleEncodeTiming  @default(immediate)
+  hwAccel   HwAccelType       @default(cpu)   @map("hw_accel")
+  isDefault Boolean           @default(false) @map("is_default")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt      @map("updated_at")
+
+  rules     RecordingRule[]
+  schedules RecordingSchedule[]
+
+  @@index([isDefault])
+  @@map("encode_profiles")
+}
+
 model Program {
   id          String   @id
   channelId   String   @map("channel_id")
@@ -95,38 +119,40 @@ model RecordingRule {
   marginEndMinutes   Int                @default(0)     @map("margin_end_minutes")
   minDurationMinutes Int                @default(0)     @map("min_duration_minutes")
   keepLatestN        Int                @default(0)     @map("keep_latest_n")
-  postEncode         Boolean            @default(false) @map("post_encode")
-  postEncodeCodec    RuleEncodeCodec    @default(avc)    @map("post_encode_codec")
-  postEncodeQuality  RuleEncodeQuality  @default(medium) @map("post_encode_quality")
-  postEncodeTiming   RuleEncodeTiming   @default(immediate) @map("post_encode_timing")
+  encodeProfileId    String?            @map("encode_profile_id")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt      @map("updated_at")
 
-  schedules RecordingSchedule[]
+  schedules     RecordingSchedule[]
+  encodeProfile EncodeProfile? @relation(fields: [encodeProfileId], references: [id], onDelete: SetNull)
 
   @@index([enabled])
+  @@index([encodeProfileId])
   @@map("recording_rules")
 }
 
 model RecordingSchedule {
-  id            String         @id @default(uuid())
-  channelId     String         @map("channel_id")
-  programId     String         @map("program_id")
-  title         String
-  startAt       DateTime       @map("start_at") @db.Timestamptz
-  endAt         DateTime       @map("end_at") @db.Timestamptz
-  status        ScheduleStatus @default(pending)
-  ruleId        String?        @map("rule_id")
-  failureReason String?        @map("failure_reason")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  id              String         @id @default(uuid())
+  channelId       String         @map("channel_id")
+  programId       String         @map("program_id")
+  title           String
+  startAt         DateTime       @map("start_at") @db.Timestamptz
+  endAt           DateTime       @map("end_at") @db.Timestamptz
+  status          ScheduleStatus @default(pending)
+  ruleId          String?        @map("rule_id")
+  encodeProfileId String?        @map("encode_profile_id")
+  failureReason   String?        @map("failure_reason")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
 
-  recording Recording?
-  rule      RecordingRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  recording     Recording?
+  rule          RecordingRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  encodeProfile EncodeProfile? @relation(fields: [encodeProfileId], references: [id], onDelete: SetNull)
 
   @@unique([ruleId, programId])
   @@index([status, startAt])
   @@index([ruleId])
+  @@index([encodeProfileId])
   @@map("recording_schedules")
 }
 

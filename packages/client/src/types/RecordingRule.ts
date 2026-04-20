@@ -30,10 +30,7 @@ export interface RecordingRule {
   minDurationMinutes: number
   /** 0 = unlimited retention */
   keepLatestN: number
-  postEncode: boolean
-  postEncodeCodec: EncodeCodec
-  postEncodeQuality: EncodeQuality
-  postEncodeTiming: EncodeTiming
+  encodeProfileId: string | null
   createdAt: string
   updatedAt: string
 }
