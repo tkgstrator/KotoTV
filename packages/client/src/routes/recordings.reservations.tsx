@@ -7,7 +7,6 @@ import { RecordingPageHeader } from '@/components/recording/recording-page-heade
 import { RecordingsReserveAction } from '@/components/recording/recordings-reserve-action'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/recordings/reservations')({
   component: ReservationsPage
@@ -200,16 +199,16 @@ function ReservationsPage() {
             <p className='text-footnote text-muted-foreground'>予約はまだありません</p>
           </div>
         ) : (
-          <div className='flex flex-col gap-4 p-4'>
+          <div className='flex flex-col gap-6 px-4 pt-4 pb-4'>
             {groups.map(({ day, items }) => {
               const dayLabel = format(new Date(day), 'M月d日(E)', { locale: ja })
               return (
                 <section key={day} className='flex flex-col'>
-                  <header
-                    className={cn('mb-1.5 flex items-center gap-2 text-footnote font-semibold text-muted-foreground')}
-                  >
-                    <span>{dayLabel}</span>
-                    <span className='text-caption text-muted-foreground/70'>· {items.length} 件</span>
+                  {/* Group label: text-body + bolder so it reads as a day
+                      divider rather than a second page-header. */}
+                  <header className='mb-2 flex items-baseline gap-2'>
+                    <h2 className='text-subheadline font-bold text-foreground'>{dayLabel}</h2>
+                    <span className='text-footnote text-muted-foreground'>· {items.length} 件</span>
                   </header>
                   <div className='overflow-hidden rounded-[4px] border border-border'>
                     {items.map((r) => (

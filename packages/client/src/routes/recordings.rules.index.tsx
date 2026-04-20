@@ -114,26 +114,26 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
         onClick={() => navigate({ to: '/recordings/rules/$id', params: { id: rule.id } })}
         aria-label={`ルール「${rule.name}」を編集`}
       >
-        <span className='truncate text-subheadline font-semibold text-foreground'>{rule.name}</span>
-        <span className='truncate text-caption2 text-muted-foreground'>{keywordSummary}</span>
+        <span className='truncate text-body font-semibold text-foreground'>{rule.name}</span>
+        <span className='truncate text-footnote text-muted-foreground'>{keywordSummary}</span>
       </button>
 
       {/* channels */}
       <div className='hidden min-w-0 sm:block'>
-        <span className='truncate tabular-nums text-caption text-muted-foreground'>
+        <span className='truncate text-footnote tabular-nums text-muted-foreground'>
           {rule.channelIds.length === 0 ? '全チャンネル' : `${rule.channelIds.length} 局`}
         </span>
       </div>
 
       {/* day+time */}
       <div className='hidden min-w-0 flex-col gap-0.5 sm:flex'>
-        <span className='truncate text-caption2 text-muted-foreground'>{dowLabel}</span>
-        <span className='truncate text-caption2 text-muted-foreground'>{timeLabel}</span>
+        <span className='truncate text-footnote text-muted-foreground'>{dowLabel}</span>
+        <span className='truncate text-footnote text-muted-foreground'>{timeLabel}</span>
       </div>
 
       {/* priority */}
       <div className='hidden text-right sm:block'>
-        <span className='tabular-nums text-caption text-muted-foreground'>{rule.priority}</span>
+        <span className='text-footnote tabular-nums text-muted-foreground'>{rule.priority}</span>
       </div>
 
       {/* actions */}
@@ -264,12 +264,12 @@ function RecordingRulesPage() {
 
       {/* Column headers (desktop) — same grid template as RuleRow so the
           field positions always line up. */}
-      <div className='hidden items-center gap-3 border-b border-border bg-muted/30 px-4 py-1.5 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_120px_140px_48px_88px]'>
+      <div className='hidden items-center gap-3 border-b border-border bg-muted/30 px-4 py-2 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_120px_140px_48px_88px]'>
         <div />
-        <div className='text-caption2 font-semibold text-muted-foreground'>名前 / キーワード</div>
-        <div className='text-caption2 font-semibold text-muted-foreground'>対象</div>
-        <div className='text-caption2 font-semibold text-muted-foreground'>スケジュール</div>
-        <div className='text-right text-caption2 font-semibold text-muted-foreground'>優先度</div>
+        <div className='text-footnote font-semibold text-muted-foreground'>名前 / キーワード</div>
+        <div className='text-footnote font-semibold text-muted-foreground'>対象</div>
+        <div className='text-footnote font-semibold text-muted-foreground'>スケジュール</div>
+        <div className='text-right text-footnote font-semibold text-muted-foreground'>優先度</div>
         <div />
       </div>
 
