@@ -505,25 +505,25 @@ function SettingsPage() {
         <TabsList className='h-full w-full justify-start rounded-none bg-transparent p-0'>
           <TabsTrigger
             value='status'
-            className='h-full rounded-none border-b-2 border-transparent px-4 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none border-b-2 border-transparent px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none'
           >
             ステータス
           </TabsTrigger>
           <TabsTrigger
             value='playback'
-            className='h-full rounded-none border-b-2 border-transparent px-4 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none border-b-2 border-transparent px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none'
           >
             再生
           </TabsTrigger>
           <TabsTrigger
             value='display'
-            className='h-full rounded-none border-b-2 border-transparent px-4 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none border-b-2 border-transparent px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none'
           >
             表示設定
           </TabsTrigger>
           <TabsTrigger
             value='about'
-            className='h-full rounded-none border-b-2 border-transparent px-4 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none border-b-2 border-transparent px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none'
           >
             情報
           </TabsTrigger>
