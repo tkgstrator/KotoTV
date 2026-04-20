@@ -284,55 +284,54 @@ function LivePage() {
       <div className='mx-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden lg:max-w-[1784px] lg:flex-row lg:gap-4 lg:p-3'>
         {/* Video column */}
         <div className='flex min-h-0 flex-1 flex-col gap-2 overflow-hidden lg:min-w-0'>
-          {stream.status === 'error' ? (
-            /* Fatal error state */
-            <div className='flex flex-1 items-center justify-center p-6'>
-              <div
-                role='alert'
-                className='max-w-[480px] rounded-md border border-border border-l-[3px] border-l-destructive bg-card p-4'
-              >
-                <div className='flex items-center gap-2 mb-2.5'>
-                  <StatusChip variant='fatal' size='sm'>
-                    FATAL
-                  </StatusChip>
-                  <span className='text-[0.875rem] font-bold'>ストリームを開始できませんでした</span>
-                </div>
-                <p className='mb-3 text-[0.75rem] text-muted-foreground'>{stream.error?.message ?? '不明なエラー'}</p>
-                <div className='mb-3 max-h-[120px] overflow-y-auto rounded border border-border bg-background p-2'>
-                  <LogLine ts={format(new Date(), 'HH:mm:ss.SSS')} level='err'>
-                    [stream] {stream.error?.message ?? 'start failed'}
-                  </LogLine>
-                </div>
-                <div className='flex gap-2'>
-                  <Link to='/live/$channelId' params={{ channelId }}>
-                    <Button size='sm'>再試行</Button>
-                  </Link>
-                  <Link to='/'>
-                    <Button variant='outline' size='sm'>
-                      チャンネルリストへ
-                    </Button>
-                  </Link>
+          {/* The video well is always 16:9 regardless of stream state so
+              the PlayerControls bar doesn't jump around while the stream
+              initializes — loading / error UI is rendered into the same
+              reserved box that the player later replaces. */}
+          <div className='aspect-video w-full' role='application' aria-label='ライブ映像プレイヤー'>
+            {stream.status === 'error' ? (
+              <div className='flex h-full w-full items-center justify-center p-6'>
+                <div
+                  role='alert'
+                  className='max-w-[480px] rounded-md border border-border border-l-[3px] border-l-destructive bg-card p-4'
+                >
+                  <div className='mb-2.5 flex items-center gap-2'>
+                    <StatusChip variant='fatal' size='sm'>
+                      FATAL
+                    </StatusChip>
+                    <span className='text-[0.875rem] font-bold'>ストリームを開始できませんでした</span>
+                  </div>
+                  <p className='mb-3 text-[0.75rem] text-muted-foreground'>{stream.error?.message ?? '不明なエラー'}</p>
+                  <div className='mb-3 max-h-[120px] overflow-y-auto rounded border border-border bg-background p-2'>
+                    <LogLine ts={format(new Date(), 'HH:mm:ss.SSS')} level='err'>
+                      [stream] {stream.error?.message ?? 'start failed'}
+                    </LogLine>
+                  </div>
+                  <div className='flex gap-2'>
+                    <Link to='/live/$channelId' params={{ channelId }}>
+                      <Button size='sm'>再試行</Button>
+                    </Link>
+                    <Link to='/'>
+                      <Button variant='outline' size='sm'>
+                        チャンネルリストへ
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : stream.status === 'starting' || stream.status === 'idle' ? (
-            /* Loading state */
-            <div className='flex flex-1 flex-col items-center justify-center gap-3'>
-              <div
-                role='status'
-                className='h-9 w-9 rounded-full border-[2.5px] border-muted border-t-primary animate-spin'
-              >
-                <span className='sr-only'>ストリーム準備中</span>
+            ) : stream.status === 'starting' || stream.status === 'idle' ? (
+              <div className='flex h-full w-full flex-col items-center justify-center gap-3'>
+                <div
+                  role='status'
+                  className='h-9 w-9 animate-spin rounded-full border-[2.5px] border-muted border-t-primary'
+                >
+                  <span className='sr-only'>ストリーム準備中</span>
+                </div>
+                <StatusChip variant='info' size='sm'>
+                  INIT — HLS セグメントを生成中
+                </StatusChip>
               </div>
-              <StatusChip variant='info' size='sm'>
-                INIT — HLS セグメントを生成中
-              </StatusChip>
-            </div>
-          ) : (
-            /* Ready: actual player. aspect-video forces the well to 16:9
-               so the video sits flush against PlayerControls below — no
-               letterbox padding, no flex-grow gap. YouTube does the same. */
-            <div className='aspect-video w-full' role='application' aria-label='ライブ映像プレイヤー'>
+            ) : (
               <HlsPlayer
                 key={stream.sessionId}
                 ref={videoRef}
@@ -341,8 +340,8 @@ function LivePage() {
                 className='h-full w-full'
                 onError={(err) => console.error('[HlsPlayer]', err)}
               />
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Controls bar — always present below video */}
           <PlayerControls
