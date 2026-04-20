@@ -296,13 +296,13 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                               >
                                 <ToggleGroupItem
                                   value='literal'
-                                  className={cn('h-8 flex-1 px-3 text-footnote sm:flex-none', TOGGLE_ON)}
+                                  className={cn('h-9 flex-1 px-3 text-body sm:flex-none', TOGGLE_ON)}
                                 >
                                   部分一致
                                 </ToggleGroupItem>
                                 <ToggleGroupItem
                                   value='regex'
-                                  className={cn('h-8 flex-1 px-3 text-footnote sm:flex-none', TOGGLE_ON)}
+                                  className={cn('h-9 flex-1 px-3 text-body sm:flex-none', TOGGLE_ON)}
                                 >
                                   正規表現
                                 </ToggleGroupItem>
@@ -327,13 +327,13 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                               >
                                 <ToggleGroupItem
                                   value='title'
-                                  className={cn('h-8 flex-1 px-3 text-footnote sm:flex-none', TOGGLE_ON)}
+                                  className={cn('h-9 flex-1 px-3 text-body sm:flex-none', TOGGLE_ON)}
                                 >
                                   タイトル
                                 </ToggleGroupItem>
                                 <ToggleGroupItem
                                   value='title_description'
-                                  className={cn('h-8 flex-1 px-3 text-footnote sm:flex-none', TOGGLE_ON)}
+                                  className={cn('h-9 flex-1 px-3 text-body sm:flex-none', TOGGLE_ON)}
                                 >
                                   タイトル+説明
                                 </ToggleGroupItem>
@@ -391,7 +391,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                               )
                             }
                             className={cn(
-                              'rounded border px-2.5 py-1 text-footnote transition-colors',
+                              'rounded border px-2.5 py-1 text-body transition-colors',
                               active
                                 ? 'border-primary/40 bg-primary/12 text-primary'
                                 : 'border-border bg-muted/60 text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'
@@ -462,7 +462,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                           }
                         }}
                         className={cn(
-                          'h-9 rounded border px-4 text-footnote transition-colors',
+                          'h-9 rounded border px-4 text-body transition-colors',
                           isActive
                             ? 'border-primary/40 bg-primary/12 text-primary'
                             : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -572,7 +572,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='avoidDuplicates'
                     render={({ field }) => (
                       <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='cursor-pointer text-footnote text-foreground'>
+                        <FormLabel className='cursor-pointer text-body text-foreground'>
                           タイトル重複は録画しない
                         </FormLabel>
                         <FormControl>
@@ -586,9 +586,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='excludeReruns'
                     render={({ field }) => (
                       <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='cursor-pointer text-footnote text-foreground'>
-                          再放送を録画しない
-                        </FormLabel>
+                        <FormLabel className='cursor-pointer text-body text-foreground'>再放送を録画しない</FormLabel>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
@@ -600,7 +598,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='newOnly'
                     render={({ field }) => (
                       <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='cursor-pointer text-footnote text-foreground'>新番組のみ</FormLabel>
+                        <FormLabel className='cursor-pointer text-body text-foreground'>新番組のみ</FormLabel>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
@@ -612,9 +610,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='postEncode'
                     render={({ field }) => (
                       <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='cursor-pointer text-footnote text-foreground'>
-                          録画後にエンコード
-                        </FormLabel>
+                        <FormLabel className='cursor-pointer text-body text-foreground'>録画後にエンコード</FormLabel>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
@@ -628,7 +624,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                         name='postEncodeCodec'
                         render={({ field }) => (
                           <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                            <FormLabel className='text-footnote text-muted-foreground'>コーデック</FormLabel>
+                            <FormLabel className='text-body text-foreground'>コーデック</FormLabel>
                             <FormControl>
                               <ToggleGroup
                                 type='single'
@@ -641,7 +637,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                                   <ToggleGroupItem
                                     key={codec}
                                     value={codec}
-                                    className={cn('h-8 px-3 text-footnote uppercase', TOGGLE_ON)}
+                                    className={cn('h-9 px-3 text-body uppercase', TOGGLE_ON)}
                                   >
                                     {codec}
                                   </ToggleGroupItem>
@@ -656,7 +652,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                         name='postEncodeQuality'
                         render={({ field }) => (
                           <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                            <FormLabel className='text-footnote text-muted-foreground'>画質</FormLabel>
+                            <FormLabel className='text-body text-foreground'>画質</FormLabel>
                             <FormControl>
                               <ToggleGroup
                                 type='single'
@@ -665,13 +661,13 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                                 onValueChange={(v) => v && field.onChange(v)}
                                 className='gap-1'
                               >
-                                <ToggleGroupItem value='high' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                <ToggleGroupItem value='high' className={cn('h-9 px-3 text-body', TOGGLE_ON)}>
                                   高
                                 </ToggleGroupItem>
-                                <ToggleGroupItem value='medium' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                <ToggleGroupItem value='medium' className={cn('h-9 px-3 text-body', TOGGLE_ON)}>
                                   中
                                 </ToggleGroupItem>
-                                <ToggleGroupItem value='low' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                <ToggleGroupItem value='low' className={cn('h-9 px-3 text-body', TOGGLE_ON)}>
                                   低
                                 </ToggleGroupItem>
                               </ToggleGroup>
@@ -684,7 +680,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                         name='postEncodeTiming'
                         render={({ field }) => (
                           <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                            <FormLabel className='text-footnote text-muted-foreground'>タイミング</FormLabel>
+                            <FormLabel className='text-body text-foreground'>タイミング</FormLabel>
                             <FormControl>
                               <ToggleGroup
                                 type='single'
@@ -693,10 +689,10 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                                 onValueChange={(v) => v && field.onChange(v)}
                                 className='gap-1'
                               >
-                                <ToggleGroupItem value='immediate' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                <ToggleGroupItem value='immediate' className={cn('h-9 px-3 text-body', TOGGLE_ON)}>
                                   録画直後
                                 </ToggleGroupItem>
-                                <ToggleGroupItem value='idle' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                <ToggleGroupItem value='idle' className={cn('h-9 px-3 text-body', TOGGLE_ON)}>
                                   アイドル時
                                 </ToggleGroupItem>
                               </ToggleGroup>
@@ -717,7 +713,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='marginStartMinutes'
                     render={({ field }) => (
                       <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='text-footnote text-foreground'>開始マージン</FormLabel>
+                        <FormLabel className='text-body text-foreground'>開始マージン</FormLabel>
                         <div className='flex items-center gap-1.5'>
                           <FormControl>
                             <Input
@@ -726,7 +722,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                               max={60}
                               value={field.value}
                               onChange={(e) => field.onChange(Number(e.target.value))}
-                              className='h-8 w-20 tabular-nums text-footnote'
+                              className='h-9 w-20 tabular-nums text-body'
                             />
                           </FormControl>
                           <span className='text-footnote text-muted-foreground'>分</span>
@@ -739,7 +735,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='marginEndMinutes'
                     render={({ field }) => (
                       <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='text-footnote text-foreground'>終了マージン</FormLabel>
+                        <FormLabel className='text-body text-foreground'>終了マージン</FormLabel>
                         <div className='flex items-center gap-1.5'>
                           <FormControl>
                             <Input
@@ -748,7 +744,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                               max={60}
                               value={field.value}
                               onChange={(e) => field.onChange(Number(e.target.value))}
-                              className='h-8 w-20 tabular-nums text-footnote'
+                              className='h-9 w-20 tabular-nums text-body'
                             />
                           </FormControl>
                           <span className='text-footnote text-muted-foreground'>分</span>
@@ -761,7 +757,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='minDurationMinutes'
                     render={({ field }) => (
                       <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='text-footnote text-foreground'>最小番組長</FormLabel>
+                        <FormLabel className='text-body text-foreground'>最小番組長</FormLabel>
                         <div className='flex items-center gap-1.5'>
                           <FormControl>
                             <Input
@@ -770,7 +766,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                               max={1440}
                               value={field.value}
                               onChange={(e) => field.onChange(Number(e.target.value))}
-                              className='h-8 w-20 tabular-nums text-footnote'
+                              className='h-9 w-20 tabular-nums text-body'
                             />
                           </FormControl>
                           <span className='text-footnote text-muted-foreground'>分 (0 で無効)</span>
@@ -783,7 +779,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='keepLatestN'
                     render={({ field }) => (
                       <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='text-footnote text-foreground'>保存世代数</FormLabel>
+                        <FormLabel className='text-body text-foreground'>保存世代数</FormLabel>
                         <div className='flex items-center gap-1.5'>
                           <FormControl>
                             <Input
@@ -792,7 +788,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                               max={999}
                               value={field.value}
                               onChange={(e) => field.onChange(Number(e.target.value))}
-                              className='h-8 w-20 tabular-nums text-footnote'
+                              className='h-9 w-20 tabular-nums text-body'
                             />
                           </FormControl>
                           <span className='text-footnote text-muted-foreground'>本 (0 で無制限)</span>
