@@ -31,10 +31,10 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
+  SidebarMenuItem,
+  SidebarSeparator
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 
@@ -148,12 +148,11 @@ export function AppSidebar() {
         <SidebarGroup className={MENU_CONTAINER_CLS}>
           <SidebarMenu>{MAIN_ITEMS.map((item) => renderItem(item, isActive))}</SidebarMenu>
         </SidebarGroup>
-
+        <SidebarSeparator />
         <SidebarGroup className={MENU_CONTAINER_CLS}>
-          <SidebarGroupLabel>録画</SidebarGroupLabel>
           <SidebarMenu>{RECORDING_ITEMS.map((item) => renderItem(item, isActive))}</SidebarMenu>
         </SidebarGroup>
-
+        <SidebarSeparator />
         <SidebarGroup className={MENU_CONTAINER_CLS}>
           <SidebarMenu>{STATUS_ITEMS.map((item) => renderItem(item, isActive))}</SidebarMenu>
         </SidebarGroup>
