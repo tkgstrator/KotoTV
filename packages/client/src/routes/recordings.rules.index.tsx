@@ -262,16 +262,10 @@ function RecordingRulesPage() {
   const realRules = data?.rules ?? []
   const rules = realRules.length > 0 ? realRules : DUMMY_RULES
 
-  const enabledCount = rules.filter((r) => r.enabled).length
-
   return (
     <>
       <RecordingPageHeader
         ariaLabel='録画ルールヘッダー'
-        stats={[
-          { label: '有効', value: enabledCount },
-          { label: '合計', value: rules.length }
-        ]}
         action={
           <Link to='/recordings/rules/new'>
             <Button size='sm' className='h-8 gap-1.5 px-3 text-footnote'>
