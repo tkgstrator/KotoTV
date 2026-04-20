@@ -58,7 +58,7 @@ export function ChannelPicker({ channels, value, onChange }: ChannelPickerProps)
   }
 
   if (channels.length === 0) {
-    return <p className='font-mono text-[0.6875rem] text-muted-foreground'>$ no channels — チャンネルスキャン未完了</p>
+    return <p className='text-footnote text-muted-foreground'>チャンネルスキャンが完了していません</p>
   }
 
   return (
@@ -72,18 +72,18 @@ export function ChannelPicker({ channels, value, onChange }: ChannelPickerProps)
               onCheckedChange={() => toggleGroup(type)}
               className='ml-1'
             />
-            <AccordionTrigger className='flex-1 py-2 font-mono text-[0.75rem] font-bold text-foreground hover:no-underline'>
-              <Label htmlFor={`group-${type}`} className='cursor-pointer font-mono text-[0.75rem] font-bold'>
+            <AccordionTrigger className='flex-1 py-2 text-body font-semibold text-foreground hover:no-underline'>
+              <Label htmlFor={`group-${type}`} className='cursor-pointer text-body font-semibold'>
                 {TYPE_LABELS[type] ?? type}
               </Label>
-              <span className='ml-auto mr-2 font-mono text-[0.625rem] text-muted-foreground'>
+              <span className='ml-auto mr-2 tabular-nums text-footnote text-muted-foreground'>
                 {value.filter((id) => groups[type]?.some((ch) => ch.id === id)).length}/{groups[type]?.length ?? 0}
               </span>
             </AccordionTrigger>
           </div>
           <AccordionContent className='pb-1'>
-            {/* Fixed 4-column grid so rows align perfectly; labels truncate within cells. */}
-            <div className='grid grid-cols-2 gap-x-3 gap-y-1 pl-6 pr-2 sm:grid-cols-3 lg:grid-cols-4'>
+            {/* Fixed grid so rows align perfectly; labels truncate within cells. */}
+            <div className='grid grid-cols-2 gap-x-3 gap-y-1.5 pl-6 pr-2 sm:grid-cols-3 lg:grid-cols-4'>
               {(groups[type] ?? []).map((ch) => (
                 <div key={ch.id} className='flex min-w-0 items-center gap-2'>
                   <Checkbox
@@ -93,7 +93,7 @@ export function ChannelPicker({ channels, value, onChange }: ChannelPickerProps)
                   />
                   <Label
                     htmlFor={`ch-${ch.id}`}
-                    className='cursor-pointer truncate font-mono text-[0.6875rem] text-foreground'
+                    className='cursor-pointer truncate text-footnote text-foreground'
                     title={ch.name}
                   >
                     {ch.name}
