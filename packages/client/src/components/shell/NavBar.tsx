@@ -39,8 +39,11 @@ function useIsActive() {
 // button is tall enough to fit them with matching vertical padding, in
 // both expanded and icon-only modes. Shadcn forces `size-8 p-2` in icon
 // mode with `!`, so we override with our own `!size-10 !p-2` to hold the
-// 24 px icon without clipping.
-const MENU_BUTTON_CLS = 'h-10 [&>svg]:size-6 group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-2'
+// 24 px icon without clipping. `gap-4` between icon and label matches the
+// TopBar's `gap-4` between hamburger and wordmark so the two clusters
+// share the same internal spacing.
+const MENU_BUTTON_CLS =
+  'h-10 gap-4 [&>svg]:size-6 group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-2'
 
 // SidebarGroup/Footer override: `px-4` lines the icon column up with the
 // TopBar hamburger and centers the 40 px button inside the 72 px icon
