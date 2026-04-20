@@ -42,7 +42,7 @@ function DeleteScheduleButton({ scheduleId }: { scheduleId: string }) {
         <Button
           variant='ghost'
           size='sm'
-          className='h-7 gap-1 px-2 font-mono text-caption font-bold text-destructive hover:bg-destructive/10 hover:text-destructive'
+          className='h-7 gap-1 px-2 text-caption font-bold text-destructive hover:bg-destructive/10 hover:text-destructive'
           disabled={isPending}
           aria-label='予約キャンセル'
         >
@@ -52,13 +52,13 @@ function DeleteScheduleButton({ scheduleId }: { scheduleId: string }) {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className='font-mono'>予約を削除しますか？</AlertDialogTitle>
+          <AlertDialogTitle>予約を削除しますか？</AlertDialogTitle>
           <AlertDialogDescription>この操作は元に戻せません。</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className='font-mono text-footnote'>CANCEL</AlertDialogCancel>
+          <AlertDialogCancel className='text-footnote'>CANCEL</AlertDialogCancel>
           <AlertDialogAction
-            className='bg-destructive font-mono text-footnote text-destructive-foreground hover:bg-destructive/90'
+            className='bg-destructive text-footnote text-destructive-foreground hover:bg-destructive/90'
             onClick={() => mutate(scheduleId)}
           >
             DELETE
@@ -90,7 +90,7 @@ export function ScheduleRow({ schedule, ruleNameMap }: ScheduleRowProps) {
     <div className='flex items-stretch border-b border-border bg-card transition-colors hover:bg-muted/50'>
       <div className={`w-[3px] shrink-0 ${isFailed ? 'bg-destructive/50' : 'bg-amber-500'}`} />
       <div className='flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5'>
-        <span className='truncate font-mono text-subheadline font-semibold text-foreground'>{schedule.title}</span>
+        <span className='truncate text-subheadline font-semibold text-foreground'>{schedule.title}</span>
         <div className='flex flex-wrap items-center gap-2'>
           {isFailed ? (
             <StatusChip variant='err' size='sm'>
@@ -105,11 +105,11 @@ export function ScheduleRow({ schedule, ruleNameMap }: ScheduleRowProps) {
               SCHED
             </StatusChip>
           )}
-          <span className='font-mono text-caption text-muted-foreground'>{schedule.channelId}</span>
-          <span className='font-mono text-caption text-muted-foreground'>
+          <span className='text-caption text-muted-foreground'>{schedule.channelId}</span>
+          <span className='text-caption text-muted-foreground'>
             {startLabel}〜{endLabel}
           </span>
-          <span className='font-mono text-caption text-muted-foreground'>{durationLabel}</span>
+          <span className='text-caption text-muted-foreground'>{durationLabel}</span>
           {ruleId && ruleName ? (
             <Link to='/recordings/rules/$id' params={{ id: ruleId }}>
               <StatusChip variant='info' size='sm' className='cursor-pointer hover:opacity-80'>
@@ -126,7 +126,7 @@ export function ScheduleRow({ schedule, ruleNameMap }: ScheduleRowProps) {
             </StatusChip>
           )}
           {isFailed && (schedule as { failureReason?: string | null }).failureReason && (
-            <span className='font-mono text-caption2 text-destructive'>
+            <span className='text-caption2 text-destructive'>
               {(schedule as { failureReason?: string | null }).failureReason}
             </span>
           )}
@@ -154,13 +154,13 @@ export function RecordingRow({ rec }: { rec: Recording }) {
     <div className='flex items-stretch border-b border-border bg-card transition-colors hover:bg-muted/50'>
       <div className='w-[3px] shrink-0 bg-destructive' />
       <div className='flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5'>
-        <span className='truncate font-mono text-subheadline font-semibold text-foreground'>{rec.title}</span>
+        <span className='truncate text-subheadline font-semibold text-foreground'>{rec.title}</span>
         <div className='flex flex-wrap items-center gap-2'>
           <StatusChip variant='rec' dot size='sm'>
             REC
           </StatusChip>
-          <span className='font-mono text-caption text-muted-foreground'>{rec.channelId}</span>
-          {elapsed && <span className='font-mono text-caption text-destructive'>{elapsed}</span>}
+          <span className='text-caption text-muted-foreground'>{rec.channelId}</span>
+          {elapsed && <span className='text-caption text-destructive'>{elapsed}</span>}
         </div>
         {pct !== null && (
           <div className='mt-1 h-[2px] overflow-hidden rounded-full bg-muted'>
@@ -228,22 +228,22 @@ export function FailedRecordingRow({ rec }: { rec: Recording }) {
       >
         <div className='w-[3px] shrink-0 bg-destructive/50' />
         <div className='flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5'>
-          <span className='truncate font-mono text-subheadline font-semibold text-foreground'>{rec.title}</span>
+          <span className='truncate text-subheadline font-semibold text-foreground'>{rec.title}</span>
           <div className='flex flex-wrap items-center gap-2'>
             <StatusChip variant='err' size='sm'>
               FAIL
             </StatusChip>
-            <span className='font-mono text-caption text-muted-foreground'>{rec.channelId}</span>
-            <span className='font-mono text-caption text-muted-foreground'>{dateLabel}</span>
-            <span className='font-mono text-caption text-destructive'>{open ? '▲ LOG' : '▼ LOG'}</span>
+            <span className='text-caption text-muted-foreground'>{rec.channelId}</span>
+            <span className='text-caption text-muted-foreground'>{dateLabel}</span>
+            <span className='text-caption text-destructive'>{open ? '▲ LOG' : '▼ LOG'}</span>
           </div>
         </div>
       </button>
       {open && (
         <div className='border-t border-border bg-muted/40 px-4 py-2 pl-[19px]'>
-          <p className='font-mono text-caption2 text-destructive'>ERR recording failed</p>
-          <p className='font-mono text-caption2 text-muted-foreground'>startedAt: {rec.startedAt}</p>
-          {rec.filePath && <p className='font-mono text-caption2 text-muted-foreground'>file: {rec.filePath}</p>}
+          <p className='text-caption2 text-destructive'>ERR recording failed</p>
+          <p className='text-caption2 text-muted-foreground'>startedAt: {rec.startedAt}</p>
+          {rec.filePath && <p className='text-caption2 text-muted-foreground'>file: {rec.filePath}</p>}
         </div>
       )}
     </div>
