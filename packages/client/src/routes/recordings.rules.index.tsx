@@ -65,7 +65,8 @@ function DeleteRuleButton({ rule }: { rule: RecordingRule }) {
         <AlertDialogFooter>
           <AlertDialogCancel className='text-footnote'>キャンセル</AlertDialogCancel>
           <AlertDialogAction
-            className='bg-destructive text-footnote text-destructive-foreground hover:bg-destructive/90'
+            variant='destructive'
+            className='text-footnote'
             onClick={() => mutate(rule.id, { onSuccess: () => toast.success('ルールを削除しました') })}
           >
             削除
