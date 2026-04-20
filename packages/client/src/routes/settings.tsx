@@ -499,31 +499,34 @@ function AboutTab() {
 function SettingsPage() {
   return (
     <Tabs defaultValue='status' className='flex flex-1 flex-col'>
-      {/* Matches the 48px `--page-header-h` budget so the settings tab bar
-          has the same vertical rhythm as every other page header. */}
-      <div className='sticky top-0 z-10 h-page-header shrink-0 overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-        <TabsList className='h-full w-full justify-start rounded-none bg-transparent p-0'>
+      {/* Matches the SegmentedFilter on channels/EPG: 48px tall, no bar
+          background, no bottom border, 480px cap so each tab matches the
+          ~160px cell width used elsewhere. `variant="line"` swaps the
+          pill-style active state for an underline via the trigger's
+          ::after, which is what the channel/EPG filter uses visually. */}
+      <div className='sticky top-0 z-10 flex h-page-header w-[480px] max-w-full shrink-0 bg-background'>
+        <TabsList variant='line' className='h-full! w-full gap-0 p-0'>
           <TabsTrigger
             value='status'
-            className='h-full rounded-none border-b-2 border-transparent px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none px-0 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:after:bottom-0'
           >
             ステータス
           </TabsTrigger>
           <TabsTrigger
             value='playback'
-            className='h-full rounded-none border-b-2 border-transparent px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none px-0 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:after:bottom-0'
           >
             再生
           </TabsTrigger>
           <TabsTrigger
             value='display'
-            className='h-full rounded-none border-b-2 border-transparent px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none px-0 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:after:bottom-0'
           >
             表示設定
           </TabsTrigger>
           <TabsTrigger
             value='about'
-            className='h-full rounded-none border-b-2 border-transparent px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none px-0 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground/80 data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:after:bottom-0'
           >
             情報
           </TabsTrigger>
