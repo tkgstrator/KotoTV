@@ -2,7 +2,6 @@ import { Maximize, Minimize, Pause, Play, SkipBack, SkipForward, Volume2, Volume
 import type * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { type Chapter, SeekbarChapters } from '@/components/player/SeekbarChapters'
-import { StatusChip } from '@/components/shared/status-chip'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
@@ -183,37 +182,17 @@ export function PlayerControls({
     return `${m}:${sec.toString().padStart(2, '0')}`
   }
 
-  const disabledLiveClass = isLive ? 'opacity-50 pointer-events-none' : ''
-
   return (
     <div className={cn('flex flex-col gap-1.5 px-2.5 py-2', className)}>
-      {/* Seek / progress bar row */}
-      <div className='flex items-center gap-2'>
-        {isLive ? (
-          <StatusChip variant='live' dot size='sm'>
-            LIVE
-          </StatusChip>
-        ) : (
+      {/* Seek / progress bar row — recording only. Live streams have no
+          meaningful progress ("LIVE" badge + program progress bar felt
+          like noise), so the whole row is skipped. */}
+      {!isLive && (
+        <div className='flex items-center gap-2'>
           <span className='font-mono text-[0.6rem] tabular-nums text-muted-foreground min-w-[3.5rem]'>
             {formatTime(currentTime)}
           </span>
-        )}
 
-        {isLive ? (
-          <div
-            role='progressbar'
-            aria-label='番組経過'
-            aria-valuenow={Math.round(progress * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            className='flex-1 h-1 rounded-full bg-muted overflow-hidden'
-          >
-            <div
-              className='h-full bg-primary rounded-full transition-[width] duration-300'
-              style={{ width: `${Math.round(progress * 100)}%` }}
-            />
-          </div>
-        ) : (
           <div
             ref={seekBarRef}
             role='slider'
@@ -231,14 +210,12 @@ export function PlayerControls({
               <SeekbarChapters chapters={chapters} duration={duration} />
             )}
           </div>
-        )}
 
-        {!isLive && (
           <span className='font-mono text-[0.6rem] tabular-nums text-muted-foreground min-w-[3.5rem] text-right'>
             {formatTime(duration)}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Buttons row */}
       <div className='flex items-center gap-0.5'>
@@ -264,33 +241,32 @@ export function PlayerControls({
           {isMuted ? <VolumeX className='size-4' /> : <Volume2 className='size-4' />}
         </Button>
 
-        <div aria-hidden='true' className='mx-1 h-5 w-px bg-border shrink-0' />
+        {/* Skip controls — recording only. Live has no meaningful seek. */}
+        {!isLive && (
+          <>
+            <div aria-hidden='true' className='mx-1 h-5 w-px bg-border shrink-0' />
 
-        {/* Skip back — live: disabled */}
-        <Button
-          variant='ghost'
-          size='icon'
-          aria-label='-10秒'
-          aria-disabled={isLive ? 'true' : undefined}
-          onClick={() => skip(-10)}
-          className={cn('h-10 w-10 shrink-0 [&_svg]:size-6!', disabledLiveClass)}
-          tabIndex={isLive ? -1 : 0}
-        >
-          <SkipBack className='size-4' />
-        </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              aria-label='-10秒'
+              onClick={() => skip(-10)}
+              className='h-10 w-10 shrink-0 [&_svg]:size-6!'
+            >
+              <SkipBack className='size-4' />
+            </Button>
 
-        {/* Skip forward — live: disabled */}
-        <Button
-          variant='ghost'
-          size='icon'
-          aria-label='+10秒'
-          aria-disabled={isLive ? 'true' : undefined}
-          onClick={() => skip(10)}
-          className={cn('h-10 w-10 shrink-0 [&_svg]:size-6!', disabledLiveClass)}
-          tabIndex={isLive ? -1 : 0}
-        >
-          <SkipForward className='size-4' />
-        </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              aria-label='+10秒'
+              onClick={() => skip(10)}
+              className='h-10 w-10 shrink-0 [&_svg]:size-6!'
+            >
+              <SkipForward className='size-4' />
+            </Button>
+          </>
+        )}
 
         <div className='flex-1' />
 

@@ -25,7 +25,7 @@ const MAX_RETRIES = 3
  */
 export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
   (
-    { playlistUrl, onError, onReady, className, autoPlay = true, muted = true, ariaLabel, lowLatencyMode = false },
+    { playlistUrl, onError, onReady, className, autoPlay = true, muted = false, ariaLabel, lowLatencyMode = false },
     ref
   ) => {
     const internalRef = useRef<HTMLVideoElement>(null)
@@ -56,7 +56,14 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
       if (!Hls.isSupported()) {
         if (video.canPlayType('application/vnd.apple.mpegurl')) {
           video.src = playlistUrl
-          if (autoPlay) video.play().catch(() => {})
+          if (autoPlay) {
+            // Try with sound first; if the browser blocks unmuted autoplay
+            // (no prior user gesture / low MEI), fall back to muted playback.
+            video.play().catch(() => {
+              video.muted = true
+              video.play().catch(() => {})
+            })
+          }
           onReadyRef.current?.()
           return
         }
@@ -96,7 +103,14 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         onReadyRef.current?.()
-        if (autoPlay) video.play().catch(() => {})
+        if (autoPlay) {
+          // Try with sound first; if the browser blocks unmuted autoplay
+          // (no prior user gesture / low MEI), fall back to muted playback.
+          video.play().catch(() => {
+            video.muted = true
+            video.play().catch(() => {})
+          })
+        }
       })
 
       hls.loadSource(playlistUrl)
