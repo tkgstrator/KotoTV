@@ -43,7 +43,7 @@ export function AppShell({ children }: AppShellProps) {
       style={
         {
           '--sidebar-width': '240px',
-          '--sidebar-width-icon': '48px'
+          '--sidebar-width-icon': '72px'
         } as React.CSSProperties
       }
       className='flex min-h-screen flex-col bg-background text-foreground sm:h-screen sm:min-h-0'
