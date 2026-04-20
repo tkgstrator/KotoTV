@@ -102,37 +102,61 @@ interface TunerDevice {
   isFree: boolean
 }
 
-// Extract a hint at the underlying hardware from mirakc's command template,
-// which usually starts with the binary name (recdvb / recpt1 / dvbv5-zap /
-// ffmpeg ...) plus device flags. We surface just the leading binary so the
-// user can tell what kind of tuner is wired up without parsing a full cmd.
-function commandBinary(command: string | null): string | null {
-  if (!command) return null
-  const first = command.trim().split(/\s+/)[0]
-  if (!first) return null
-  // Strip path prefix so /usr/local/bin/recdvb shows as recdvb.
-  const slash = first.lastIndexOf('/')
-  return slash >= 0 ? first.slice(slash + 1) : first
+// mirakc names tuners like "PLEX PX-MLT8PE #1" — the trailing "#N" is a
+// per-device index, not part of the model, so strip it to group siblings
+// under a single hardware row.
+function tunerModel(name: string): string {
+  return name.replace(/\s*#\d+\s*$/, '').trim() || name
+}
+
+interface TunerModelGroup {
+  model: string
+  types: string[]
+  total: number
+  free: number
+}
+
+function groupTunersByModel(devices: TunerDevice[]): TunerModelGroup[] {
+  const byModel = new Map<string, TunerModelGroup>()
+  for (const d of devices) {
+    const model = tunerModel(d.name)
+    const existing = byModel.get(model)
+    if (existing) {
+      existing.total += 1
+      if (d.isFree) existing.free += 1
+      for (const t of d.types) if (!existing.types.includes(t)) existing.types.push(t)
+    } else {
+      byModel.set(model, {
+        model,
+        types: [...d.types],
+        total: 1,
+        free: d.isFree ? 1 : 0
+      })
+    }
+  }
+  return Array.from(byModel.values())
 }
 
 function TunerList({ devices }: { devices: TunerDevice[] }) {
+  const groups = groupTunersByModel(devices)
   return (
     <ul className='mt-2 flex flex-col gap-0.5 font-sans text-footnote'>
-      {devices.map((d) => {
-        const bin = commandBinary(d.command)
-        return (
-          <li key={d.name} className='flex items-baseline gap-2'>
-            <span className={cn('shrink-0 font-semibold', d.isFree ? 'text-muted-foreground' : 'text-amber-500')}>
-              {d.name}
-            </span>
-            {d.types.length > 0 && (
-              <span className='shrink-0 font-mono text-caption text-muted-foreground'>{d.types.join('/')}</span>
+      {groups.map((g) => (
+        <li key={g.model} className='flex items-baseline gap-2'>
+          <span className='min-w-0 flex-1 truncate font-semibold text-foreground'>{g.model}</span>
+          {g.types.length > 0 && (
+            <span className='shrink-0 font-mono text-caption text-muted-foreground'>{g.types.join('/')}</span>
+          )}
+          <span
+            className={cn(
+              'shrink-0 font-mono text-caption tabular-nums',
+              g.free === 0 ? 'text-amber-500' : 'text-muted-foreground'
             )}
-            {bin && <span className='truncate font-mono text-caption text-muted-foreground'>{bin}</span>}
-            {!d.isFree && <span className='ml-auto shrink-0 text-caption text-amber-500'>busy</span>}
-          </li>
-        )
-      })}
+          >
+            {g.free}/{g.total} free
+          </span>
+        </li>
+      ))}
     </ul>
   )
 }
