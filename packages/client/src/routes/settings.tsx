@@ -241,21 +241,9 @@ const QUALITY_OPTIONS: { value: QualityChoice; label: string; resolution: string
 
 const CODEC_OPTIONS: { value: CodecChoice; label: string; detail: string }[] = [
   { value: 'auto', label: 'AUTO', detail: 'ブラウザが対応する中で最適なコーデックを自動選択' },
-  {
-    value: 'avc',
-    label: 'AVC (H.264)',
-    detail: '最も互換性が高い。全ての環境で再生可能だが、同画質だと帯域が大きめ'
-  },
-  {
-    value: 'hevc',
-    label: 'HEVC (H.265)',
-    detail: 'AVC より 30-50% 省帯域。iOS/macOS Safari と対応 GPU 環境で再生可'
-  },
-  {
-    value: 'vp9',
-    label: 'VP9',
-    detail: 'オープン規格で HEVC 同等の圧縮率。Chrome / Firefox / Edge で広くサポート'
-  }
+  { value: 'avc', label: 'AVC', detail: '最も互換性が高い。全ての環境で再生可能だが、同画質だと帯域が大きめ' },
+  { value: 'hevc', label: 'HEVC', detail: 'AVC より 30-50% 省帯域。iOS/macOS Safari と対応 GPU 環境で再生可' },
+  { value: 'vp9', label: 'VP9', detail: 'オープン規格で HEVC 同等の圧縮率。Chrome / Firefox / Edge で広くサポート' }
 ]
 
 interface SegmentProps<T extends string> {
