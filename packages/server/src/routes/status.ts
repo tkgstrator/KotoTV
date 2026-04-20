@@ -24,41 +24,49 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
 
 async function checkMirakc(): Promise<HealthResponse['mirakc']> {
   try {
-    const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/status`, 2000)
+    // mirakc exposes its build metadata under /api/version; /api/status is
+    // a legacy alias on some builds. Try both so this works across versions.
+    const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/version`, 2000)
     if (res.status === 200) {
-      let version = 'unknown'
+      let version: string | null = null
       try {
-        const body = await res.json()
-        if (typeof body?.version === 'string') version = body.version
+        const body = (await res.json()) as { current?: unknown; latest?: unknown; version?: unknown }
+        if (typeof body.current === 'string') version = body.current
+        else if (typeof body.version === 'string') version = body.version
       } catch {
         // version field not critical
       }
-      const detail = `mirakc ${version}`
+      const detail = version ? `mirakc ${version}` : 'mirakc reachable'
       pushLogLine('mirakc', 'info', detail)
-      return { status: 'ok', detail }
+      return { status: 'ok', detail, version }
     }
     const detail = `mirakc returned HTTP ${res.status}`
     pushLogLine('mirakc', 'error', detail)
-    return { status: 'err', detail }
+    return { status: 'err', detail, version: null }
   } catch (err) {
     const detail = 'mirakc unreachable (fallback to mock)'
     pushLogLine('mirakc', 'warn', detail)
     logger.warn({ module: 'health', err }, detail)
-    return { status: 'warn', detail }
+    return { status: 'warn', detail, version: null }
   }
 }
 
 async function checkPostgres(): Promise<HealthResponse['postgres']> {
   try {
-    await prisma.$queryRaw`SELECT 1`
-    const detail = 'postgres reachable'
+    const rows = await prisma.$queryRaw<Array<{ version: string }>>`SELECT version()`
+    const raw = rows[0]?.version ?? ''
+    // `SELECT version()` returns e.g. "PostgreSQL 17.2 (Debian 17.2-1) on
+    // x86_64-pc-linux-gnu". Trim to the leading product + version for UI.
+    const match = raw.match(/^PostgreSQL\s+([0-9][^\s,()]*)/i)
+    const version = match ? `PostgreSQL ${match[1]}` : raw ? raw.split(' ').slice(0, 2).join(' ') : null
+    const detail = version ?? 'postgres reachable'
     pushLogLine('postgres', 'info', detail)
-    return { status: 'ok', detail }
+    return { status: 'ok', detail, version }
   } catch (err) {
     const detail = err instanceof Error ? err.message : 'postgres unreachable'
     pushLogLine('postgres', 'error', detail)
     logger.error({ module: 'health', err }, 'postgres health check failed')
-    return { status: 'err', detail }
+    return { status: 'err', detail, version: null }
   }
 }
 
@@ -82,31 +90,49 @@ async function checkFfmpeg(): Promise<HealthResponse['ffmpeg']> {
   }
 }
 
+interface MirakcTuner {
+  name?: unknown
+  types?: unknown
+  command?: unknown
+  isFree?: unknown
+}
+
+function normalizeTuner(raw: MirakcTuner): HealthResponse['tuners']['devices'][number] {
+  const name = typeof raw.name === 'string' ? raw.name : 'unknown'
+  const types = Array.isArray(raw.types) ? raw.types.filter((t): t is string => typeof t === 'string') : []
+  // mirakc's `command` template includes the recording binary (recdvb,
+  // recpt1, dvbv5-zap, ...) — surfacing it gives a useful hint about the
+  // underlying hardware without having to parse lsusb.
+  const command = typeof raw.command === 'string' ? raw.command : null
+  const isFree = raw.isFree !== false
+  return { name, types, command, isFree }
+}
+
 async function checkTuners(): Promise<HealthResponse['tuners']> {
   try {
     const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/tuners`, 2000)
     if (!res.ok) {
       const detail = `tuners endpoint returned HTTP ${res.status}`
       pushLogLine('tuners', 'warn', detail)
-      return { status: 'warn', detail }
+      return { status: 'warn', detail, devices: [] }
     }
     const data: unknown = await res.json()
     if (!Array.isArray(data)) {
       const detail = 'unexpected tuners response shape'
       pushLogLine('tuners', 'warn', detail)
-      return { status: 'warn', detail }
+      return { status: 'warn', detail, devices: [] }
     }
-    const tuners = data as Array<{ isFree?: boolean }>
-    const total = tuners.length
-    const free = tuners.filter((t) => t.isFree !== false).length
+    const devices = (data as MirakcTuner[]).map(normalizeTuner)
+    const total = devices.length
+    const free = devices.filter((t) => t.isFree).length
     const detail = `${free}/${total} free`
     pushLogLine('tuners', 'info', detail)
-    return { status: 'ok', detail }
+    return { status: 'ok', detail, devices }
   } catch (err) {
     const detail = 'mirakc unreachable, tuner status unknown'
     pushLogLine('tuners', 'warn', detail)
     logger.warn({ module: 'health', err }, detail)
-    return { status: 'warn', detail }
+    return { status: 'warn', detail, devices: [] }
   }
 }
 

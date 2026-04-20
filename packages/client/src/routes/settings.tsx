@@ -93,6 +93,50 @@ function DiagRow({ status, name, detail, sub, extra, logTail }: DiagRowProps) {
   )
 }
 
+// ─── Tuner device list ───────────────────────────────────────────────────────
+
+interface TunerDevice {
+  name: string
+  types: string[]
+  command: string | null
+  isFree: boolean
+}
+
+// Extract a hint at the underlying hardware from mirakc's command template,
+// which usually starts with the binary name (recdvb / recpt1 / dvbv5-zap /
+// ffmpeg ...) plus device flags. We surface just the leading binary so the
+// user can tell what kind of tuner is wired up without parsing a full cmd.
+function commandBinary(command: string | null): string | null {
+  if (!command) return null
+  const first = command.trim().split(/\s+/)[0]
+  if (!first) return null
+  // Strip path prefix so /usr/local/bin/recdvb shows as recdvb.
+  const slash = first.lastIndexOf('/')
+  return slash >= 0 ? first.slice(slash + 1) : first
+}
+
+function TunerList({ devices }: { devices: TunerDevice[] }) {
+  return (
+    <ul className='mt-2 flex flex-col gap-0.5 font-sans text-footnote'>
+      {devices.map((d) => {
+        const bin = commandBinary(d.command)
+        return (
+          <li key={d.name} className='flex items-baseline gap-2'>
+            <span className={cn('shrink-0 font-semibold', d.isFree ? 'text-muted-foreground' : 'text-amber-500')}>
+              {d.name}
+            </span>
+            {d.types.length > 0 && (
+              <span className='shrink-0 font-mono text-caption text-muted-foreground'>{d.types.join('/')}</span>
+            )}
+            {bin && <span className='truncate font-mono text-caption text-muted-foreground'>{bin}</span>}
+            {!d.isFree && <span className='ml-auto shrink-0 text-caption text-amber-500'>busy</span>}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 // ─── Status tab ──────────────────────────────────────────────────────────────
 
 function StatusTab() {
@@ -129,6 +173,7 @@ function StatusTab() {
           status={data.tuners.status}
           name='TUNERS'
           detail={data.tuners.detail}
+          extra={data.tuners.devices.length > 0 ? <TunerList devices={data.tuners.devices} /> : undefined}
           logTail={<HealthLogTail subsystem='tuners' status={data.tuners.status} />}
         />
       </div>
