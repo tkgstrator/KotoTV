@@ -428,7 +428,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                               )
                             }
                             className={cn(
-                              'flex h-9 flex-1 items-center justify-center rounded border text-footnote font-semibold transition-colors sm:h-8 sm:w-8 sm:flex-none',
+                              'flex h-10 flex-1 items-center justify-center rounded border text-body font-semibold transition-colors sm:h-9 sm:w-11 sm:flex-none',
                               active
                                 ? 'border-primary/40 bg-primary/12 text-primary'
                                 : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -462,7 +462,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                           }
                         }}
                         className={cn(
-                          'h-8 rounded border px-2.5 text-footnote transition-colors',
+                          'h-9 rounded border px-4 text-footnote transition-colors',
                           isActive
                             ? 'border-primary/40 bg-primary/12 text-primary'
                             : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -479,7 +479,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='timeStartMinutes'
                     render={({ field }) => (
                       <Input
-                        className='h-8 w-24 font-mono tabular-nums text-footnote'
+                        className='h-9 w-28 font-mono tabular-nums text-body'
                         placeholder='HH:MM'
                         value={field.value != null ? minutesToHHMM(field.value) : ''}
                         onChange={(e) => field.onChange(HHMMToMinutes(e.target.value))}
@@ -492,7 +492,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='timeEndMinutes'
                     render={({ field }) => (
                       <Input
-                        className='h-8 w-24 font-mono tabular-nums text-footnote'
+                        className='h-9 w-28 font-mono tabular-nums text-body'
                         placeholder='HH:MM'
                         value={field.value != null ? minutesToHHMM(field.value) : ''}
                         onChange={(e) => field.onChange(HHMMToMinutes(e.target.value))}
