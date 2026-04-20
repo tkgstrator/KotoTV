@@ -61,7 +61,7 @@ export function AppShell({ children }: AppShellProps) {
         <AppSidebar />
         <SidebarInset
           id='main-content'
-          className='flex flex-1 flex-col overflow-y-auto bg-background pb-[var(--mobile-nav-h)] sm:min-w-0 sm:pb-0'
+          className='flex min-h-0 flex-1 flex-col overflow-y-auto bg-background pb-[var(--mobile-nav-h)] sm:min-w-0 sm:pb-0'
         >
           {children}
         </SidebarInset>
