@@ -248,7 +248,7 @@ export function PlayerControls({
           size='icon'
           aria-label={isPlaying ? '一時停止' : '再生'}
           onClick={togglePlay}
-          className='h-8 w-8 shrink-0'
+          className='h-10 w-10 shrink-0 [&_svg]:size-6!'
         >
           {isPlaying ? <Pause className='size-4' /> : <Play className='size-4' />}
         </Button>
@@ -259,7 +259,7 @@ export function PlayerControls({
           size='icon'
           aria-label={isMuted ? 'ミュート解除' : 'ミュート'}
           onClick={toggleMute}
-          className='h-8 w-8 shrink-0'
+          className='h-10 w-10 shrink-0 [&_svg]:size-6!'
         >
           {isMuted ? <VolumeX className='size-4' /> : <Volume2 className='size-4' />}
         </Button>
@@ -273,7 +273,7 @@ export function PlayerControls({
           aria-label='-10秒'
           aria-disabled={isLive ? 'true' : undefined}
           onClick={() => skip(-10)}
-          className={cn('h-8 w-8 shrink-0', disabledLiveClass)}
+          className={cn('h-10 w-10 shrink-0 [&_svg]:size-6!', disabledLiveClass)}
           tabIndex={isLive ? -1 : 0}
         >
           <SkipBack className='size-4' />
@@ -286,7 +286,7 @@ export function PlayerControls({
           aria-label='+10秒'
           aria-disabled={isLive ? 'true' : undefined}
           onClick={() => skip(10)}
-          className={cn('h-8 w-8 shrink-0', disabledLiveClass)}
+          className={cn('h-10 w-10 shrink-0 [&_svg]:size-6!', disabledLiveClass)}
           tabIndex={isLive ? -1 : 0}
         >
           <SkipForward className='size-4' />
@@ -355,7 +355,7 @@ export function PlayerControls({
           size='icon'
           aria-label={isFullscreen ? 'フルスクリーン解除' : 'フルスクリーン'}
           onClick={toggleFullscreen}
-          className='h-8 w-8 shrink-0'
+          className='h-10 w-10 shrink-0 [&_svg]:size-6!'
         >
           {isFullscreen ? <Minimize className='size-4' /> : <Maximize className='size-4' />}
         </Button>
