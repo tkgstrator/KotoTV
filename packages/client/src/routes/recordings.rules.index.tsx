@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { PageHeader } from '@/components/shell/PageHeader'
+import { RecordingPageHeader } from '@/components/recording/recording-page-header'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -242,22 +242,25 @@ function RecordingRulesPage() {
   const realRules = data?.rules ?? []
   const rules = realRules.length > 0 ? realRules : DUMMY_RULES
 
+  const enabledCount = rules.filter((r) => r.enabled).length
+
   return (
     <>
-      <PageHeader ariaLabel='録画ルールヘッダー' className='items-center gap-2 px-3'>
-        <Link to='/recordings' className='text-caption text-muted-foreground hover:text-foreground'>
-          録画
-        </Link>
-        <span className='text-caption text-border'>/</span>
-        <h1 className='text-title3 font-bold leading-none'>録画ルール</h1>
-        <div className='flex-1' />
-        <Link to='/recordings/rules/new'>
-          <Button size='sm' className='h-7 gap-1.5 px-3 text-footnote font-bold'>
-            <Plus className='size-3.5' />
-            新規ルール
-          </Button>
-        </Link>
-      </PageHeader>
+      <RecordingPageHeader
+        ariaLabel='録画ルールヘッダー'
+        stats={[
+          { label: '有効', value: enabledCount },
+          { label: '全', value: rules.length }
+        ]}
+        action={
+          <Link to='/recordings/rules/new'>
+            <Button size='sm' className='h-8 gap-1.5 px-3 text-footnote'>
+              <Plus className='size-4' />
+              新規ルール
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Column headers (desktop) — same grid template as RuleRow so the
           field positions always line up. */}
