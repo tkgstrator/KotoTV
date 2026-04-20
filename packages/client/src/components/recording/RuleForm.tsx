@@ -566,7 +566,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
               <FormItem className='gap-2'>
                 <FormLabel className='text-footnote font-semibold text-muted-foreground'>録画オプション</FormLabel>
-                <div className='flex flex-col gap-2 rounded-md border border-border bg-card/40 px-3 py-2.5'>
+                <div className='flex flex-col gap-2'>
                   <FormField
                     control={form.control}
                     name='avoidDuplicates'
@@ -607,12 +607,111 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name='postEncode'
+                    render={({ field }) => (
+                      <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
+                        <FormLabel className='cursor-pointer text-footnote text-foreground'>
+                          録画後にエンコード
+                        </FormLabel>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  {postEncode && (
+                    <div className='flex flex-col gap-2 pl-4'>
+                      <FormField
+                        control={form.control}
+                        name='postEncodeCodec'
+                        render={({ field }) => (
+                          <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
+                            <FormLabel className='text-footnote text-muted-foreground'>コーデック</FormLabel>
+                            <FormControl>
+                              <ToggleGroup
+                                type='single'
+                                variant='outline'
+                                value={field.value}
+                                onValueChange={(v) => v && field.onChange(v)}
+                                className='gap-1'
+                              >
+                                {(['avc', 'hevc', 'vp9'] as const).map((codec) => (
+                                  <ToggleGroupItem
+                                    key={codec}
+                                    value={codec}
+                                    className={cn('h-8 px-3 text-footnote uppercase', TOGGLE_ON)}
+                                  >
+                                    {codec}
+                                  </ToggleGroupItem>
+                                ))}
+                              </ToggleGroup>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name='postEncodeQuality'
+                        render={({ field }) => (
+                          <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
+                            <FormLabel className='text-footnote text-muted-foreground'>画質</FormLabel>
+                            <FormControl>
+                              <ToggleGroup
+                                type='single'
+                                variant='outline'
+                                value={field.value}
+                                onValueChange={(v) => v && field.onChange(v)}
+                                className='gap-1'
+                              >
+                                <ToggleGroupItem value='high' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                  高
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value='medium' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                  中
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value='low' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                  低
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name='postEncodeTiming'
+                        render={({ field }) => (
+                          <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
+                            <FormLabel className='text-footnote text-muted-foreground'>タイミング</FormLabel>
+                            <FormControl>
+                              <ToggleGroup
+                                type='single'
+                                variant='outline'
+                                value={field.value}
+                                onValueChange={(v) => v && field.onChange(v)}
+                                className='gap-1'
+                              >
+                                <ToggleGroupItem value='immediate' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                  録画直後
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value='idle' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
+                                  アイドル時
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
                 </div>
               </FormItem>
 
               <FormItem className='gap-2'>
                 <FormLabel className='text-footnote font-semibold text-muted-foreground'>詳細設定</FormLabel>
-                <div className='flex flex-col gap-2.5 rounded-md border border-border bg-card/40 px-3 py-2.5'>
+                <div className='flex flex-col gap-2.5'>
                   <FormField
                     control={form.control}
                     name='marginStartMinutes'
@@ -703,108 +802,6 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                   />
                 </div>
               </FormItem>
-
-              <div className='flex flex-col gap-2'>
-                <FormField
-                  control={form.control}
-                  name='postEncode'
-                  render={({ field }) => (
-                    <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                      <FormLabel className='cursor-pointer text-footnote font-semibold text-muted-foreground'>
-                        録画後にエンコード
-                      </FormLabel>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                {postEncode && (
-                  <div className='flex flex-col gap-2 rounded-md border border-border bg-card/40 px-3 py-2.5'>
-                    <FormField
-                      control={form.control}
-                      name='postEncodeCodec'
-                      render={({ field }) => (
-                        <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                          <FormLabel className='text-footnote text-foreground'>コーデック</FormLabel>
-                          <FormControl>
-                            <ToggleGroup
-                              type='single'
-                              variant='outline'
-                              value={field.value}
-                              onValueChange={(v) => v && field.onChange(v)}
-                              className='gap-1'
-                            >
-                              {(['avc', 'hevc', 'vp9'] as const).map((codec) => (
-                                <ToggleGroupItem
-                                  key={codec}
-                                  value={codec}
-                                  className={cn('h-8 px-3 text-footnote uppercase', TOGGLE_ON)}
-                                >
-                                  {codec}
-                                </ToggleGroupItem>
-                              ))}
-                            </ToggleGroup>
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name='postEncodeQuality'
-                      render={({ field }) => (
-                        <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                          <FormLabel className='text-footnote text-foreground'>画質</FormLabel>
-                          <FormControl>
-                            <ToggleGroup
-                              type='single'
-                              variant='outline'
-                              value={field.value}
-                              onValueChange={(v) => v && field.onChange(v)}
-                              className='gap-1'
-                            >
-                              <ToggleGroupItem value='high' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
-                                高
-                              </ToggleGroupItem>
-                              <ToggleGroupItem value='medium' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
-                                中
-                              </ToggleGroupItem>
-                              <ToggleGroupItem value='low' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
-                                低
-                              </ToggleGroupItem>
-                            </ToggleGroup>
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name='postEncodeTiming'
-                      render={({ field }) => (
-                        <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                          <FormLabel className='text-footnote text-foreground'>タイミング</FormLabel>
-                          <FormControl>
-                            <ToggleGroup
-                              type='single'
-                              variant='outline'
-                              value={field.value}
-                              onValueChange={(v) => v && field.onChange(v)}
-                              className='gap-1'
-                            >
-                              <ToggleGroupItem value='immediate' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
-                                録画直後
-                              </ToggleGroupItem>
-                              <ToggleGroupItem value='idle' className={cn('h-8 px-3 text-footnote', TOGGLE_ON)}>
-                                アイドル時
-                              </ToggleGroupItem>
-                            </ToggleGroup>
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Button row — span both columns */}
