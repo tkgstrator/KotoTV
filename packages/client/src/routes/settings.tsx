@@ -4,7 +4,7 @@ import { StatusChip } from '@/components/shared/status-chip'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { type Subsystem, useHealth } from '@/hooks/useHealth'
+import { useHealth } from '@/hooks/useHealth'
 import { type CodecChoice, type QualityChoice, usePlaybackPrefs } from '@/hooks/usePlaybackPrefs'
 import { type ThemeChoice, useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
@@ -28,15 +28,6 @@ type SubStatus = 'ok' | 'warn' | 'err'
 function statusVariant(s: SubStatus) {
   return s satisfies 'ok' | 'warn' | 'err'
 }
-
-// ─── Health strip ────────────────────────────────────────────────────────────
-
-const SUBSYSTEMS: { key: Subsystem; label: string }[] = [
-  { key: 'mirakc', label: 'mirakc' },
-  { key: 'ffmpeg', label: 'ffmpeg' },
-  { key: 'postgres', label: 'postgres' },
-  { key: 'tuners', label: 'tuners' }
-]
 
 // ─── Section heading ─────────────────────────────────────────────────────────
 
@@ -482,94 +473,49 @@ function AboutTab() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function SettingsPage() {
-  const { data } = useHealth()
-
-  const anyWarn = data
-    ? [...SUBSYSTEMS.map((s) => data[s.key].status), data.disk.status].some((s) => s !== 'ok')
-    : false
-
   return (
-    <>
-      {/* Pinned health strip */}
-      <div
-        role='status'
-        aria-label='システム健全性'
-        className={cn(
-          'sticky top-0 z-10 flex shrink-0 items-stretch overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-          anyWarn && 'border-b-amber-500/30 bg-amber-500/[0.04]'
-        )}
-      >
-        {SUBSYSTEMS.map(({ key, label }) => {
-          const sub = data?.[key]
-          const st = sub?.status ?? 'ok'
-          return (
-            <div
-              key={key}
-              className='flex shrink-0 items-center gap-1.5 border-r border-border px-3.5 py-[5px] last:border-r-0'
-            >
-              <span className='font-mono text-caption font-bold uppercase tracking-[0.08em] text-muted-foreground'>
-                {label}
-              </span>
-              <StatusChip variant={st} size='sm'>
-                {st.toUpperCase()}
-              </StatusChip>
-              {sub && (
-                <span className={cn('font-mono text-caption text-muted-foreground', st !== 'ok' && 'text-amber-500')}>
-                  {sub.detail}
-                </span>
-              )}
-            </div>
-          )
-        })}
-        <div className='ml-auto flex shrink-0 items-center px-3.5'>
-          <span className='font-mono text-caption text-muted-foreground/60'>更新 15s</span>
-        </div>
+    <Tabs defaultValue='status' className='flex flex-1 flex-col'>
+      <div className='sticky top-0 z-10 shrink-0 overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+        <TabsList className='h-auto w-full justify-start rounded-none bg-transparent p-0'>
+          <TabsTrigger
+            value='status'
+            className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+          >
+            ステータス
+          </TabsTrigger>
+          <TabsTrigger
+            value='playback'
+            className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+          >
+            再生
+          </TabsTrigger>
+          <TabsTrigger
+            value='display'
+            className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+          >
+            表示設定
+          </TabsTrigger>
+          <TabsTrigger
+            value='about'
+            className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+          >
+            About
+          </TabsTrigger>
+        </TabsList>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue='status' className='flex flex-1 flex-col'>
-        <div className='sticky top-[48px] z-10 shrink-0 overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-          <TabsList className='h-auto w-full justify-start rounded-none bg-transparent p-0'>
-            <TabsTrigger
-              value='status'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
-            >
-              ステータス
-            </TabsTrigger>
-            <TabsTrigger
-              value='playback'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
-            >
-              再生
-            </TabsTrigger>
-            <TabsTrigger
-              value='display'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
-            >
-              表示設定
-            </TabsTrigger>
-            <TabsTrigger
-              value='about'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
-            >
-              About
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value='status' className='mt-0 flex-1'>
-          <StatusTab />
-        </TabsContent>
-        <TabsContent value='playback' className='mt-0 flex-1'>
-          <PlaybackTab />
-        </TabsContent>
-        <TabsContent value='display' className='mt-0 flex-1'>
-          <DisplayTab />
-        </TabsContent>
-        <TabsContent value='about' className='mt-0 flex-1'>
-          <AboutTab />
-        </TabsContent>
-      </Tabs>
-    </>
+      <TabsContent value='status' className='mt-0 flex-1'>
+        <StatusTab />
+      </TabsContent>
+      <TabsContent value='playback' className='mt-0 flex-1'>
+        <PlaybackTab />
+      </TabsContent>
+      <TabsContent value='display' className='mt-0 flex-1'>
+        <DisplayTab />
+      </TabsContent>
+      <TabsContent value='about' className='mt-0 flex-1'>
+        <AboutTab />
+      </TabsContent>
+    </Tabs>
   )
 }
