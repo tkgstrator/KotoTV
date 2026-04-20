@@ -499,29 +499,31 @@ function AboutTab() {
 function SettingsPage() {
   return (
     <Tabs defaultValue='status' className='flex flex-1 flex-col'>
-      <div className='sticky top-0 z-10 shrink-0 overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-        <TabsList className='h-auto w-full justify-start rounded-none bg-transparent p-0'>
+      {/* Matches the 48px `--page-header-h` budget so the settings tab bar
+          has the same vertical rhythm as every other page header. */}
+      <div className='sticky top-0 z-10 h-page-header shrink-0 overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+        <TabsList className='h-full w-full justify-start rounded-none bg-transparent p-0'>
           <TabsTrigger
             value='status'
-            className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none border-b-2 border-transparent px-4 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
           >
             ステータス
           </TabsTrigger>
           <TabsTrigger
             value='playback'
-            className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none border-b-2 border-transparent px-4 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
           >
             再生
           </TabsTrigger>
           <TabsTrigger
             value='display'
-            className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none border-b-2 border-transparent px-4 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
           >
             表示設定
           </TabsTrigger>
           <TabsTrigger
             value='about'
-            className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+            className='h-full rounded-none border-b-2 border-transparent px-4 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
           >
             情報
           </TabsTrigger>
