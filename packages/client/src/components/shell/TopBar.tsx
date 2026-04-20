@@ -15,7 +15,7 @@ const APP_VERSION = 'v0.1.0'
 
 export function TopBar() {
   return (
-    <header className='flex h-14 shrink-0 items-center gap-4 border-b border-border bg-card px-4'>
+    <header className='flex h-14 shrink-0 items-center gap-4 border-b border-border bg-background px-4'>
       <SidebarTrigger className='hidden size-10 sm:inline-flex [&>svg]:size-6' />
       <span className='text-[1.125rem] font-black tracking-tight text-foreground'>KotoTV</span>
       <div className='flex-1' />

@@ -43,7 +43,15 @@ export function AppShell({ children }: AppShellProps) {
       style={
         {
           '--sidebar-width': '240px',
-          '--sidebar-width-icon': '72px'
+          '--sidebar-width-icon': '72px',
+          // Unify sidebar fill with the page background — YouTube uses a
+          // single theme color for chrome and content rather than tiered
+          // surface shades.
+          '--sidebar': 'var(--background)',
+          '--sidebar-foreground': 'var(--foreground)',
+          '--sidebar-border': 'var(--border)',
+          '--sidebar-accent': 'var(--muted)',
+          '--sidebar-accent-foreground': 'var(--foreground)'
         } as React.CSSProperties
       }
       className='flex min-h-screen flex-col bg-background text-foreground sm:h-screen sm:min-h-0'
