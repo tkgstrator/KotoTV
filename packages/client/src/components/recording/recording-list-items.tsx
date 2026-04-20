@@ -47,7 +47,7 @@ function DeleteScheduleButton({ scheduleId }: { scheduleId: string }) {
           aria-label='予約キャンセル'
         >
           <Trash2 className='size-3' />
-          CANCEL
+          取消
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -56,12 +56,12 @@ function DeleteScheduleButton({ scheduleId }: { scheduleId: string }) {
           <AlertDialogDescription>この操作は元に戻せません。</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className='text-footnote'>CANCEL</AlertDialogCancel>
+          <AlertDialogCancel className='text-footnote'>キャンセル</AlertDialogCancel>
           <AlertDialogAction
             className='bg-destructive text-footnote text-destructive-foreground hover:bg-destructive/90'
             onClick={() => mutate(scheduleId)}
           >
-            DELETE
+            削除
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -94,15 +94,15 @@ export function ScheduleRow({ schedule, ruleNameMap }: ScheduleRowProps) {
         <div className='flex flex-wrap items-center gap-2'>
           {isFailed ? (
             <StatusChip variant='err' size='sm'>
-              FAIL
+              失敗
             </StatusChip>
           ) : schedule.status === 'recording' ? (
             <StatusChip variant='rec' dot size='sm'>
-              REC
+              録画中
             </StatusChip>
           ) : (
             <StatusChip variant='sched' size='sm'>
-              SCHED
+              予約
             </StatusChip>
           )}
           <span className='text-caption text-muted-foreground'>{schedule.channelId}</span>
@@ -113,16 +113,16 @@ export function ScheduleRow({ schedule, ruleNameMap }: ScheduleRowProps) {
           {ruleId && ruleName ? (
             <Link to='/recordings/rules/$id' params={{ id: ruleId }}>
               <StatusChip variant='info' size='sm' className='cursor-pointer hover:opacity-80'>
-                RULE {ruleName}
+                ルール: {ruleName}
               </StatusChip>
             </Link>
           ) : ruleId ? (
             <StatusChip variant='info' size='sm'>
-              RULE
+              ルール
             </StatusChip>
           ) : (
             <StatusChip variant='muted' size='sm'>
-              MANUAL
+              手動
             </StatusChip>
           )}
           {isFailed && (schedule as { failureReason?: string | null }).failureReason && (
@@ -143,7 +143,7 @@ export function ScheduleRow({ schedule, ruleNameMap }: ScheduleRowProps) {
 
 export function RecordingRow({ rec }: { rec: Recording }) {
   const elapsed = rec.startedAt
-    ? `${Math.round((Date.now() - new Date(rec.startedAt).getTime()) / 60_000)}min elapsed`
+    ? `${Math.round((Date.now() - new Date(rec.startedAt).getTime()) / 60_000)} 分経過`
     : null
   const pct =
     rec.durationSec && rec.startedAt
@@ -157,7 +157,7 @@ export function RecordingRow({ rec }: { rec: Recording }) {
         <span className='truncate text-subheadline font-semibold text-foreground'>{rec.title}</span>
         <div className='flex flex-wrap items-center gap-2'>
           <StatusChip variant='rec' dot size='sm'>
-            REC
+            録画中
           </StatusChip>
           <span className='text-caption text-muted-foreground'>{rec.channelId}</span>
           {elapsed && <span className='text-caption text-destructive'>{elapsed}</span>}
@@ -231,19 +231,19 @@ export function FailedRecordingRow({ rec }: { rec: Recording }) {
           <span className='truncate text-subheadline font-semibold text-foreground'>{rec.title}</span>
           <div className='flex flex-wrap items-center gap-2'>
             <StatusChip variant='err' size='sm'>
-              FAIL
+              失敗
             </StatusChip>
             <span className='text-caption text-muted-foreground'>{rec.channelId}</span>
             <span className='text-caption text-muted-foreground'>{dateLabel}</span>
-            <span className='text-caption text-destructive'>{open ? '▲ LOG' : '▼ LOG'}</span>
+            <span className='text-caption text-destructive'>{open ? '▲ ログ' : '▼ ログ'}</span>
           </div>
         </div>
       </button>
       {open && (
         <div className='border-t border-border bg-muted/40 px-4 py-2 pl-[19px]'>
-          <p className='text-caption2 text-destructive'>ERR recording failed</p>
-          <p className='text-caption2 text-muted-foreground'>startedAt: {rec.startedAt}</p>
-          {rec.filePath && <p className='text-caption2 text-muted-foreground'>file: {rec.filePath}</p>}
+          <p className='text-caption2 text-destructive'>録画に失敗しました</p>
+          <p className='text-caption2 text-muted-foreground'>開始時刻: {rec.startedAt}</p>
+          {rec.filePath && <p className='text-caption2 text-muted-foreground'>ファイル: {rec.filePath}</p>}
         </div>
       )}
     </div>
