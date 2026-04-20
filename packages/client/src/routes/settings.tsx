@@ -406,53 +406,53 @@ const LINK_ROWS = [
 
 function AboutTab() {
   return (
-    <div className='px-5 pb-10 max-[480px]:px-2.5'>
+    <div className='px-5 pb-10 font-sans max-[480px]:px-2.5'>
       <div className='grid grid-cols-1 items-start gap-x-6 lg:grid-cols-2'>
         <div>
-          <SectHead>Version</SectHead>
+          <SectHead>バージョン</SectHead>
           <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-            {ABOUT_ROWS.map(({ key, val }, i) => (
-              <div key={key} className={cn('flex gap-0', i < ABOUT_ROWS.length - 1 && 'border-b border-border/60')}>
-                <div className='w-[100px] shrink-0 px-3 py-1.5 font-sans text-footnote font-semibold text-muted-foreground'>
-                  {key}
+            <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
+              {ABOUT_ROWS.map(({ key, val }) => (
+                <div key={key} className='flex h-7 items-center gap-3'>
+                  <dt className='w-[100px] shrink-0 font-semibold text-muted-foreground'>{key}</dt>
+                  <dd className='flex min-w-0 items-center gap-1.5 text-foreground'>
+                    <span className='truncate'>{val}</span>
+                    {key === 'version' && (
+                      <StatusChip variant='info' size='sm'>
+                        DEV
+                      </StatusChip>
+                    )}
+                  </dd>
                 </div>
-                <div className='px-3 py-1.5 font-sans text-footnote text-foreground'>
-                  {val}
-                  {key === 'version' && (
-                    <StatusChip variant='info' size='sm' className='ml-1.5'>
-                      DEV
-                    </StatusChip>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))}
+            </dl>
           </div>
         </div>
 
         <div>
-          <SectHead>Links</SectHead>
+          <SectHead>リンク</SectHead>
           <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-            {LINK_ROWS.map(({ key, val, href }, i) => (
-              <div key={key} className={cn('flex gap-0', i < LINK_ROWS.length - 1 && 'border-b border-border/60')}>
-                <div className='w-[100px] shrink-0 px-3 py-1.5 font-sans text-footnote font-semibold text-muted-foreground'>
-                  {key}
+            <dl className='divide-y divide-border/60 px-3.5 py-1 text-footnote'>
+              {LINK_ROWS.map(({ key, val, href }) => (
+                <div key={key} className='flex h-7 items-center gap-3'>
+                  <dt className='w-[100px] shrink-0 font-semibold text-muted-foreground'>{key}</dt>
+                  <dd className='min-w-0 truncate'>
+                    {href ? (
+                      <a
+                        href={href}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+                      >
+                        {val}
+                      </a>
+                    ) : (
+                      <span className='text-muted-foreground'>{val}</span>
+                    )}
+                  </dd>
                 </div>
-                <div className='px-3 py-1.5 font-sans text-footnote'>
-                  {href ? (
-                    <a
-                      href={href}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
-                    >
-                      {val}
-                    </a>
-                  ) : (
-                    <span className='text-muted-foreground'>{val}</span>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))}
+            </dl>
           </div>
         </div>
       </div>
