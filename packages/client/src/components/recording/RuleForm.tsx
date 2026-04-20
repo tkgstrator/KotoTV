@@ -183,12 +183,10 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
         <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-5 p-4'>
           {/* ── 1. ルール名 */}
           <div className='flex flex-col gap-1.5'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              RULE NAME
-            </Label>
+            <Label className='text-footnote font-semibold text-muted-foreground'>ルール名</Label>
             <Input
               {...register('name', { required: true })}
-              className='h-8 font-mono text-[0.8125rem]'
+              className='h-9 text-body'
               placeholder='例: NHKスペシャル'
               autoFocus
             />
@@ -197,76 +195,48 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
           {/* ── 3. キーワード */}
           <div className='flex flex-col gap-2'>
             <div className='flex items-center justify-between gap-2'>
-              <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-                KEYWORD
-              </Label>
-              <span
-                className={cn(
-                  'font-mono tabular-nums text-[0.625rem] text-muted-foreground',
-                  !previewRule && 'invisible'
-                )}
-              >
+              <Label className='text-footnote font-semibold text-muted-foreground'>キーワード</Label>
+              <span className={cn('tabular-nums text-footnote text-muted-foreground', !previewRule && 'invisible')}>
                 {previewRule ? (isPreviewPending ? '…' : `${previewData?.matchCount ?? 0} 件ヒット`) : '0 件ヒット'}
               </span>
             </div>
             <Input
               {...register('keyword')}
-              className={cn(
-                'h-8 font-mono text-[0.8125rem]',
-                keywordRegexError && 'border-destructive focus-visible:ring-destructive'
-              )}
+              className={cn('h-9 text-body', keywordRegexError && 'border-destructive focus-visible:ring-destructive')}
               placeholder='検索キーワード'
               aria-invalid={keywordRegexError ? true : undefined}
             />
-            {keywordRegexError && (
-              <p className='font-mono text-[0.5625rem] text-destructive'>regex error: {keywordRegexError}</p>
-            )}
+            {keywordRegexError && <p className='text-footnote text-destructive'>正規表現エラー: {keywordRegexError}</p>}
             <div className='flex flex-wrap gap-2'>
               <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
-                <span className='font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
-                  MODE
-                </span>
+                <span className='text-footnote font-semibold text-muted-foreground'>マッチ方法</span>
                 <ToggleGroup
                   type='single'
                   value={keywordMode}
                   onValueChange={(v) => v && setValue('keywordMode', v as 'literal' | 'regex')}
                   className='w-full gap-1 sm:w-auto'
                 >
-                  <ToggleGroupItem
-                    value='literal'
-                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
-                  >
-                    LITERAL
+                  <ToggleGroupItem value='literal' className='h-8 flex-1 px-3 text-footnote sm:flex-none'>
+                    部分一致
                   </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value='regex'
-                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
-                  >
-                    REGEX
+                  <ToggleGroupItem value='regex' className='h-8 flex-1 px-3 text-footnote sm:flex-none'>
+                    正規表現
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
               <div className='flex min-w-0 flex-1 flex-col gap-1 sm:flex-none'>
-                <span className='font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
-                  TARGET
-                </span>
+                <span className='text-footnote font-semibold text-muted-foreground'>対象</span>
                 <ToggleGroup
                   type='single'
                   value={keywordTarget}
                   onValueChange={(v) => v && setValue('keywordTarget', v as 'title' | 'title_description')}
                   className='w-full gap-1 sm:w-auto'
                 >
-                  <ToggleGroupItem
-                    value='title'
-                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
-                  >
-                    TITLE
+                  <ToggleGroupItem value='title' className='h-8 flex-1 px-3 text-footnote sm:flex-none'>
+                    タイトル
                   </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value='title_description'
-                    className='h-7 flex-1 px-2.5 font-mono text-[0.6875rem] font-bold sm:flex-none'
-                  >
-                    TITLE+DESC
+                  <ToggleGroupItem value='title_description' className='h-8 flex-1 px-3 text-footnote sm:flex-none'>
+                    タイトル+説明
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
@@ -275,36 +245,32 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 4. 除外キーワード */}
           <div className='flex flex-col gap-1.5'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              EXCLUDE KEYWORD
-            </Label>
+            <Label className='text-footnote font-semibold text-muted-foreground'>除外キーワード</Label>
             <Input
               {...register('excludeKeyword')}
               className={cn(
-                'h-8 font-mono text-[0.8125rem]',
+                'h-9 text-body',
                 excludeKeywordRegexError && 'border-destructive focus-visible:ring-destructive'
               )}
               placeholder='除外したいキーワード (任意)'
               aria-invalid={excludeKeywordRegexError ? true : undefined}
             />
             {excludeKeywordRegexError && (
-              <p className='font-mono text-[0.5625rem] text-destructive'>regex error: {excludeKeywordRegexError}</p>
+              <p className='text-footnote text-destructive'>正規表現エラー: {excludeKeywordRegexError}</p>
             )}
           </div>
 
           {/* ── 5. チャンネルピッカー */}
           <div className='flex flex-col gap-2'>
             <div className='flex items-center gap-2'>
-              <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-                CHANNELS
-              </Label>
+              <Label className='text-footnote font-semibold text-muted-foreground'>チャンネル</Label>
               {channelIds.length === 0 ? (
                 <StatusChip variant='muted' size='sm'>
-                  ALL
+                  全て
                 </StatusChip>
               ) : (
                 <StatusChip variant='info' size='sm'>
-                  {channelIds.length} CH
+                  {channelIds.length} 局
                 </StatusChip>
               )}
             </div>
@@ -315,9 +281,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 6. ジャンル */}
           <div className='flex flex-col gap-2'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              GENRES
-            </Label>
+            <Label className='text-footnote font-semibold text-muted-foreground'>ジャンル</Label>
             <div className='flex flex-wrap gap-1.5'>
               {ARIB_GENRES.map((g) => {
                 const active = genres.includes(g.value)
@@ -336,7 +300,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                       }
                     }}
                     className={cn(
-                      'rounded border px-2 py-0.5 font-mono text-[0.625rem] font-bold transition-colors',
+                      'rounded border px-2.5 py-1 text-footnote transition-colors',
                       active
                         ? 'border-primary/40 bg-primary/12 text-primary'
                         : 'border-border bg-muted/60 text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'
@@ -347,16 +311,14 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                 )
               })}
             </div>
-            <p className={cn('font-mono text-[0.5625rem] text-muted-foreground', genres.length > 0 && 'invisible')}>
+            <p className={cn('text-footnote text-muted-foreground', genres.length > 0 && 'invisible')}>
               未選択 = 全ジャンル対象
             </p>
           </div>
 
           {/* ── 7. 曜日 */}
           <div className='flex flex-col gap-2'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              DAY OF WEEK
-            </Label>
+            <Label className='text-footnote font-semibold text-muted-foreground'>曜日</Label>
             <div className='flex gap-1.5'>
               {DOW_LABELS.map((label, idx) => {
                 const active = dayOfWeek.includes(idx)
@@ -375,7 +337,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                       }
                     }}
                     className={cn(
-                      'flex h-9 flex-1 items-center justify-center rounded border font-mono text-[0.6875rem] font-bold transition-colors sm:h-7 sm:w-7 sm:flex-none',
+                      'flex h-9 flex-1 items-center justify-center rounded border text-footnote font-semibold transition-colors sm:h-8 sm:w-8 sm:flex-none',
                       active
                         ? 'border-primary/40 bg-primary/12 text-primary'
                         : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -390,9 +352,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 8. 時刻範囲 */}
           <div className='flex flex-col gap-2'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              TIME RANGE
-            </Label>
+            <Label className='text-footnote font-semibold text-muted-foreground'>時刻範囲</Label>
             <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap'>
               {TIME_PRESETS.map((p) => {
                 const isActive = activePreset?.label === p.label
@@ -410,7 +370,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                       }
                     }}
                     className={cn(
-                      'h-8 rounded border px-2 font-mono text-[0.6875rem] font-bold transition-colors sm:h-auto sm:py-0.5 sm:text-[0.625rem]',
+                      'h-8 rounded border px-2.5 text-footnote transition-colors',
                       isActive
                         ? 'border-primary/40 bg-primary/12 text-primary'
                         : 'border-border bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -423,7 +383,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             </div>
             <div className='flex items-center gap-2'>
               <Input
-                className='h-7 w-24 font-mono text-[0.75rem]'
+                className='h-8 w-24 font-mono tabular-nums text-footnote'
                 placeholder='HH:MM'
                 value={timeStart != null ? minutesToHHMM(timeStart) : ''}
                 onChange={(e) => {
@@ -431,9 +391,9 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                   setValue('timeStartMinutes', mins)
                 }}
               />
-              <span className='font-mono text-[0.625rem] text-muted-foreground'>〜</span>
+              <span className='text-footnote text-muted-foreground'>〜</span>
               <Input
-                className='h-7 w-24 font-mono text-[0.75rem]'
+                className='h-8 w-24 font-mono tabular-nums text-footnote'
                 placeholder='HH:MM'
                 value={timeEnd != null ? minutesToHHMM(timeEnd) : ''}
                 onChange={(e) => {
@@ -444,13 +404,13 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
               {(timeStart != null || timeEnd != null) && (
                 <button
                   type='button'
-                  className='font-mono text-[0.5625rem] text-muted-foreground hover:text-destructive'
+                  className='text-footnote text-muted-foreground hover:text-destructive'
                   onClick={() => {
                     setValue('timeStartMinutes', null)
                     setValue('timeEndMinutes', null)
                   }}
                 >
-                  CLEAR
+                  クリア
                 </button>
               )}
             </div>
@@ -458,16 +418,15 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
 
           {/* ── 9. 優先度 */}
           <div className='flex flex-col gap-1.5'>
-            <Label className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-              PRIORITY
-              <span className='ml-1.5 normal-case text-[0.5rem]'>(1=低 100=高、デフォルト50)</span>
+            <Label className='text-footnote font-semibold text-muted-foreground'>
+              優先度<span className='ml-1.5 text-footnote text-muted-foreground'>(1=低 100=高、デフォルト50)</span>
             </Label>
             <Input
               type='number'
               min={1}
               max={100}
               {...register('priority', { valueAsNumber: true })}
-              className='h-7 w-24 font-mono tabular-nums text-[0.8125rem]'
+              className='h-8 w-24 tabular-nums text-body'
             />
           </div>
 
@@ -478,8 +437,8 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
               checked={avoidDuplicates}
               onCheckedChange={(v) => setValue('avoidDuplicates', v)}
             />
-            <Label htmlFor='avoidDuplicates' className='cursor-pointer font-mono text-[0.75rem] text-foreground'>
-              AVOID DUPLICATES
+            <Label htmlFor='avoidDuplicates' className='cursor-pointer text-footnote text-foreground'>
+              重複回避
             </Label>
           </div>
 
@@ -488,19 +447,19 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
             <Button
               type='submit'
               size='sm'
-              className='flex-1 font-mono text-[0.75rem] font-bold sm:flex-none'
+              className='flex-1 text-footnote sm:flex-none'
               disabled={isPending || hasRegexError}
             >
-              {isPending ? 'SAVING...' : existing ? 'UPDATE' : 'CREATE'}
+              {isPending ? '保存中...' : existing ? '更新' : '作成'}
             </Button>
             <Button
               type='button'
               variant='outline'
               size='sm'
-              className='flex-1 font-mono text-[0.75rem] sm:flex-none'
+              className='flex-1 text-footnote sm:flex-none'
               onClick={() => navigate({ to: '/recordings/rules' })}
             >
-              CANCEL
+              キャンセル
             </Button>
             {existing && (
               <AlertDialog>
@@ -509,25 +468,22 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     type='button'
                     variant='ghost'
                     size='sm'
-                    className='ml-auto h-7 gap-1 px-2 font-mono text-[0.6875rem] font-bold text-destructive hover:bg-destructive/10 hover:text-destructive'
+                    className='ml-auto h-8 gap-1.5 px-2.5 text-footnote text-destructive hover:bg-destructive/10 hover:text-destructive'
                     disabled={deleteMutation.isPending}
                   >
-                    <Trash2 className='size-3' />
-                    DELETE
+                    <Trash2 className='size-3.5' />
+                    削除
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle className='font-mono'>ルールを削除しますか？</AlertDialogTitle>
+                    <AlertDialogTitle>ルールを削除しますか？</AlertDialogTitle>
                     <AlertDialogDescription>この操作は元に戻せません。</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel className='font-mono text-[0.75rem]'>CANCEL</AlertDialogCancel>
-                    <AlertDialogAction
-                      className='bg-destructive font-mono text-[0.75rem] text-destructive-foreground hover:bg-destructive/90'
-                      onClick={onDelete}
-                    >
-                      DELETE
+                    <AlertDialogCancel className='text-footnote'>キャンセル</AlertDialogCancel>
+                    <AlertDialogAction variant='destructive' className='text-footnote' onClick={onDelete}>
+                      削除
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -540,9 +496,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
       {/* Preview pane */}
       <div className='flex w-full flex-col lg:min-w-0 lg:overflow-hidden'>
         <div className='border-b border-border px-4 py-2'>
-          <span className='font-mono text-[0.5625rem] font-bold uppercase tracking-wider text-muted-foreground'>
-            PREVIEW (今週のヒット)
-          </span>
+          <span className='text-footnote font-semibold text-muted-foreground'>プレビュー（今週のヒット）</span>
         </div>
         <div className='flex-1 overflow-hidden'>
           <RulePreviewPane rule={previewRule} />

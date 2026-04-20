@@ -18,15 +18,15 @@ function EditRulePage() {
   return (
     <div className='flex h-full flex-col overflow-hidden'>
       <PageHeader ariaLabel='ルール編集ヘッダー' className='items-center gap-2 px-3'>
-        <Link to='/recordings' className='font-mono text-[0.6875rem] text-muted-foreground hover:text-foreground'>
+        <Link to='/recordings' className='text-footnote text-muted-foreground hover:text-foreground'>
           録画
         </Link>
-        <span className='font-mono text-[0.6875rem] text-border'>/</span>
-        <Link to='/recordings/rules' className='font-mono text-[0.6875rem] text-muted-foreground hover:text-foreground'>
+        <span className='text-footnote text-border'>/</span>
+        <Link to='/recordings/rules' className='text-footnote text-muted-foreground hover:text-foreground'>
           録画ルール
         </Link>
-        <span className='font-mono text-[0.6875rem] text-border'>/</span>
-        <h1 className='font-mono text-[0.9375rem] font-bold leading-none truncate max-w-[200px]'>{rule?.name ?? id}</h1>
+        <span className='text-footnote text-border'>/</span>
+        <h1 className='text-title3 font-bold leading-none truncate max-w-[240px]'>{rule?.name ?? id}</h1>
       </PageHeader>
 
       {isPending && (
@@ -40,8 +40,8 @@ function EditRulePage() {
 
       {isError && (
         <div className='px-4 py-12'>
-          <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 font-mono text-[0.75rem] text-destructive'>
-            ERR ルールが見つかりません (id: {id})
+          <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 text-footnote text-destructive'>
+            ルールが見つかりません（ID: {id}）
           </div>
         </div>
       )}
