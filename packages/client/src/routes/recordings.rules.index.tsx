@@ -49,7 +49,7 @@ function DeleteRuleButton({ rule }: { rule: RecordingRule }) {
         <Button
           variant='ghost'
           size='sm'
-          className='h-7 gap-1 px-2 font-mono text-[0.6875rem] font-bold text-destructive hover:bg-destructive/10 hover:text-destructive'
+          className='h-7 gap-1 px-2 font-mono text-caption font-bold text-destructive hover:bg-destructive/10 hover:text-destructive'
           disabled={isPending}
           aria-label='ルール削除'
         >
@@ -62,9 +62,9 @@ function DeleteRuleButton({ rule }: { rule: RecordingRule }) {
           <AlertDialogDescription>「{rule.name}」を削除します。この操作は元に戻せません。</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className='font-mono text-[0.75rem]'>CANCEL</AlertDialogCancel>
+          <AlertDialogCancel className='font-mono text-footnote'>CANCEL</AlertDialogCancel>
           <AlertDialogAction
-            className='bg-destructive font-mono text-[0.75rem] text-destructive-foreground hover:bg-destructive/90'
+            className='bg-destructive font-mono text-footnote text-destructive-foreground hover:bg-destructive/90'
             onClick={() => mutate(rule.id, { onSuccess: () => toast.success('ルールを削除しました') })}
           >
             DELETE
@@ -101,26 +101,26 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
         onClick={() => navigate({ to: '/recordings/rules/$id', params: { id: rule.id } })}
         aria-label={`ルール「${rule.name}」を編集`}
       >
-        <span className='truncate font-mono text-[0.8125rem] font-semibold text-foreground'>{rule.name}</span>
-        <span className='truncate font-mono text-[0.625rem] text-muted-foreground'>{keywordSummary}</span>
+        <span className='truncate font-mono text-subheadline font-semibold text-foreground'>{rule.name}</span>
+        <span className='truncate font-mono text-caption2 text-muted-foreground'>{keywordSummary}</span>
       </button>
 
       {/* channels */}
       <div className='hidden w-16 shrink-0 sm:block'>
-        <span className='font-mono tabular-nums text-[0.6875rem] text-muted-foreground'>
+        <span className='font-mono tabular-nums text-caption text-muted-foreground'>
           {rule.channelIds.length === 0 ? 'ALL' : `${rule.channelIds.length} CH`}
         </span>
       </div>
 
       {/* day+time */}
       <div className='hidden w-28 shrink-0 flex-col gap-0.5 sm:flex'>
-        <span className='font-mono text-[0.625rem] text-muted-foreground'>{dowLabel}</span>
-        <span className='font-mono text-[0.625rem] text-muted-foreground'>{timeLabel}</span>
+        <span className='font-mono text-caption2 text-muted-foreground'>{dowLabel}</span>
+        <span className='font-mono text-caption2 text-muted-foreground'>{timeLabel}</span>
       </div>
 
       {/* priority */}
       <div className='hidden w-10 shrink-0 text-right sm:block'>
-        <span className='font-mono tabular-nums text-[0.6875rem] text-muted-foreground'>{rule.priority}</span>
+        <span className='font-mono tabular-nums text-caption text-muted-foreground'>{rule.priority}</span>
       </div>
 
       {/* actions */}
@@ -129,7 +129,7 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
           <Button
             variant='ghost'
             size='sm'
-            className='h-7 gap-1 px-2 font-mono text-[0.6875rem] text-muted-foreground hover:text-foreground'
+            className='h-7 gap-1 px-2 font-mono text-caption text-muted-foreground hover:text-foreground'
             aria-label='編集'
           >
             <Pencil className='size-3' />
@@ -141,21 +141,105 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
   )
 }
 
+// ─── Dummy data ─────────────────────────────────────────────────────────────
+//
+// Fallback rules while the backend endpoints are still being built
+// (docs/plans/phase-4-recording-rules.md). Swap out when real data lands.
+
+const DUMMY_RULES: RecordingRule[] = [
+  {
+    id: 'rule-1',
+    name: 'NHK 総合 夜のニュース',
+    enabled: true,
+    keyword: 'ニュース',
+    keywordMode: 'literal',
+    keywordTarget: 'title',
+    excludeKeyword: null,
+    channelIds: ['gr-1024'],
+    genres: ['ニュース/報道'],
+    dayOfWeek: [1, 2, 3, 4, 5],
+    timeStartMinutes: 19 * 60,
+    timeEndMinutes: 22 * 60,
+    priority: 10,
+    avoidDuplicates: true,
+    createdAt: '2026-04-10T09:00:00.000Z',
+    updatedAt: '2026-04-15T09:00:00.000Z'
+  },
+  {
+    id: 'rule-2',
+    name: 'アニメ 自動録画',
+    enabled: true,
+    keyword: '.*',
+    keywordMode: 'regex',
+    keywordTarget: 'title',
+    excludeKeyword: '再放送',
+    channelIds: ['gr-1031', 'bs-211'],
+    genres: ['アニメ/特撮'],
+    dayOfWeek: [0, 1, 2, 3, 4, 5, 6],
+    timeStartMinutes: null,
+    timeEndMinutes: null,
+    priority: 20,
+    avoidDuplicates: true,
+    createdAt: '2026-03-22T12:00:00.000Z',
+    updatedAt: '2026-04-18T03:00:00.000Z'
+  },
+  {
+    id: 'rule-3',
+    name: 'ドキュメンタリー 自動録画',
+    enabled: true,
+    keyword: 'ガイアの夜明け|プロフェッショナル|クローズアップ現代',
+    keywordMode: 'regex',
+    keywordTarget: 'title_description',
+    excludeKeyword: null,
+    channelIds: [],
+    genres: ['ドキュメンタリー/教養'],
+    dayOfWeek: [1, 2, 3, 4, 5],
+    timeStartMinutes: 20 * 60,
+    timeEndMinutes: 24 * 60,
+    priority: 30,
+    avoidDuplicates: true,
+    createdAt: '2026-02-14T08:00:00.000Z',
+    updatedAt: '2026-04-01T08:00:00.000Z'
+  },
+  {
+    id: 'rule-4',
+    name: 'NHK BS 特集',
+    enabled: false,
+    keyword: '特集',
+    keywordMode: 'literal',
+    keywordTarget: 'title',
+    excludeKeyword: null,
+    channelIds: ['bs-101'],
+    genres: [],
+    dayOfWeek: [5, 6],
+    timeStartMinutes: 21 * 60,
+    timeEndMinutes: 24 * 60,
+    priority: 40,
+    avoidDuplicates: false,
+    createdAt: '2026-01-05T10:00:00.000Z',
+    updatedAt: '2026-03-28T10:00:00.000Z'
+  }
+]
+
 function RecordingRulesPage() {
   const { data, isPending, isError } = useRecordingRules()
-  const rules = data?.rules ?? []
+  // Fall back to dummy rules so the screen isn't empty before the API
+  // endpoints land. Once the backend returns a non-empty list this just
+  // passes the real data through untouched.
+  const realRules = data?.rules ?? []
+  const rules = realRules.length > 0 ? realRules : DUMMY_RULES
 
   return (
     <>
       <PageHeader ariaLabel='録画ルールヘッダー' className='items-center gap-2 px-3'>
-        <Link to='/recordings' className='font-mono text-[0.6875rem] text-muted-foreground hover:text-foreground'>
+        <Link to='/recordings' className='font-mono text-caption text-muted-foreground hover:text-foreground'>
           録画
         </Link>
-        <span className='font-mono text-[0.6875rem] text-border'>/</span>
-        <h1 className='font-mono text-[0.9375rem] font-bold leading-none'>録画ルール</h1>
+        <span className='font-mono text-caption text-border'>/</span>
+        <h1 className='font-mono text-title3 font-bold leading-none'>録画ルール</h1>
         <div className='flex-1' />
         <Link to='/recordings/rules/new'>
-          <Button size='sm' className='h-7 gap-1.5 px-3 font-mono text-[0.75rem] font-bold'>
+          <Button size='sm' className='h-7 gap-1.5 px-3 font-mono text-footnote font-bold'>
             <Plus className='size-3.5' />
             新規ルール
           </Button>
@@ -165,16 +249,16 @@ function RecordingRulesPage() {
       {/* Column headers (desktop) */}
       <div className='hidden items-center gap-3 border-b border-border bg-muted/30 px-4 py-1.5 sm:flex'>
         <div className='w-9 shrink-0' />
-        <div className='flex-1 font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
+        <div className='flex-1 font-mono text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
           NAME / KEYWORD
         </div>
-        <div className='w-16 shrink-0 font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
+        <div className='w-16 shrink-0 font-mono text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
           CHANNELS
         </div>
-        <div className='w-28 shrink-0 font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
+        <div className='w-28 shrink-0 font-mono text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
           SCHEDULE
         </div>
-        <div className='w-10 shrink-0 text-right font-mono text-[0.5rem] font-bold uppercase tracking-wider text-muted-foreground'>
+        <div className='w-10 shrink-0 text-right font-mono text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
           PRI
         </div>
         <div className='w-16 shrink-0' />
@@ -191,7 +275,7 @@ function RecordingRulesPage() {
 
       {isError && (
         <div className='px-4 py-12'>
-          <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 font-mono text-[0.75rem] text-destructive'>
+          <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 font-mono text-footnote text-destructive'>
             ERR ルール一覧の取得に失敗しました
           </div>
         </div>
@@ -199,7 +283,7 @@ function RecordingRulesPage() {
 
       {!isPending && !isError && rules.length === 0 && (
         <div className='px-4 py-16 text-center'>
-          <p className='text-[0.875rem] text-muted-foreground'>まだ録画ルールがありません</p>
+          <p className='text-body text-muted-foreground'>まだ録画ルールがありません</p>
         </div>
       )}
 
