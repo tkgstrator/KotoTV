@@ -22,9 +22,10 @@ import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { type EncodePrefs, useEncodePrefs } from '@/hooks/useEncodePrefs'
+import { useEncodeProfiles } from '@/hooks/useEncodeProfiles'
 import {
   useCreateRecordingRule,
   useDeleteRecordingRule,
@@ -40,6 +41,7 @@ import {
   TIME_PRESETS
 } from '@/lib/recording-rules'
 import { cn } from '@/lib/utils'
+import type { EncodeProfile } from '@/types/EncodeProfile'
 import type { CreateRecordingRule, RecordingRule } from '@/types/RecordingRule'
 
 function regexError(value: string | null | undefined): string | null {
@@ -57,7 +59,7 @@ interface RuleFormProps {
   existing?: RecordingRule
 }
 
-function buildDefaultValues(encodeDefaults: EncodePrefs): CreateRecordingRule {
+function buildDefaultValues(defaultProfile: EncodeProfile | undefined): CreateRecordingRule {
   return {
     name: '',
     enabled: true,
@@ -78,10 +80,7 @@ function buildDefaultValues(encodeDefaults: EncodePrefs): CreateRecordingRule {
     marginEndMinutes: 0,
     minDurationMinutes: 0,
     keepLatestN: 0,
-    postEncode: encodeDefaults.enabled,
-    postEncodeCodec: encodeDefaults.codec,
-    postEncodeQuality: encodeDefaults.quality,
-    postEncodeTiming: encodeDefaults.timing
+    encodeProfileId: defaultProfile?.id ?? null
   }
 }
 
@@ -106,10 +105,7 @@ function toCreateRule(existing: RecordingRule): CreateRecordingRule {
     marginEndMinutes: existing.marginEndMinutes,
     minDurationMinutes: existing.minDurationMinutes,
     keepLatestN: existing.keepLatestN,
-    postEncode: existing.postEncode,
-    postEncodeCodec: existing.postEncodeCodec,
-    postEncodeQuality: existing.postEncodeQuality,
-    postEncodeTiming: existing.postEncodeTiming
+    encodeProfileId: existing.encodeProfileId
   }
 }
 
@@ -123,10 +119,12 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   const createMutation = useCreateRecordingRule()
   const updateMutation = useUpdateRecordingRule()
   const deleteMutation = useDeleteRecordingRule()
-  const { prefs: encodePrefs } = useEncodePrefs()
+  const { data: encodeProfilesData } = useEncodeProfiles()
+  const encodeProfiles = encodeProfilesData?.profiles ?? []
+  const defaultProfile = encodeProfiles.find((p) => p.isDefault)
 
   const form = useForm<CreateRecordingRule>({
-    defaultValues: existing ? toCreateRule(existing) : buildDefaultValues(encodePrefs)
+    defaultValues: existing ? toCreateRule(existing) : buildDefaultValues(defaultProfile)
   })
 
   useEffect(() => {
@@ -139,7 +137,6 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   const excludeKeyword = watched.excludeKeyword
   const timeStart = watched.timeStartMinutes
   const timeEnd = watched.timeEndMinutes
-  const postEncode = watched.postEncode
 
   const previewRule = useMemo((): CreateRecordingRule | null => {
     if (!watched.keyword && watched.channelIds.length === 0) return null
@@ -611,101 +608,32 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                   />
                   <FormField
                     control={form.control}
-                    name='postEncode'
+                    name='encodeProfileId'
                     render={({ field }) => (
                       <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='cursor-pointer text-body text-foreground'>録画後にエンコード</FormLabel>
+                        <FormLabel className='text-body text-foreground'>録画後にエンコード</FormLabel>
                         <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          <Select
+                            value={field.value ?? 'none'}
+                            onValueChange={(v) => field.onChange(v === 'none' ? null : v)}
+                          >
+                            <SelectTrigger className='h-9 w-[200px] text-body'>
+                              <SelectValue placeholder='エンコードしない' />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='none'>エンコードしない</SelectItem>
+                              {encodeProfiles.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.name}
+                                  {p.isDefault && ' (既定)'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </FormControl>
                       </FormItem>
                     )}
                   />
-                  {postEncode && (
-                    <div className='flex flex-col gap-2 pl-4'>
-                      <FormField
-                        control={form.control}
-                        name='postEncodeCodec'
-                        render={({ field }) => (
-                          <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                            <FormLabel className='text-body text-foreground'>コーデック</FormLabel>
-                            <FormControl>
-                              <ToggleGroup
-                                type='single'
-                                variant='outline'
-                                value={field.value}
-                                onValueChange={(v) => v && field.onChange(v)}
-                                className='gap-1'
-                              >
-                                {(['avc', 'hevc', 'vp9'] as const).map((codec) => (
-                                  <ToggleGroupItem
-                                    key={codec}
-                                    value={codec}
-                                    className={cn('h-9 px-3 text-body uppercase', TOGGLE_ON)}
-                                  >
-                                    {codec}
-                                  </ToggleGroupItem>
-                                ))}
-                              </ToggleGroup>
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name='postEncodeQuality'
-                        render={({ field }) => (
-                          <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                            <FormLabel className='text-body text-foreground'>画質</FormLabel>
-                            <FormControl>
-                              <ToggleGroup
-                                type='single'
-                                variant='outline'
-                                value={field.value}
-                                onValueChange={(v) => v && field.onChange(v)}
-                                className='gap-1'
-                              >
-                                <ToggleGroupItem value='high' className={cn('h-9 px-3 text-body', TOGGLE_ON)}>
-                                  高
-                                </ToggleGroupItem>
-                                <ToggleGroupItem value='medium' className={cn('h-9 px-3 text-body', TOGGLE_ON)}>
-                                  中
-                                </ToggleGroupItem>
-                                <ToggleGroupItem value='low' className={cn('h-9 px-3 text-body', TOGGLE_ON)}>
-                                  低
-                                </ToggleGroupItem>
-                              </ToggleGroup>
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name='postEncodeTiming'
-                        render={({ field }) => (
-                          <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                            <FormLabel className='text-body text-foreground'>タイミング</FormLabel>
-                            <FormControl>
-                              <ToggleGroup
-                                type='single'
-                                variant='outline'
-                                value={field.value}
-                                onValueChange={(v) => v && field.onChange(v)}
-                                className='gap-1'
-                              >
-                                <ToggleGroupItem value='immediate' className={cn('h-9 px-3 text-body', TOGGLE_ON)}>
-                                  録画直後
-                                </ToggleGroupItem>
-                                <ToggleGroupItem value='idle' className={cn('h-9 px-3 text-body', TOGGLE_ON)}>
-                                  アイドル時
-                                </ToggleGroupItem>
-                              </ToggleGroup>
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  )}
                 </div>
               </FormItem>
 

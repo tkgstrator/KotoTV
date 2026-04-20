@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception'
 import { requestId } from 'hono/request-id'
 import { logger as pinoLogger } from './lib/logger'
 import channelsRoute from './routes/channels'
+import encodeProfilesRoute from './routes/encode-profiles'
 import programsRoute from './routes/programs'
 import recordingRulesRoute from './routes/recording-rules'
 import recordingsRoute from './routes/recordings'
@@ -37,6 +38,7 @@ const app = new Hono()
   .route('/api/streams', streamsRoute)
   .route('/api/recordings', recordingsRoute)
   .route('/api/recording-rules', recordingRulesRoute)
+  .route('/api/encode-profiles', encodeProfilesRoute)
 
 export { app }
 export type AppType = typeof app

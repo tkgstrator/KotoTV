@@ -35,6 +35,7 @@ function serializeSchedule(row: {
   endAt: Date
   status: string
   ruleId: string | null
+  encodeProfileId: string | null
   failureReason: string | null
   createdAt: Date
   updatedAt: Date
@@ -48,6 +49,7 @@ function serializeSchedule(row: {
     endAt: row.endAt.toISOString(),
     status: row.status,
     ruleId: row.ruleId,
+    encodeProfileId: row.encodeProfileId,
     failureReason: row.failureReason,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
@@ -132,7 +134,8 @@ const recordingsRoute = new Hono()
           programId: data.programId,
           title: data.title,
           startAt: new Date(data.startAt),
-          endAt: new Date(data.endAt)
+          endAt: new Date(data.endAt),
+          ...(data.encodeProfileId !== undefined ? { encodeProfileId: data.encodeProfileId } : {})
         }
       })
       schedule = serializeSchedule(row)

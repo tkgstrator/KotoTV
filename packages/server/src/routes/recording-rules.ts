@@ -47,10 +47,7 @@ function serializeRule(row: {
   marginEndMinutes: number
   minDurationMinutes: number
   keepLatestN: number
-  postEncode: boolean
-  postEncodeCodec: string
-  postEncodeQuality: string
-  postEncodeTiming: string
+  encodeProfileId: string | null
   createdAt: Date
   updatedAt: Date
 }): RecordingRule {
@@ -75,10 +72,7 @@ function serializeRule(row: {
     marginEndMinutes: row.marginEndMinutes,
     minDurationMinutes: row.minDurationMinutes,
     keepLatestN: row.keepLatestN,
-    postEncode: row.postEncode,
-    postEncodeCodec: row.postEncodeCodec,
-    postEncodeQuality: row.postEncodeQuality,
-    postEncodeTiming: row.postEncodeTiming,
+    encodeProfileId: row.encodeProfileId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
   })
@@ -174,10 +168,7 @@ const recordingRulesRoute = new Hono()
         marginEndMinutes: body.marginEndMinutes,
         minDurationMinutes: body.minDurationMinutes,
         keepLatestN: body.keepLatestN,
-        postEncode: body.postEncode,
-        postEncodeCodec: body.postEncodeCodec,
-        postEncodeQuality: body.postEncodeQuality,
-        postEncodeTiming: body.postEncodeTiming
+        encodeProfileId: body.encodeProfileId
       }
     })
 
@@ -235,16 +226,7 @@ const recordingRulesRoute = new Hono()
         ...(body.marginEndMinutes !== undefined ? { marginEndMinutes: body.marginEndMinutes } : {}),
         ...(body.minDurationMinutes !== undefined ? { minDurationMinutes: body.minDurationMinutes } : {}),
         ...(body.keepLatestN !== undefined ? { keepLatestN: body.keepLatestN } : {}),
-        ...(body.postEncode !== undefined ? { postEncode: body.postEncode } : {}),
-        ...(body.postEncodeCodec !== undefined
-          ? { postEncodeCodec: body.postEncodeCodec as 'avc' | 'hevc' | 'vp9' }
-          : {}),
-        ...(body.postEncodeQuality !== undefined
-          ? { postEncodeQuality: body.postEncodeQuality as 'high' | 'medium' | 'low' }
-          : {}),
-        ...(body.postEncodeTiming !== undefined
-          ? { postEncodeTiming: body.postEncodeTiming as 'immediate' | 'idle' }
-          : {})
+        ...('encodeProfileId' in body ? { encodeProfileId: body.encodeProfileId ?? null } : {})
       }
     })
 

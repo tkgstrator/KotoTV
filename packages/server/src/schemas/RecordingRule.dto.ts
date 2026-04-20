@@ -29,10 +29,7 @@ export const RecordingRuleSchema = z.object({
   minDurationMinutes: z.number().int().min(0).max(1440),
   // 0 = unlimited retention
   keepLatestN: z.number().int().min(0).max(999),
-  postEncode: z.boolean(),
-  postEncodeCodec: RuleEncodeCodecSchema,
-  postEncodeQuality: RuleEncodeQualitySchema,
-  postEncodeTiming: RuleEncodeTimingSchema,
+  encodeProfileId: z.string().uuid().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime()
 })
@@ -52,10 +49,7 @@ export const CreateRecordingRuleSchema = RecordingRuleSchema.omit({
   marginEndMinutes: z.number().int().min(0).max(60).default(0),
   minDurationMinutes: z.number().int().min(0).max(1440).default(0),
   keepLatestN: z.number().int().min(0).max(999).default(0),
-  postEncode: z.boolean().default(false),
-  postEncodeCodec: RuleEncodeCodecSchema.default('avc'),
-  postEncodeQuality: RuleEncodeQualitySchema.default('medium'),
-  postEncodeTiming: RuleEncodeTimingSchema.default('immediate')
+  encodeProfileId: z.string().uuid().nullable().default(null)
 })
 
 export const UpdateRecordingRuleSchema = CreateRecordingRuleSchema.partial()
