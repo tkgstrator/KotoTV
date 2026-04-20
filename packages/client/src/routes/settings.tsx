@@ -139,6 +139,10 @@ function groupTunersByModel(devices: TunerDevice[]): TunerModelGroup[] {
 
 function TunerList({ devices }: { devices: TunerDevice[] }) {
   const groups = groupTunersByModel(devices)
+  // The DiagRow detail already prints the aggregate "N/M free", so hide
+  // per-group counts when there's only one model (single-card setups) —
+  // they'd duplicate the same number. Multi-model setups still get them.
+  const showCounts = groups.length > 1
   return (
     <ul className='mt-2 flex flex-col gap-0.5 font-sans text-footnote'>
       {groups.map((g) => (
@@ -147,14 +151,16 @@ function TunerList({ devices }: { devices: TunerDevice[] }) {
           {g.types.length > 0 && (
             <span className='shrink-0 font-mono text-caption text-muted-foreground'>{g.types.join('/')}</span>
           )}
-          <span
-            className={cn(
-              'shrink-0 font-mono text-caption tabular-nums',
-              g.free === 0 ? 'text-amber-500' : 'text-muted-foreground'
-            )}
-          >
-            {g.free}/{g.total} free
-          </span>
+          {showCounts && (
+            <span
+              className={cn(
+                'shrink-0 font-mono text-caption tabular-nums',
+                g.free === 0 ? 'text-amber-500' : 'text-muted-foreground'
+              )}
+            >
+              {g.free}/{g.total} free
+            </span>
+          )}
         </li>
       ))}
     </ul>
