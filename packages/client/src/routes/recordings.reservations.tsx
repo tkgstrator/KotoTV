@@ -2,9 +2,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { addDays, addMinutes, format, setHours, setMinutes, startOfHour } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { useState } from 'react'
-import { RecordingPageHeader } from '@/components/recording/recording-page-header'
 import { RecordingsReserveAction } from '@/components/recording/recordings-reserve-action'
+import { SegmentedFilter } from '@/components/shared/segmented-filter'
 import { StatusChip } from '@/components/shared/status-chip'
+import { PageHeader } from '@/components/shell/PageHeader'
 
 export const Route = createFileRoute('/recordings/reservations')({
   component: ReservationsPage
@@ -169,26 +170,46 @@ function ReservationRow({ r }: { r: Reservation }) {
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
+type ReservationFilter = 'all' | 'rule' | 'manual'
+
 function ReservationsPage() {
   const [formOpen, setFormOpen] = useState(false)
-  const groups = groupByDay(DUMMY_RESERVATIONS)
+  const [filter, setFilter] = useState<ReservationFilter>('all')
+
   const totalCount = DUMMY_RESERVATIONS.length
   const ruleCount = DUMMY_RESERVATIONS.filter((r) => r.ruleName != null).length
+  const manualCount = totalCount - ruleCount
+
+  const visibleReservations = DUMMY_RESERVATIONS.filter((r) => {
+    if (filter === 'rule') return r.ruleName != null
+    if (filter === 'manual') return r.ruleName == null
+    return true
+  })
+  const groups = groupByDay(visibleReservations)
+
+  const tabs = [
+    { value: 'all' as const, label: `全て ${totalCount}` },
+    { value: 'rule' as const, label: `ルール ${ruleCount}` },
+    { value: 'manual' as const, label: `手動 ${manualCount}` }
+  ]
 
   return (
     <>
-      <RecordingPageHeader
-        ariaLabel='録画予約ヘッダー'
-        stats={[
-          { label: '予約', value: totalCount },
-          { label: 'ルール由来', value: ruleCount },
-          { label: '手動', value: totalCount - ruleCount }
-        ]}
-      />
+      <PageHeader ariaLabel='録画予約ヘッダー'>
+        <div className='flex h-full w-[420px] max-w-full self-stretch'>
+          <SegmentedFilter ariaLabel='予約フィルタ' tabs={tabs} value={filter} onChange={setFilter} />
+        </div>
+      </PageHeader>
       <div className='flex-1 overflow-y-auto pb-16'>
         {groups.length === 0 ? (
           <div className='px-4 py-12'>
-            <p className='text-footnote text-muted-foreground'>予約はまだありません</p>
+            <p className='text-footnote text-muted-foreground'>
+              {filter === 'rule'
+                ? 'ルール由来の予約はありません'
+                : filter === 'manual'
+                  ? '手動の予約はありません'
+                  : '予約はまだありません — 番組表かルールから追加できます'}
+            </p>
           </div>
         ) : (
           <div className='flex flex-col gap-6 px-4 pt-4 pb-4'>
