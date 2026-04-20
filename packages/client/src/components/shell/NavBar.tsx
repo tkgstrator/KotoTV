@@ -9,7 +9,7 @@
  * Active-route detection uses TanStack Router's `useRouterState`.
  */
 import { Link, useRouterState } from '@tanstack/react-router'
-import { CalendarDays, ListFilter, Settings as SettingsIcon, Tv, Video } from 'lucide-react'
+import { Activity, CalendarClock, CalendarDays, ListFilter, Settings as SettingsIcon, Tv, Video } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -25,7 +25,9 @@ const NAV_ITEMS = [
   { to: '/', label: 'チャンネル', Icon: Tv },
   { to: '/epg', label: '番組表', Icon: CalendarDays },
   { to: '/recordings', label: '録画', Icon: Video },
-  { to: '/recordings/rules', label: '録画ルール', Icon: ListFilter }
+  { to: '/recordings/rules', label: '録画ルール', Icon: ListFilter },
+  { to: '/recordings/reservations', label: '予約一覧', Icon: CalendarClock },
+  { to: '/status', label: 'システム状態', Icon: Activity }
 ] as const
 
 const SETTINGS_ITEM = { to: '/settings', label: '設定', Icon: SettingsIcon } as const
@@ -72,7 +74,7 @@ export function AppSidebar() {
   return (
     // top-14 + the matching height lift the fixed sidebar container below
     // the 56 px TopBar; without this override it would overlap the header.
-    <Sidebar collapsible='icon' className='top-14 h-[calc(100svh-3.5rem)]!'>
+    <Sidebar collapsible='icon' className='top-14 h-[calc(100svh-3.5rem)]! border-r-0!'>
       <SidebarContent>
         <SidebarGroup className={MENU_CONTAINER_CLS}>
           <SidebarMenu>
