@@ -150,8 +150,7 @@ function StatusTab() {
         <DiagRow
           status={data.tuners.status}
           name='TUNERS'
-          detail={data.tuners.detail}
-          sub={tunerModel ?? ''}
+          detail={tunerModel ? `${tunerModel} · ${data.tuners.detail}` : data.tuners.detail}
           logTail={<HealthLogTail subsystem='tuners' status={data.tuners.status} />}
         />
       </div>
