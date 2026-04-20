@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises'
 import { app } from './app'
 import { env } from './lib/config'
 import { logger } from './lib/logger'
+import { ensureDefaultEncodeProfile } from './routes/encode-profiles'
 import { startEpgSyncScheduler, stopEpgSyncScheduler } from './services/epg-sync'
 import { stopRuleMatcherScheduler } from './services/rule-matcher'
 import { streamManager } from './services/stream-manager'
@@ -23,6 +24,12 @@ const server = Bun.serve({
 })
 
 logger.info({ port: server.port }, 'server listening')
+
+// Seed the CPU default profile so the Settings > エンコード tab never
+// lands on an empty list; non-blocking.
+ensureDefaultEncodeProfile().catch((err) => {
+  logger.warn({ err }, 'failed to ensure default encode profile')
+})
 
 // Start EPG sync (initial run + 15-min scheduler); non-blocking
 startEpgSyncScheduler()

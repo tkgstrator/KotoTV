@@ -33,7 +33,7 @@ import { useHealth } from '@/hooks/useHealth'
 import { type CodecChoice, type QualityChoice, usePlaybackPrefs } from '@/hooks/usePlaybackPrefs'
 import { type ThemeChoice, useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
-import type { CreateEncodeProfile, EncodeProfile, HwAccelType } from '@/types/EncodeProfile'
+import type { CreateEncodeProfile, EncodeMode, EncodeProfile, HwAccelType, RateControl } from '@/types/EncodeProfile'
 import type { EncodeCodec, EncodeQuality, EncodeTiming } from '@/types/RecordingRule'
 
 export const Route = createFileRoute('/settings')({
@@ -457,35 +457,48 @@ const CODEC_VALUES: EncodeCodec[] = ['avc', 'hevc', 'vp9']
 const QUALITY_LABELS: Record<EncodeQuality, string> = { high: '高', medium: '中', low: '低' }
 const TIMING_LABELS: Record<EncodeTiming, string> = { immediate: '録画直後', idle: 'アイドル時' }
 const HW_LABELS: Record<HwAccelType, string> = { cpu: 'CPU', nvenc: 'NVEnc', vaapi: 'VAAPI' }
+const RATE_LABELS: Record<RateControl, string> = { cbr: 'CBR', vbr: 'VBR', cqp: 'CQP' }
 
 const TOGGLE_ON_CLS =
   'data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
 
 interface ProfileDraft {
   name: string
+  mode: EncodeMode
   codec: EncodeCodec
   quality: EncodeQuality
   timing: EncodeTiming
   hwAccel: HwAccelType
+  rateControl: RateControl
+  bitrateKbps: number
+  qpValue: number
   isDefault: boolean
 }
 
 const EMPTY_DRAFT: ProfileDraft = {
   name: '',
+  mode: 'simple',
   codec: 'avc',
   quality: 'medium',
   timing: 'immediate',
   hwAccel: 'cpu',
+  rateControl: 'vbr',
+  bitrateKbps: 4000,
+  qpValue: 23,
   isDefault: false
 }
 
 function toDraft(profile: EncodeProfile): ProfileDraft {
   return {
     name: profile.name,
+    mode: profile.mode,
     codec: profile.codec,
     quality: profile.quality,
     timing: profile.timing,
     hwAccel: profile.hwAccel,
+    rateControl: profile.rateControl,
+    bitrateKbps: profile.bitrateKbps,
+    qpValue: profile.qpValue,
     isDefault: profile.isDefault
   }
 }
@@ -551,20 +564,89 @@ function ProfileDialog({
             </ToggleGroup>
           </div>
           <div className='flex flex-col gap-1.5'>
-            <Label className='text-footnote font-semibold text-muted-foreground'>画質</Label>
-            <ToggleGroup
-              type='single'
-              variant='outline'
-              value={draft.quality}
-              onValueChange={(v) => v && setDraft((d) => ({ ...d, quality: v as EncodeQuality }))}
-              className='gap-1'
-            >
-              {(['high', 'medium', 'low'] as const).map((q) => (
-                <ToggleGroupItem key={q} value={q} className={cn('h-9 px-3 text-body', TOGGLE_ON_CLS)}>
-                  {QUALITY_LABELS[q]}
+            <div className='flex items-center justify-between gap-2'>
+              <Label className='text-footnote font-semibold text-muted-foreground'>ビットレート設定</Label>
+              <ToggleGroup
+                type='single'
+                variant='outline'
+                value={draft.mode}
+                onValueChange={(v) => v && setDraft((d) => ({ ...d, mode: v as EncodeMode }))}
+                className='gap-1'
+              >
+                <ToggleGroupItem value='simple' className={cn('h-8 px-3 text-footnote', TOGGLE_ON_CLS)}>
+                  シンプル
                 </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+                <ToggleGroupItem value='advanced' className={cn('h-8 px-3 text-footnote', TOGGLE_ON_CLS)}>
+                  詳細
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            {draft.mode === 'simple' ? (
+              <ToggleGroup
+                type='single'
+                variant='outline'
+                value={draft.quality}
+                onValueChange={(v) => v && setDraft((d) => ({ ...d, quality: v as EncodeQuality }))}
+                className='gap-1'
+              >
+                {(['high', 'medium', 'low'] as const).map((q) => (
+                  <ToggleGroupItem key={q} value={q} className={cn('h-9 px-3 text-body', TOGGLE_ON_CLS)}>
+                    {QUALITY_LABELS[q]}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            ) : (
+              <div className='flex flex-col gap-2.5 rounded-md border border-border bg-card/40 px-3 py-2.5'>
+                <div className='flex items-center justify-between gap-2'>
+                  <Label className='text-body text-foreground'>レートコントロール</Label>
+                  <ToggleGroup
+                    type='single'
+                    variant='outline'
+                    value={draft.rateControl}
+                    onValueChange={(v) => v && setDraft((d) => ({ ...d, rateControl: v as RateControl }))}
+                    className='gap-1'
+                  >
+                    {(['cbr', 'vbr', 'cqp'] as const).map((r) => (
+                      <ToggleGroupItem key={r} value={r} className={cn('h-9 px-3 text-body uppercase', TOGGLE_ON_CLS)}>
+                        {RATE_LABELS[r]}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+                {draft.rateControl === 'cqp' ? (
+                  <div className='flex items-center justify-between gap-2'>
+                    <Label className='text-body text-foreground'>QP 値</Label>
+                    <div className='flex items-center gap-1.5'>
+                      <Input
+                        type='number'
+                        min={0}
+                        max={51}
+                        value={draft.qpValue}
+                        onChange={(e) => setDraft((d) => ({ ...d, qpValue: Number(e.target.value) }))}
+                        className='h-9 w-24 tabular-nums text-body'
+                      />
+                      <span className='text-footnote text-muted-foreground'>(0=最高〜51=最低)</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className='flex items-center justify-between gap-2'>
+                    <Label className='text-body text-foreground'>ビットレート</Label>
+                    <div className='flex items-center gap-1.5'>
+                      <Input
+                        type='number'
+                        min={500}
+                        max={80000}
+                        step={100}
+                        value={draft.bitrateKbps}
+                        onChange={(e) => setDraft((d) => ({ ...d, bitrateKbps: Number(e.target.value) }))}
+                        className='h-9 w-28 tabular-nums text-body'
+                      />
+                      <span className='text-footnote text-muted-foreground'>kbps</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className='flex flex-col gap-1.5'>
             <Label className='text-footnote font-semibold text-muted-foreground'>タイミング</Label>
@@ -702,7 +784,8 @@ function EncodeTab() {
 
       {!isError && !isPending && profiles.length === 0 && (
         <p className='py-8 text-center text-footnote text-muted-foreground'>
-          プロファイルがまだありません。右上の「新規プロファイル」から追加してください。
+          プロファイルがまだありません。サーバー初回起動時に既定プロファイルが自動作成されるので、
+          しばらく待ってから再読み込みしてください。
         </p>
       )}
 
@@ -725,7 +808,15 @@ function EncodeTab() {
                 <div className='flex flex-wrap items-center gap-1.5 text-footnote text-muted-foreground'>
                   <span className='uppercase'>{p.codec}</span>
                   <span>·</span>
-                  <span>{QUALITY_LABELS[p.quality]}</span>
+                  {p.mode === 'simple' ? (
+                    <span>{QUALITY_LABELS[p.quality]}</span>
+                  ) : p.rateControl === 'cqp' ? (
+                    <span>CQP {p.qpValue}</span>
+                  ) : (
+                    <span>
+                      {RATE_LABELS[p.rateControl]} {p.bitrateKbps}kbps
+                    </span>
+                  )}
                   <span>·</span>
                   <span>{TIMING_LABELS[p.timing]}</span>
                   <span>·</span>

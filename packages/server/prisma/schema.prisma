@@ -63,16 +63,31 @@ enum HwAccelType {
   vaapi
 }
 
+enum RateControl {
+  cbr
+  vbr
+  cqp
+}
+
+enum EncodeMode {
+  simple
+  advanced
+}
+
 model EncodeProfile {
-  id        String            @id @default(uuid())
-  name      String            @unique
-  codec     RuleEncodeCodec   @default(avc)
-  quality   RuleEncodeQuality @default(medium)
-  timing    RuleEncodeTiming  @default(immediate)
-  hwAccel   HwAccelType       @default(cpu)   @map("hw_accel")
-  isDefault Boolean           @default(false) @map("is_default")
-  createdAt DateTime          @default(now()) @map("created_at")
-  updatedAt DateTime          @updatedAt      @map("updated_at")
+  id          String            @id @default(uuid())
+  name        String            @unique
+  mode        EncodeMode        @default(simple)
+  codec       RuleEncodeCodec   @default(avc)
+  quality     RuleEncodeQuality @default(medium)
+  timing      RuleEncodeTiming  @default(immediate)
+  hwAccel     HwAccelType       @default(cpu)   @map("hw_accel")
+  rateControl RateControl       @default(vbr)   @map("rate_control")
+  bitrateKbps Int               @default(4000)  @map("bitrate_kbps")
+  qpValue     Int               @default(23)    @map("qp_value")
+  isDefault   Boolean           @default(false) @map("is_default")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt      @map("updated_at")
 
   rules     RecordingRule[]
   schedules RecordingSchedule[]
