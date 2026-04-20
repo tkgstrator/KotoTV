@@ -49,12 +49,12 @@ function DeleteRuleButton({ rule }: { rule: RecordingRule }) {
       <AlertDialogTrigger asChild>
         <Button
           variant='ghost'
-          size='sm'
-          className='h-7 gap-1 px-2 text-caption font-bold text-destructive hover:bg-destructive/10 hover:text-destructive'
+          size='icon'
+          className='size-9 text-destructive hover:bg-destructive/10 hover:text-destructive'
           disabled={isPending}
           aria-label='ルール削除'
         >
-          <Trash2 className='size-3' />
+          <Trash2 className='size-4' />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -98,7 +98,7 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
         // Desktop: share the exact grid template with the column header
         // below so every field lines up perfectly regardless of content.
         'flex',
-        'sm:grid sm:grid-cols-[40px_minmax(0,1fr)_120px_140px_48px_72px]'
+        'sm:grid sm:grid-cols-[40px_minmax(0,1fr)_120px_140px_48px_88px]'
       )}
     >
       {/* enabled — stop propagation so toggle doesn't trigger row nav */}
@@ -140,11 +140,11 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
         <Link to='/recordings/rules/$id' params={{ id: rule.id }}>
           <Button
             variant='ghost'
-            size='sm'
-            className='h-7 gap-1 px-2 text-caption text-muted-foreground hover:text-foreground'
+            size='icon'
+            className='size-9 text-muted-foreground hover:text-foreground'
             aria-label='編集'
           >
-            <Pencil className='size-3' />
+            <Pencil className='size-4' />
           </Button>
         </Link>
         <DeleteRuleButton rule={rule} />
@@ -260,7 +260,7 @@ function RecordingRulesPage() {
 
       {/* Column headers (desktop) — same grid template as RuleRow so the
           field positions always line up. */}
-      <div className='hidden items-center gap-3 border-b border-border bg-muted/30 px-4 py-1.5 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_120px_140px_48px_72px]'>
+      <div className='hidden items-center gap-3 border-b border-border bg-muted/30 px-4 py-1.5 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_120px_140px_48px_88px]'>
         <div />
         <div className='text-caption2 font-semibold text-muted-foreground'>名前 / キーワード</div>
         <div className='text-caption2 font-semibold text-muted-foreground'>対象</div>
