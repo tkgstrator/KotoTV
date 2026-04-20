@@ -41,6 +41,16 @@ function serializeRule(row: {
   timeEndMinutes: number | null
   priority: number
   avoidDuplicates: boolean
+  excludeReruns: boolean
+  newOnly: boolean
+  marginStartMinutes: number
+  marginEndMinutes: number
+  minDurationMinutes: number
+  keepLatestN: number
+  postEncode: boolean
+  postEncodeCodec: string
+  postEncodeQuality: string
+  postEncodeTiming: string
   createdAt: Date
   updatedAt: Date
 }): RecordingRule {
@@ -59,6 +69,16 @@ function serializeRule(row: {
     timeEndMinutes: row.timeEndMinutes,
     priority: row.priority,
     avoidDuplicates: row.avoidDuplicates,
+    excludeReruns: row.excludeReruns,
+    newOnly: row.newOnly,
+    marginStartMinutes: row.marginStartMinutes,
+    marginEndMinutes: row.marginEndMinutes,
+    minDurationMinutes: row.minDurationMinutes,
+    keepLatestN: row.keepLatestN,
+    postEncode: row.postEncode,
+    postEncodeCodec: row.postEncodeCodec,
+    postEncodeQuality: row.postEncodeQuality,
+    postEncodeTiming: row.postEncodeTiming,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
   })
@@ -147,7 +167,17 @@ const recordingRulesRoute = new Hono()
         timeStartMinutes: body.timeStartMinutes ?? null,
         timeEndMinutes: body.timeEndMinutes ?? null,
         priority: body.priority ?? 0,
-        avoidDuplicates: body.avoidDuplicates ?? true
+        avoidDuplicates: body.avoidDuplicates ?? true,
+        excludeReruns: body.excludeReruns,
+        newOnly: body.newOnly,
+        marginStartMinutes: body.marginStartMinutes,
+        marginEndMinutes: body.marginEndMinutes,
+        minDurationMinutes: body.minDurationMinutes,
+        keepLatestN: body.keepLatestN,
+        postEncode: body.postEncode,
+        postEncodeCodec: body.postEncodeCodec,
+        postEncodeQuality: body.postEncodeQuality,
+        postEncodeTiming: body.postEncodeTiming
       }
     })
 
@@ -198,7 +228,23 @@ const recordingRulesRoute = new Hono()
         ...('timeStartMinutes' in body ? { timeStartMinutes: body.timeStartMinutes ?? null } : {}),
         ...('timeEndMinutes' in body ? { timeEndMinutes: body.timeEndMinutes ?? null } : {}),
         ...(body.priority !== undefined ? { priority: body.priority } : {}),
-        ...(body.avoidDuplicates !== undefined ? { avoidDuplicates: body.avoidDuplicates } : {})
+        ...(body.avoidDuplicates !== undefined ? { avoidDuplicates: body.avoidDuplicates } : {}),
+        ...(body.excludeReruns !== undefined ? { excludeReruns: body.excludeReruns } : {}),
+        ...(body.newOnly !== undefined ? { newOnly: body.newOnly } : {}),
+        ...(body.marginStartMinutes !== undefined ? { marginStartMinutes: body.marginStartMinutes } : {}),
+        ...(body.marginEndMinutes !== undefined ? { marginEndMinutes: body.marginEndMinutes } : {}),
+        ...(body.minDurationMinutes !== undefined ? { minDurationMinutes: body.minDurationMinutes } : {}),
+        ...(body.keepLatestN !== undefined ? { keepLatestN: body.keepLatestN } : {}),
+        ...(body.postEncode !== undefined ? { postEncode: body.postEncode } : {}),
+        ...(body.postEncodeCodec !== undefined
+          ? { postEncodeCodec: body.postEncodeCodec as 'avc' | 'hevc' | 'vp9' }
+          : {}),
+        ...(body.postEncodeQuality !== undefined
+          ? { postEncodeQuality: body.postEncodeQuality as 'high' | 'medium' | 'low' }
+          : {}),
+        ...(body.postEncodeTiming !== undefined
+          ? { postEncodeTiming: body.postEncodeTiming as 'immediate' | 'idle' }
+          : {})
       }
     })
 

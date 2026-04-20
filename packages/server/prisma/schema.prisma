@@ -40,6 +40,23 @@ enum RuleKeywordTarget {
   title_description
 }
 
+enum RuleEncodeCodec {
+  avc
+  hevc
+  vp9
+}
+
+enum RuleEncodeQuality {
+  high
+  medium
+  low
+}
+
+enum RuleEncodeTiming {
+  immediate
+  idle
+}
+
 model Program {
   id          String   @id
   channelId   String   @map("channel_id")
@@ -58,22 +75,32 @@ model Program {
 }
 
 model RecordingRule {
-  id               String            @id @default(uuid())
-  name             String
-  enabled          Boolean           @default(true)
-  keyword          String?
-  keywordMode      RuleKeywordMode   @default(literal) @map("keyword_mode")
-  keywordTarget    RuleKeywordTarget @default(title)   @map("keyword_target")
-  excludeKeyword   String?           @map("exclude_keyword")
-  channelIds       String[]          @default([]) @map("channel_ids")
-  genres           String[]          @default([])
-  dayOfWeek        Int[]             @default([]) @map("day_of_week")
-  timeStartMinutes Int?              @map("time_start_minutes")
-  timeEndMinutes   Int?              @map("time_end_minutes")
-  priority         Int               @default(0)
-  avoidDuplicates  Boolean           @default(true) @map("avoid_duplicates")
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt      @map("updated_at")
+  id                 String             @id @default(uuid())
+  name               String
+  enabled            Boolean            @default(true)
+  keyword            String?
+  keywordMode        RuleKeywordMode    @default(literal) @map("keyword_mode")
+  keywordTarget      RuleKeywordTarget  @default(title)   @map("keyword_target")
+  excludeKeyword     String?            @map("exclude_keyword")
+  channelIds         String[]           @default([]) @map("channel_ids")
+  genres             String[]           @default([])
+  dayOfWeek          Int[]              @default([]) @map("day_of_week")
+  timeStartMinutes   Int?               @map("time_start_minutes")
+  timeEndMinutes     Int?               @map("time_end_minutes")
+  priority           Int                @default(0)
+  avoidDuplicates    Boolean            @default(true) @map("avoid_duplicates")
+  excludeReruns      Boolean            @default(false) @map("exclude_reruns")
+  newOnly            Boolean            @default(false) @map("new_only")
+  marginStartMinutes Int                @default(0)     @map("margin_start_minutes")
+  marginEndMinutes   Int                @default(0)     @map("margin_end_minutes")
+  minDurationMinutes Int                @default(0)     @map("min_duration_minutes")
+  keepLatestN        Int                @default(0)     @map("keep_latest_n")
+  postEncode         Boolean            @default(false) @map("post_encode")
+  postEncodeCodec    RuleEncodeCodec    @default(avc)    @map("post_encode_codec")
+  postEncodeQuality  RuleEncodeQuality  @default(medium) @map("post_encode_quality")
+  postEncodeTiming   RuleEncodeTiming   @default(immediate) @map("post_encode_timing")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt      @map("updated_at")
 
   schedules RecordingSchedule[]
 

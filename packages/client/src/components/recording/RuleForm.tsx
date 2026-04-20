@@ -69,7 +69,19 @@ const DEFAULT_VALUES: CreateRecordingRule = {
   timeStartMinutes: null,
   timeEndMinutes: null,
   priority: 50,
-  avoidDuplicates: true
+  avoidDuplicates: true,
+  excludeReruns: false,
+  newOnly: false,
+  marginStartMinutes: 0,
+  marginEndMinutes: 0,
+  // 0 = 未設定（最小長フィルタを無効）
+  minDurationMinutes: 0,
+  // 0 = 世代制限なし
+  keepLatestN: 0,
+  postEncode: false,
+  postEncodeCodec: 'avc',
+  postEncodeQuality: 'medium',
+  postEncodeTiming: 'immediate'
 }
 
 function toCreateRule(existing: RecordingRule): CreateRecordingRule {
@@ -86,7 +98,17 @@ function toCreateRule(existing: RecordingRule): CreateRecordingRule {
     timeStartMinutes: existing.timeStartMinutes ?? null,
     timeEndMinutes: existing.timeEndMinutes ?? null,
     priority: existing.priority,
-    avoidDuplicates: existing.avoidDuplicates
+    avoidDuplicates: existing.avoidDuplicates,
+    excludeReruns: existing.excludeReruns,
+    newOnly: existing.newOnly,
+    marginStartMinutes: existing.marginStartMinutes,
+    marginEndMinutes: existing.marginEndMinutes,
+    minDurationMinutes: existing.minDurationMinutes,
+    keepLatestN: existing.keepLatestN,
+    postEncode: existing.postEncode,
+    postEncodeCodec: existing.postEncodeCodec,
+    postEncodeQuality: existing.postEncodeQuality,
+    postEncodeTiming: existing.postEncodeTiming
   }
 }
 
@@ -156,6 +178,12 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
   const timeStart = watch('timeStartMinutes')
   const timeEnd = watch('timeEndMinutes')
   const avoidDuplicates = watch('avoidDuplicates')
+  const excludeReruns = watch('excludeReruns')
+  const newOnly = watch('newOnly')
+  const postEncode = watch('postEncode')
+  const postEncodeCodec = watch('postEncodeCodec')
+  const postEncodeQuality = watch('postEncodeQuality')
+  const postEncodeTiming = watch('postEncodeTiming')
   const keywordMode = watch('keywordMode')
   const keywordTarget = watch('keywordTarget')
   const keyword = watch('keyword')
@@ -479,20 +507,189 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
               />
             </div>
 
-            {/* ── 9. 重複回避 */}
-            <div className='flex items-center gap-3'>
-              <Switch
-                id='avoidDuplicates'
-                checked={avoidDuplicates}
-                onCheckedChange={(v) => setValue('avoidDuplicates', v)}
-              />
-              <Label htmlFor='avoidDuplicates' className='cursor-pointer text-footnote text-foreground'>
-                重複回避
-              </Label>
+            {/* ── 9. 録画オプション（真理値スイッチまとめ） */}
+            <div className='flex flex-col gap-2'>
+              <Label className='text-footnote font-semibold text-muted-foreground'>録画オプション</Label>
+              <div className='flex flex-col gap-2 rounded-md border border-border bg-card/40 px-3 py-2.5'>
+                <div className='flex items-center justify-between gap-3'>
+                  <Label htmlFor='avoidDuplicates' className='cursor-pointer text-footnote text-foreground'>
+                    タイトル重複は録画しない
+                  </Label>
+                  <Switch
+                    id='avoidDuplicates'
+                    checked={avoidDuplicates}
+                    onCheckedChange={(v) => setValue('avoidDuplicates', v)}
+                  />
+                </div>
+                <div className='flex items-center justify-between gap-3'>
+                  <Label htmlFor='excludeReruns' className='cursor-pointer text-footnote text-foreground'>
+                    再放送を録画しない
+                  </Label>
+                  <Switch
+                    id='excludeReruns'
+                    checked={excludeReruns}
+                    onCheckedChange={(v) => setValue('excludeReruns', v)}
+                  />
+                </div>
+                <div className='flex items-center justify-between gap-3'>
+                  <Label htmlFor='newOnly' className='cursor-pointer text-footnote text-foreground'>
+                    新番組のみ
+                  </Label>
+                  <Switch id='newOnly' checked={newOnly} onCheckedChange={(v) => setValue('newOnly', v)} />
+                </div>
+              </div>
+            </div>
+
+            {/* ── 10. マージン / 最小長 / 世代数 */}
+            <div className='flex flex-col gap-2'>
+              <Label className='text-footnote font-semibold text-muted-foreground'>細かい挙動</Label>
+              <div className='flex flex-col gap-2.5 rounded-md border border-border bg-card/40 px-3 py-2.5'>
+                <div className='flex items-center justify-between gap-3'>
+                  <Label className='text-footnote text-foreground'>開始マージン</Label>
+                  <div className='flex items-center gap-1.5'>
+                    <Input
+                      type='number'
+                      min={0}
+                      max={60}
+                      {...register('marginStartMinutes', { valueAsNumber: true })}
+                      className='h-8 w-20 tabular-nums text-footnote'
+                    />
+                    <span className='text-footnote text-muted-foreground'>分</span>
+                  </div>
+                </div>
+                <div className='flex items-center justify-between gap-3'>
+                  <Label className='text-footnote text-foreground'>終了マージン</Label>
+                  <div className='flex items-center gap-1.5'>
+                    <Input
+                      type='number'
+                      min={0}
+                      max={60}
+                      {...register('marginEndMinutes', { valueAsNumber: true })}
+                      className='h-8 w-20 tabular-nums text-footnote'
+                    />
+                    <span className='text-footnote text-muted-foreground'>分</span>
+                  </div>
+                </div>
+                <div className='flex items-center justify-between gap-3'>
+                  <Label className='text-footnote text-foreground'>最小番組長</Label>
+                  <div className='flex items-center gap-1.5'>
+                    <Input
+                      type='number'
+                      min={0}
+                      max={1440}
+                      {...register('minDurationMinutes', { valueAsNumber: true })}
+                      className='h-8 w-20 tabular-nums text-footnote'
+                    />
+                    <span className='text-footnote text-muted-foreground'>分 (0 で無効)</span>
+                  </div>
+                </div>
+                <div className='flex items-center justify-between gap-3'>
+                  <Label className='text-footnote text-foreground'>保存世代数</Label>
+                  <div className='flex items-center gap-1.5'>
+                    <Input
+                      type='number'
+                      min={0}
+                      max={999}
+                      {...register('keepLatestN', { valueAsNumber: true })}
+                      className='h-8 w-20 tabular-nums text-footnote'
+                    />
+                    <span className='text-footnote text-muted-foreground'>本 (0 で無制限)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 11. 録画後にエンコード */}
+            <div className='flex flex-col gap-2'>
+              <div className='flex items-center justify-between gap-3'>
+                <Label
+                  htmlFor='postEncode'
+                  className='cursor-pointer text-footnote font-semibold text-muted-foreground'
+                >
+                  録画後にエンコード
+                </Label>
+                <Switch id='postEncode' checked={postEncode} onCheckedChange={(v) => setValue('postEncode', v)} />
+              </div>
+              {postEncode && (
+                <div className='flex flex-col gap-2 rounded-md border border-border bg-card/40 px-3 py-2.5'>
+                  <div className='flex items-center justify-between gap-3'>
+                    <Label className='text-footnote text-foreground'>コーデック</Label>
+                    <ToggleGroup
+                      type='single'
+                      variant='outline'
+                      value={postEncodeCodec}
+                      onValueChange={(v) => v && setValue('postEncodeCodec', v as 'avc' | 'hevc' | 'vp9')}
+                      className='gap-1'
+                    >
+                      {(['avc', 'hevc', 'vp9'] as const).map((codec) => (
+                        <ToggleGroupItem
+                          key={codec}
+                          value={codec}
+                          className='h-8 px-3 text-footnote uppercase data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                        >
+                          {codec}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
+                  </div>
+                  <div className='flex items-center justify-between gap-3'>
+                    <Label className='text-footnote text-foreground'>画質</Label>
+                    <ToggleGroup
+                      type='single'
+                      variant='outline'
+                      value={postEncodeQuality}
+                      onValueChange={(v) => v && setValue('postEncodeQuality', v as 'high' | 'medium' | 'low')}
+                      className='gap-1'
+                    >
+                      <ToggleGroupItem
+                        value='high'
+                        className='h-8 px-3 text-footnote data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                      >
+                        高
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value='medium'
+                        className='h-8 px-3 text-footnote data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                      >
+                        中
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value='low'
+                        className='h-8 px-3 text-footnote data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                      >
+                        低
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                  <div className='flex items-center justify-between gap-3'>
+                    <Label className='text-footnote text-foreground'>タイミング</Label>
+                    <ToggleGroup
+                      type='single'
+                      variant='outline'
+                      value={postEncodeTiming}
+                      onValueChange={(v) => v && setValue('postEncodeTiming', v as 'immediate' | 'idle')}
+                      className='gap-1'
+                    >
+                      <ToggleGroupItem
+                        value='immediate'
+                        className='h-8 px-3 text-footnote data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                      >
+                        録画直後
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value='idle'
+                        className='h-8 px-3 text-footnote data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                      >
+                        アイドル時
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* ── 10. ボタン群 — span both columns */}
+          {/* ── 12. ボタン群 — span both columns */}
           <div className='flex flex-wrap items-center gap-2 border-t border-border pt-4 md:col-span-2'>
             <Button
               type='submit'
