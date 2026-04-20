@@ -250,7 +250,7 @@ function RecordingRulesPage() {
         ariaLabel='録画ルールヘッダー'
         stats={[
           { label: '有効', value: enabledCount },
-          { label: '全', value: rules.length }
+          { label: '合計', value: rules.length }
         ]}
         action={
           <Link to='/recordings/rules/new'>

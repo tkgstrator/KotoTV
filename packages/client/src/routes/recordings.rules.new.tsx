@@ -14,15 +14,15 @@ function NewRulePage() {
   return (
     <div className='flex h-full flex-col overflow-hidden'>
       <PageHeader ariaLabel='新規ルールヘッダー' className='items-center gap-2 px-3'>
-        <Link to='/recordings' className='font-mono text-[0.6875rem] text-muted-foreground hover:text-foreground'>
+        <Link to='/recordings' className='text-footnote text-muted-foreground hover:text-foreground'>
           録画
         </Link>
-        <span className='font-mono text-[0.6875rem] text-border'>/</span>
-        <Link to='/recordings/rules' className='font-mono text-[0.6875rem] text-muted-foreground hover:text-foreground'>
+        <span className='text-footnote text-border'>/</span>
+        <Link to='/recordings/rules' className='text-footnote text-muted-foreground hover:text-foreground'>
           録画ルール
         </Link>
-        <span className='font-mono text-[0.6875rem] text-border'>/</span>
-        <h1 className='font-mono text-[0.9375rem] font-bold leading-none'>新規ルール</h1>
+        <span className='text-footnote text-border'>/</span>
+        <h1 className='text-title3 font-bold leading-none'>新規ルール</h1>
       </PageHeader>
       <div className='flex flex-1 overflow-hidden'>
         <RuleForm channels={channels} />
