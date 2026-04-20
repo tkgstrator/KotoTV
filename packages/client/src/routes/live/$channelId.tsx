@@ -283,7 +283,7 @@ function LivePage() {
           monitors don't stretch the video beyond YouTube's own max-width. */}
       <div className='mx-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden lg:max-w-[1784px] lg:flex-row lg:gap-4 lg:p-3'>
         {/* Video column */}
-        <div className='flex min-h-0 flex-1 flex-col overflow-hidden lg:min-w-0'>
+        <div className='flex min-h-0 flex-1 flex-col gap-2 overflow-hidden lg:min-w-0'>
           {stream.status === 'error' ? (
             /* Fatal error state */
             <div className='flex flex-1 items-center justify-center p-6'>
@@ -329,22 +329,16 @@ function LivePage() {
               </StatusChip>
             </div>
           ) : (
-            /* Ready: actual player. `flex min-h-0 flex-1` gives the well
-               the remaining vertical space; the video element inside keeps
-               16:9 aspect via `aspect-video` and shrinks to fit when the
-               viewport is short (max-h-full / max-w-full). Top-aligned so
-               the video lines up with the UpNext header. */
-            <div
-              className='flex min-h-0 flex-1 items-start justify-center'
-              role='application'
-              aria-label='ライブ映像プレイヤー'
-            >
+            /* Ready: actual player. aspect-video forces the well to 16:9
+               so the video sits flush against PlayerControls below — no
+               letterbox padding, no flex-grow gap. YouTube does the same. */
+            <div className='aspect-video w-full' role='application' aria-label='ライブ映像プレイヤー'>
               <HlsPlayer
                 key={stream.sessionId}
                 ref={videoRef}
                 playlistUrl={stream.playlistUrl ?? ''}
                 ariaLabel={`${channel?.name ?? channelId} ライブ映像`}
-                className='aspect-video max-h-full max-w-full'
+                className='h-full w-full'
                 onError={(err) => console.error('[HlsPlayer]', err)}
               />
             </div>

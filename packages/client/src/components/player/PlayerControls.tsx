@@ -186,7 +186,7 @@ export function PlayerControls({
   const disabledLiveClass = isLive ? 'opacity-50 pointer-events-none' : ''
 
   return (
-    <div className={cn('flex flex-col gap-1.5 border-t border-border bg-card px-2.5 py-2', className)}>
+    <div className={cn('flex flex-col gap-1.5 px-2.5 py-2', className)}>
       {/* Seek / progress bar row */}
       <div className='flex items-center gap-2'>
         {isLive ? (
