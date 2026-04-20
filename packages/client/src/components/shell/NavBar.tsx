@@ -52,7 +52,7 @@ const MAIN_ITEMS: readonly NavItem[] = [
 const RECORDING_ITEMS: readonly NavItem[] = [
   { to: '/recordings/pending', label: '録画中', Icon: Radio },
   { to: '/recordings/completed', label: '録画済み', Icon: Archive },
-  { to: '/recordings/failed', label: 'エンコード', Icon: FileVideo },
+  { to: '/recordings/encoding', label: 'エンコード', Icon: FileVideo },
   { to: '/recordings/reservations', label: '録画予約', Icon: CalendarClock },
   { to: '/recordings/rules', label: '録画ルール', Icon: ListFilter }
 ]

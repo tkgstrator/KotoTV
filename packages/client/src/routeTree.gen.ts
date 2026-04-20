@@ -18,7 +18,7 @@ import { Route as RecordingsIndexRouteImport } from './routes/recordings.index'
 import { Route as RecordingsRulesRouteImport } from './routes/recordings.rules'
 import { Route as RecordingsReservationsRouteImport } from './routes/recordings.reservations'
 import { Route as RecordingsPendingRouteImport } from './routes/recordings.pending'
-import { Route as RecordingsFailedRouteImport } from './routes/recordings.failed'
+import { Route as RecordingsEncodingRouteImport } from './routes/recordings.encoding'
 import { Route as RecordingsCompletedRouteImport } from './routes/recordings.completed'
 import { Route as RecordingsIdRouteImport } from './routes/recordings/$id'
 import { Route as LiveChannelIdRouteImport } from './routes/live/$channelId'
@@ -71,9 +71,9 @@ const RecordingsPendingRoute = RecordingsPendingRouteImport.update({
   path: '/pending',
   getParentRoute: () => RecordingsRoute,
 } as any)
-const RecordingsFailedRoute = RecordingsFailedRouteImport.update({
-  id: '/failed',
-  path: '/failed',
+const RecordingsEncodingRoute = RecordingsEncodingRouteImport.update({
+  id: '/encoding',
+  path: '/encoding',
   getParentRoute: () => RecordingsRoute,
 } as any)
 const RecordingsCompletedRoute = RecordingsCompletedRouteImport.update({
@@ -116,7 +116,7 @@ export interface FileRoutesByFullPath {
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
   '/recordings/completed': typeof RecordingsCompletedRoute
-  '/recordings/failed': typeof RecordingsFailedRoute
+  '/recordings/encoding': typeof RecordingsEncodingRoute
   '/recordings/pending': typeof RecordingsPendingRoute
   '/recordings/reservations': typeof RecordingsReservationsRoute
   '/recordings/rules': typeof RecordingsRulesRouteWithChildren
@@ -133,7 +133,7 @@ export interface FileRoutesByTo {
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
   '/recordings/completed': typeof RecordingsCompletedRoute
-  '/recordings/failed': typeof RecordingsFailedRoute
+  '/recordings/encoding': typeof RecordingsEncodingRoute
   '/recordings/pending': typeof RecordingsPendingRoute
   '/recordings/reservations': typeof RecordingsReservationsRoute
   '/recordings': typeof RecordingsIndexRoute
@@ -151,7 +151,7 @@ export interface FileRoutesById {
   '/live/$channelId': typeof LiveChannelIdRoute
   '/recordings/$id': typeof RecordingsIdRoute
   '/recordings/completed': typeof RecordingsCompletedRoute
-  '/recordings/failed': typeof RecordingsFailedRoute
+  '/recordings/encoding': typeof RecordingsEncodingRoute
   '/recordings/pending': typeof RecordingsPendingRoute
   '/recordings/reservations': typeof RecordingsReservationsRoute
   '/recordings/rules': typeof RecordingsRulesRouteWithChildren
@@ -171,7 +171,7 @@ export interface FileRouteTypes {
     | '/live/$channelId'
     | '/recordings/$id'
     | '/recordings/completed'
-    | '/recordings/failed'
+    | '/recordings/encoding'
     | '/recordings/pending'
     | '/recordings/reservations'
     | '/recordings/rules'
@@ -188,7 +188,7 @@ export interface FileRouteTypes {
     | '/live/$channelId'
     | '/recordings/$id'
     | '/recordings/completed'
-    | '/recordings/failed'
+    | '/recordings/encoding'
     | '/recordings/pending'
     | '/recordings/reservations'
     | '/recordings'
@@ -205,7 +205,7 @@ export interface FileRouteTypes {
     | '/live/$channelId'
     | '/recordings/$id'
     | '/recordings/completed'
-    | '/recordings/failed'
+    | '/recordings/encoding'
     | '/recordings/pending'
     | '/recordings/reservations'
     | '/recordings/rules'
@@ -289,11 +289,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecordingsPendingRouteImport
       parentRoute: typeof RecordingsRoute
     }
-    '/recordings/failed': {
-      id: '/recordings/failed'
-      path: '/failed'
-      fullPath: '/recordings/failed'
-      preLoaderRoute: typeof RecordingsFailedRouteImport
+    '/recordings/encoding': {
+      id: '/recordings/encoding'
+      path: '/encoding'
+      fullPath: '/recordings/encoding'
+      preLoaderRoute: typeof RecordingsEncodingRouteImport
       parentRoute: typeof RecordingsRoute
     }
     '/recordings/completed': {
@@ -360,7 +360,7 @@ const RecordingsRulesRouteWithChildren = RecordingsRulesRoute._addFileChildren(
 interface RecordingsRouteChildren {
   RecordingsIdRoute: typeof RecordingsIdRoute
   RecordingsCompletedRoute: typeof RecordingsCompletedRoute
-  RecordingsFailedRoute: typeof RecordingsFailedRoute
+  RecordingsEncodingRoute: typeof RecordingsEncodingRoute
   RecordingsPendingRoute: typeof RecordingsPendingRoute
   RecordingsReservationsRoute: typeof RecordingsReservationsRoute
   RecordingsRulesRoute: typeof RecordingsRulesRouteWithChildren
@@ -370,7 +370,7 @@ interface RecordingsRouteChildren {
 const RecordingsRouteChildren: RecordingsRouteChildren = {
   RecordingsIdRoute: RecordingsIdRoute,
   RecordingsCompletedRoute: RecordingsCompletedRoute,
-  RecordingsFailedRoute: RecordingsFailedRoute,
+  RecordingsEncodingRoute: RecordingsEncodingRoute,
   RecordingsPendingRoute: RecordingsPendingRoute,
   RecordingsReservationsRoute: RecordingsReservationsRoute,
   RecordingsRulesRoute: RecordingsRulesRouteWithChildren,
