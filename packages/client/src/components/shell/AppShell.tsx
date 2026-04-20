@@ -14,6 +14,7 @@
 import { useRouterState } from '@tanstack/react-router'
 import { useState } from 'react'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { cn } from '@/lib/utils'
 import { AppSidebar, MobileTabs } from './NavBar'
 import { TopBar } from './TopBar'
 
@@ -59,9 +60,20 @@ export function AppShell({ children }: AppShellProps) {
       <TopBar />
       <div className='flex flex-1 sm:min-h-0'>
         <AppSidebar />
+        {/*
+         * Scrollable pages (channels, EPG, recordings, settings) need the
+         * SidebarInset to scroll. Playback pages (live, recordings/:id)
+         * already size themselves to fit the viewport, and leaving
+         * overflow-y-auto on gives the main a phantom scrollbar even when
+         * the children are visually clamped — the UpNext rail's intrinsic
+         * height leaks through to `scrollHeight`.
+         */}
         <SidebarInset
           id='main-content'
-          className='flex min-h-0 flex-1 flex-col overflow-y-auto bg-background pb-[var(--mobile-nav-h)] sm:min-w-0 sm:pb-0'
+          className={cn(
+            'flex min-h-0 flex-1 flex-col bg-background pb-[var(--mobile-nav-h)] sm:min-w-0 sm:pb-0',
+            playback ? 'overflow-hidden' : 'overflow-y-auto'
+          )}
         >
           {children}
         </SidebarInset>
