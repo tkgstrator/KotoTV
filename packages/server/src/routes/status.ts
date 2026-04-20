@@ -2,7 +2,7 @@ import { statfsSync } from 'node:fs'
 import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { env } from '../lib/config'
-import { getLogTail, pushLogLine } from '../lib/log-buffer'
+import { getLogTail } from '../lib/log-buffer'
 import { logger } from '../lib/logger'
 import { prisma } from '../lib/prisma'
 import type { HealthLogsResponse, HealthResponse } from '../schemas/Health.dto'
@@ -37,16 +37,14 @@ async function checkMirakc(): Promise<HealthResponse['mirakc']> {
         // version field not critical
       }
       const detail = version ? `mirakc ${version}` : 'mirakc reachable'
-      pushLogLine('mirakc', 'info', detail)
       return { status: 'ok', detail, version }
     }
     const detail = `mirakc returned HTTP ${res.status}`
-    pushLogLine('mirakc', 'error', detail)
+    logger.error({ module: 'mirakc' }, detail)
     return { status: 'err', detail, version: null }
   } catch (err) {
     const detail = 'mirakc unreachable (fallback to mock)'
-    pushLogLine('mirakc', 'warn', detail)
-    logger.warn({ module: 'health', err }, detail)
+    logger.warn({ module: 'mirakc', err }, detail)
     return { status: 'warn', detail, version: null }
   }
 }
@@ -60,12 +58,10 @@ async function checkPostgres(): Promise<HealthResponse['postgres']> {
     const match = raw.match(/^PostgreSQL\s+([0-9][^\s,()]*)/i)
     const version = match ? `PostgreSQL ${match[1]}` : raw ? raw.split(' ').slice(0, 2).join(' ') : null
     const detail = version ?? 'postgres reachable'
-    pushLogLine('postgres', 'info', detail)
     return { status: 'ok', detail, version }
   } catch (err) {
     const detail = err instanceof Error ? err.message : 'postgres unreachable'
-    pushLogLine('postgres', 'error', detail)
-    logger.error({ module: 'health', err }, 'postgres health check failed')
+    logger.error({ module: 'postgres', err }, 'postgres health check failed')
     return { status: 'err', detail, version: null }
   }
 }
@@ -80,12 +76,10 @@ async function checkFfmpeg(): Promise<HealthResponse['ffmpeg']> {
     const match = firstLine.match(/ffmpeg version (\S+)/)
     const version = match?.[1] ?? firstLine.trim()
     const detail = version ? `ffmpeg ${version}` : 'ffmpeg installed (version unknown)'
-    pushLogLine('ffmpeg', 'info', detail)
     return { status: 'ok', detail }
   } catch (err) {
     const detail = 'ffmpeg not found in PATH'
-    pushLogLine('ffmpeg', 'error', detail)
-    logger.warn({ module: 'health', err }, detail)
+    logger.error({ module: 'ffmpeg', err }, detail)
     return { status: 'err', detail }
   }
 }
@@ -113,25 +107,23 @@ async function checkTuners(): Promise<HealthResponse['tuners']> {
     const res = await fetchWithTimeout(`${env.MIRAKC_URL}/api/tuners`, 2000)
     if (!res.ok) {
       const detail = `tuners endpoint returned HTTP ${res.status}`
-      pushLogLine('tuners', 'warn', detail)
+      logger.warn({ module: 'tuners' }, detail)
       return { status: 'warn', detail, devices: [] }
     }
     const data: unknown = await res.json()
     if (!Array.isArray(data)) {
       const detail = 'unexpected tuners response shape'
-      pushLogLine('tuners', 'warn', detail)
+      logger.warn({ module: 'tuners' }, detail)
       return { status: 'warn', detail, devices: [] }
     }
     const devices = (data as MirakcTuner[]).map(normalizeTuner)
     const total = devices.length
     const free = devices.filter((t) => t.isFree).length
     const detail = `${free}/${total} free`
-    pushLogLine('tuners', 'info', detail)
     return { status: 'ok', detail, devices }
   } catch (err) {
     const detail = 'mirakc unreachable, tuner status unknown'
-    pushLogLine('tuners', 'warn', detail)
-    logger.warn({ module: 'health', err }, detail)
+    logger.warn({ module: 'tuners', err }, detail)
     return { status: 'warn', detail, devices: [] }
   }
 }
