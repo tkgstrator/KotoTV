@@ -2,8 +2,9 @@ import { createFileRoute } from '@tanstack/react-router'
 import { format, subMinutes } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { useState } from 'react'
-import { RecordingPageHeader } from '@/components/recording/recording-page-header'
 import { RecordingsReserveAction } from '@/components/recording/recordings-reserve-action'
+import { SegmentedFilter } from '@/components/shared/segmented-filter'
+import { PageHeader } from '@/components/shell/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
@@ -179,54 +180,70 @@ function EncodeRow({ job }: { job: EncodeJob }) {
 
 function EncodePage() {
   const [formOpen, setFormOpen] = useState(false)
+  const [filter, setFilter] = useState<EncodeStatus>('encoding')
   // No API yet — show the dummy queue. Swap to real data once the
   // transcode worker lands in Phase 5.
   const isPending = false
   const isError = false
   const jobs = DUMMY_JOBS
 
+  const activeCount = jobs.filter((j) => j.status === 'encoding').length
+  const waitingCount = jobs.filter((j) => j.status === 'waiting').length
+  const visibleJobs = jobs.filter((j) => j.status === filter)
+
+  const tabs = [
+    { value: 'encoding' as const, label: `エンコード中 ${activeCount}` },
+    { value: 'waiting' as const, label: `待機 ${waitingCount}` }
+  ]
+
+  const header = (
+    <PageHeader ariaLabel='エンコードヘッダー'>
+      <div className='flex h-full w-[320px] max-w-full self-stretch'>
+        <SegmentedFilter ariaLabel='エンコード状態' tabs={tabs} value={filter} onChange={setFilter} />
+      </div>
+    </PageHeader>
+  )
+
   if (isPending) {
     return (
-      <div className='flex flex-col gap-1 p-4'>
-        {Array.from({ length: 4 }).map((_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton
-          <Skeleton key={i} className='h-[88px] w-full rounded' />
-        ))}
-      </div>
+      <>
+        {header}
+        <div className='flex flex-col gap-1 p-4'>
+          {Array.from({ length: 4 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton
+            <Skeleton key={i} className='h-[88px] w-full rounded' />
+          ))}
+        </div>
+      </>
     )
   }
 
   if (isError) {
     return (
-      <div className='px-4 py-12'>
-        <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 text-footnote text-destructive'>
-          エンコードキューの取得に失敗しました
+      <>
+        {header}
+        <div className='px-4 py-12'>
+          <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 text-footnote text-destructive'>
+            エンコードキューの取得に失敗しました
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
-  const activeCount = jobs.filter((j) => j.status === 'encoding').length
-  const waitingCount = jobs.filter((j) => j.status === 'waiting').length
-
   return (
     <>
-      <RecordingPageHeader
-        ariaLabel='エンコードヘッダー'
-        stats={[
-          { label: 'エンコード中', value: activeCount, tone: activeCount > 0 ? 'primary' : 'default' },
-          { label: '待機', value: waitingCount }
-        ]}
-      />
+      {header}
       <div className='flex-1 overflow-y-auto pb-16'>
-        {/* Queue list */}
-        {jobs.length === 0 ? (
+        {visibleJobs.length === 0 ? (
           <div className='px-4 py-12'>
-            <p className='text-footnote text-muted-foreground'>キューは空です</p>
+            <p className='text-footnote text-muted-foreground'>
+              {filter === 'encoding' ? 'エンコード中のジョブはありません' : '待機中のジョブはありません'}
+            </p>
           </div>
         ) : (
           <div className='mx-4 mt-4 overflow-hidden rounded-[4px] border border-border'>
-            {jobs.map((j) => (
+            {visibleJobs.map((j) => (
               <EncodeRow key={j.id} job={j} />
             ))}
           </div>
