@@ -1,11 +1,9 @@
 import type { RecordingSchedule } from '@kototv/server/src/schemas/Recording.dto'
 import { createFileRoute } from '@tanstack/react-router'
-import { CalendarPlus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { RecordingRow, ScheduleRow } from '@/components/recording/recording-list-items'
 import { RecordingPageHeader } from '@/components/recording/recording-page-header'
 import { RecordingsReserveAction } from '@/components/recording/recordings-reserve-action'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRecordingRules } from '@/hooks/useRecordingRules'
 import { useRecordingEvents, useRecordings } from '@/hooks/useRecordings'
@@ -70,12 +68,6 @@ function PendingPage() {
         { label: '録画中', value: activeCount, tone: activeCount > 0 ? 'destructive' : 'default' },
         { label: '予約', value: scheduledCount }
       ]}
-      action={
-        <Button size='sm' className='h-8 gap-1.5 px-3 text-footnote' onClick={() => setFormOpen(true)}>
-          <CalendarPlus className='size-4' />
-          新規予約
-        </Button>
-      }
     />
   )
 
@@ -85,10 +77,9 @@ function PendingPage() {
       <div className='flex-1 overflow-y-auto pb-16'>
         {pendingItems.length === 0 ? (
           <div className='px-4 py-12'>
-            <p className='mb-3 text-subheadline font-semibold text-muted-foreground'>予約はまだありません</p>
-            <Button variant='outline' size='sm' className='text-footnote' onClick={() => setFormOpen(true)}>
-              + 最初の予約を追加
-            </Button>
+            <p className='text-subheadline font-semibold text-muted-foreground'>
+              予約はまだありません — 番組表かルールから追加できます
+            </p>
           </div>
         ) : (
           <div>
