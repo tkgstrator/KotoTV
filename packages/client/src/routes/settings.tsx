@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { HealthLogTail } from '@/components/settings/HealthLogTail'
 import { StatusChip } from '@/components/shared/status-chip'
-import { PageHeader } from '@/components/shell/PageHeader'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -457,16 +456,12 @@ function SettingsPage() {
 
   return (
     <>
-      <PageHeader ariaLabel='設定ヘッダー' className='items-center px-4'>
-        <h1 className='font-mono text-[0.9375rem] font-bold leading-none'>設定</h1>
-      </PageHeader>
-
       {/* Pinned health strip */}
       <div
         role='status'
         aria-label='システム健全性'
         className={cn(
-          'sticky top-page-header z-10 flex shrink-0 items-stretch overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+          'sticky top-0 z-10 flex shrink-0 items-stretch overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
           anyWarn && 'border-b-amber-500/30 bg-amber-500/[0.04]'
         )}
       >
@@ -501,7 +496,7 @@ function SettingsPage() {
 
       {/* Tabs */}
       <Tabs defaultValue='status' className='flex flex-1 flex-col'>
-        <div className='sticky top-[calc(var(--page-header-h)+48px)] z-10 shrink-0 overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+        <div className='sticky top-[48px] z-10 shrink-0 overflow-x-auto border-b border-border bg-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
           <TabsList className='h-auto w-full justify-start rounded-none bg-transparent p-0'>
             <TabsTrigger
               value='status'

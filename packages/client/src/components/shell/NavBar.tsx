@@ -9,7 +9,7 @@
  * Active-route detection uses TanStack Router's `useRouterState`.
  */
 import { Link, useRouterState } from '@tanstack/react-router'
-import { CalendarDays, Settings as SettingsIcon, Tv, Video } from 'lucide-react'
+import { CalendarDays, ListFilter, Settings as SettingsIcon, Tv, Video } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -24,7 +24,8 @@ import { cn } from '@/lib/utils'
 const NAV_ITEMS = [
   { to: '/', label: 'チャンネル', Icon: Tv },
   { to: '/epg', label: '番組表', Icon: CalendarDays },
-  { to: '/recordings', label: '録画', Icon: Video }
+  { to: '/recordings', label: '録画', Icon: Video },
+  { to: '/recordings/rules', label: '録画ルール', Icon: ListFilter }
 ] as const
 
 const SETTINGS_ITEM = { to: '/settings', label: '設定', Icon: SettingsIcon } as const
@@ -32,7 +33,19 @@ const SETTINGS_ITEM = { to: '/settings', label: '設定', Icon: SettingsIcon } a
 function useIsActive() {
   const { location } = useRouterState()
   const path = location.pathname
-  return (to: string) => (to === '/' ? path === '/' : path.startsWith(to))
+  // `/recordings` must not light up when the user is on `/recordings/rules`,
+  // because both share the same prefix. Route with the longest matching
+  // prefix wins.
+  const candidates = [...NAV_ITEMS.map((n) => n.to), SETTINGS_ITEM.to]
+  return (to: string) => {
+    if (to === '/') return path === '/'
+    const matches = (route: string) => path === route || path.startsWith(`${route}/`)
+    if (!matches(to)) return false
+    // Reject if a longer sibling route also matches this path.
+    return !candidates.some(
+      (other) => other !== to && other.length > to.length && other.startsWith(to) && matches(other)
+    )
+  }
 }
 
 // Row class applied to every SidebarMenuButton so icons are 24 px and the
