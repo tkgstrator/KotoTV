@@ -5,48 +5,96 @@
  *     always has the nav affordances. Padding is tuned so the icon
  *     column sits at 24 px from the viewport edge in both expanded and
  *     collapsed states, matching the TopBar hamburger.
- *   - `MobileTabs`: mobile bottom tab bar (bottom-fixed), unchanged.
+ *     Items are grouped into three sections so the `録画` family
+ *     (録画中 / 録画済み / エンコード / 録画予約 / 録画ルール) reads as
+ *     its own cluster rather than mixing with top-level nav.
+ *   - `MobileTabs`: mobile bottom tab bar (bottom-fixed). The mobile bar
+ *     stays flat — grouping is desktop-only so the bottom tabs don't
+ *     explode into 8 icons.
  * Active-route detection uses TanStack Router's `useRouterState`.
  */
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Activity, CalendarClock, CalendarDays, ListFilter, Settings as SettingsIcon, Tv, Video } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import {
+  Activity,
+  Archive,
+  CalendarClock,
+  CalendarDays,
+  FileVideo,
+  ListFilter,
+  Radio,
+  Settings as SettingsIcon,
+  Tv
+} from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 
-const NAV_ITEMS = [
-  { to: '/', label: 'チャンネル', Icon: Tv },
-  { to: '/epg', label: '番組表', Icon: CalendarDays },
-  { to: '/recordings', label: '録画', Icon: Video },
-  { to: '/recordings/rules', label: '録画ルール', Icon: ListFilter },
-  { to: '/recordings/reservations', label: '予約一覧', Icon: CalendarClock },
-  { to: '/status', label: 'システム状態', Icon: Activity }
-] as const
+// `search` items share `/recordings` and differ only by the tab search
+// param, so the sidebar surfaces each recording sub-state as its own row.
+interface NavItem {
+  to: string
+  label: string
+  Icon: LucideIcon
+  search?: { tab?: 'pending' | 'completed' | 'failed' }
+}
 
-const SETTINGS_ITEM = { to: '/settings', label: '設定', Icon: SettingsIcon } as const
+const MAIN_ITEMS: readonly NavItem[] = [
+  { to: '/', label: 'チャンネル', Icon: Tv },
+  { to: '/epg', label: '番組表', Icon: CalendarDays }
+]
+
+const RECORDING_ITEMS: readonly NavItem[] = [
+  { to: '/recordings', search: { tab: 'pending' }, label: '録画中', Icon: Radio },
+  { to: '/recordings', search: { tab: 'completed' }, label: '録画済み', Icon: Archive },
+  { to: '/recordings', search: { tab: 'failed' }, label: 'エンコード', Icon: FileVideo },
+  { to: '/recordings/reservations', label: '録画予約', Icon: CalendarClock },
+  { to: '/recordings/rules', label: '録画ルール', Icon: ListFilter }
+]
+
+const STATUS_ITEMS: readonly NavItem[] = [{ to: '/status', label: 'システム状態', Icon: Activity }]
+
+const SETTINGS_ITEM: NavItem = { to: '/settings', label: '設定', Icon: SettingsIcon }
+
+// Flat list used both for the mobile tab bar (no grouping) and for
+// longest-prefix active-route detection.
+const ALL_ITEMS: readonly NavItem[] = [...MAIN_ITEMS, ...RECORDING_ITEMS, ...STATUS_ITEMS, SETTINGS_ITEM]
 
 function useIsActive() {
   const { location } = useRouterState()
   const path = location.pathname
-  // `/recordings` must not light up when the user is on `/recordings/rules`,
-  // because both share the same prefix. Route with the longest matching
-  // prefix wins.
-  const candidates = [...NAV_ITEMS.map((n) => n.to), SETTINGS_ITEM.to]
-  return (to: string) => {
-    if (to === '/') return path === '/'
+  const search = (location.search ?? {}) as Record<string, string | undefined>
+
+  return (item: NavItem): boolean => {
+    if (item.search) {
+      if (path !== item.to) return false
+      // Match every key in the item's search against the current URL.
+      // Special case: an absent `tab` on `/recordings` defaults to 'pending'
+      // (the page's initial tab), so the 録画中 row still lights up on a
+      // bare `/recordings` visit.
+      return Object.entries(item.search).every(([k, v]) => {
+        const got = search[k]
+        if (got === undefined && k === 'tab' && path === '/recordings') return v === 'pending'
+        return got === v
+      })
+    }
+    if (item.to === '/') return path === '/'
     const matches = (route: string) => path === route || path.startsWith(`${route}/`)
-    if (!matches(to)) return false
-    // Reject if a longer sibling route also matches this path.
-    return !candidates.some(
-      (other) => other !== to && other.length > to.length && other.startsWith(to) && matches(other)
-    )
+    if (!matches(item.to)) return false
+    // Reject if a longer sibling path also matches — keeps `/recordings`
+    // dark when the user is deep in `/recordings/rules` etc.
+    return !ALL_ITEMS.some((other) => {
+      if (other === item || other.search) return false
+      return other.to.length > item.to.length && other.to.startsWith(item.to) && matches(other.to)
+    })
   }
 }
 
@@ -68,6 +116,27 @@ const MENU_BUTTON_CLS =
 //   Sidebar icon left (icon rail) = sidebar-px-4 (16) + button-p-2 (8) = 24 px
 const MENU_CONTAINER_CLS = 'px-4'
 
+function renderItem(item: NavItem, isActiveFn: (item: NavItem) => boolean) {
+  const key = item.search?.tab ? `${item.to}?tab=${item.search.tab}` : item.to
+  return (
+    <SidebarMenuItem key={key}>
+      <SidebarMenuButton asChild isActive={isActiveFn(item)} className={MENU_BUTTON_CLS}>
+        {/*
+         * TanStack Router typechecks `to` against its route tree and `search`
+         * against each route's `validateSearch`. Our items are a uniform
+         * shape, so we cast the props to what Link expects for that route;
+         * values come directly from the static NAV_ITEMS arrays, so this
+         * is safe at runtime.
+         */}
+        <Link {...({ to: item.to, search: item.search } as React.ComponentProps<typeof Link>)}>
+          <item.Icon aria-hidden='true' />
+          <span>{item.label}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
+}
+
 export function AppSidebar() {
   const isActive = useIsActive()
 
@@ -77,31 +146,21 @@ export function AppSidebar() {
     <Sidebar collapsible='icon' className='top-14 h-[calc(100svh-3.5rem)]! border-r-0!'>
       <SidebarContent>
         <SidebarGroup className={MENU_CONTAINER_CLS}>
-          <SidebarMenu>
-            {NAV_ITEMS.map(({ to, label, Icon }) => (
-              <SidebarMenuItem key={to}>
-                <SidebarMenuButton asChild isActive={isActive(to)} className={MENU_BUTTON_CLS}>
-                  <Link to={to}>
-                    <Icon aria-hidden='true' />
-                    <span>{label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
+          <SidebarMenu>{MAIN_ITEMS.map((item) => renderItem(item, isActive))}</SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup className={MENU_CONTAINER_CLS}>
+          <SidebarGroupLabel>録画</SidebarGroupLabel>
+          <SidebarMenu>{RECORDING_ITEMS.map((item) => renderItem(item, isActive))}</SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup className={MENU_CONTAINER_CLS}>
+          <SidebarMenu>{STATUS_ITEMS.map((item) => renderItem(item, isActive))}</SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter className={MENU_CONTAINER_CLS}>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive(SETTINGS_ITEM.to)} className={MENU_BUTTON_CLS}>
-              <Link to={SETTINGS_ITEM.to}>
-                <SETTINGS_ITEM.Icon aria-hidden='true' />
-                <span>{SETTINGS_ITEM.label}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <SidebarMenu>{renderItem(SETTINGS_ITEM, isActive)}</SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   )
@@ -115,22 +174,26 @@ export function MobileTabs() {
       aria-label='モバイルナビゲーション'
       className='fixed bottom-0 left-0 right-0 z-[60] flex h-[var(--mobile-nav-h)] shrink-0 border-t border-border bg-card sm:hidden'
     >
-      {[...NAV_ITEMS, SETTINGS_ITEM].map(({ to, label, Icon }) => (
-        <Link
-          key={to}
-          to={to}
-          className={cn(
-            'relative flex flex-1 flex-col items-center justify-center gap-0.5 bg-transparent text-[0.6875rem] font-bold text-muted-foreground no-underline transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm focus-visible:-outline-offset-[3px]',
-            isActive(to) && 'text-primary'
-          )}
-          aria-current={isActive(to) ? 'page' : undefined}
-        >
-          {isActive(to) && <span aria-hidden='true' className='absolute top-0 left-1/4 right-1/4 h-0.5 bg-primary' />}
-          <Icon aria-hidden='true' className='size-5' />
-          <span>{label}</span>
-        </Link>
-      ))}
+      {ALL_ITEMS.map((item) => {
+        const key = item.search?.tab ? `${item.to}?tab=${item.search.tab}` : item.to
+        const active = isActive(item)
+        return (
+          <Link
+            key={key}
+            {...({ to: item.to, search: item.search } as React.ComponentProps<typeof Link>)}
+            className={cn(
+              'relative flex flex-1 flex-col items-center justify-center gap-0.5 bg-transparent text-caption font-bold text-muted-foreground no-underline transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm focus-visible:-outline-offset-[3px]',
+              active && 'text-primary'
+            )}
+            aria-current={active ? 'page' : undefined}
+          >
+            {active && <span aria-hidden='true' className='absolute top-0 left-1/4 right-1/4 h-0.5 bg-primary' />}
+            <item.Icon aria-hidden='true' className='size-5' />
+            <span>{item.label}</span>
+          </Link>
+        )
+      })}
     </nav>
   )
 }
