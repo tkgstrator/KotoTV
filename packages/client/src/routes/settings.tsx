@@ -42,7 +42,7 @@ const SUBSYSTEMS: { key: Subsystem; label: string }[] = [
 
 function SectHead({ children }: { children: React.ReactNode }) {
   return (
-    <div className='flex items-center gap-2 pb-[7px] pt-[18px] font-sans text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-muted-foreground'>
+    <div className='flex items-center gap-2 pb-[7px] pt-[18px] font-sans text-footnote font-bold uppercase tracking-[0.12em] text-muted-foreground'>
       {children}
       <div className='h-px flex-1 bg-border' />
     </div>
@@ -78,11 +78,11 @@ function DiagRow({ status, name, detail, sub, extra, logTail }: DiagRowProps) {
         <div className='flex min-w-0 flex-1 flex-col gap-1 p-3'>
           <div className='flex items-baseline justify-between gap-2'>
             <div className='min-w-0'>
-              <p className='font-sans text-[0.6875rem] font-bold uppercase tracking-[0.04em] text-muted-foreground'>
+              <p className='font-sans text-footnote font-bold uppercase tracking-[0.04em] text-muted-foreground'>
                 {name}
               </p>
-              <p className='font-sans text-[0.8125rem] text-foreground'>{detail}</p>
-              {sub && <p className='font-sans text-[0.6875rem] text-muted-foreground'>{sub}</p>}
+              <p className='font-sans text-subheadline text-foreground'>{detail}</p>
+              {sub && <p className='font-sans text-footnote text-muted-foreground'>{sub}</p>}
               {extra}
             </div>
           </div>
@@ -100,9 +100,7 @@ function StatusTab() {
 
   if (isError || !data) {
     return (
-      <div className='py-8 text-center font-sans text-[0.8125rem] text-muted-foreground'>
-        ヘルスデータを取得できません
-      </div>
+      <div className='py-8 text-center font-sans text-body text-muted-foreground'>ヘルスデータを取得できません</div>
     )
   }
 
@@ -112,9 +110,9 @@ function StatusTab() {
       : 0
 
   return (
-    <div className='mx-auto max-w-[720px] px-5 pb-10 max-[480px]:px-2.5'>
+    <div className='mx-auto max-w-[1200px] px-5 pb-10 max-[480px]:px-2.5'>
       <SectHead>Streaming</SectHead>
-      <div className='flex flex-col gap-2.5'>
+      <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2 xl:grid-cols-3'>
         <DiagRow
           status={data.mirakc.status}
           name='MIRAKC'
@@ -135,35 +133,35 @@ function StatusTab() {
         />
       </div>
 
-      <SectHead>Storage</SectHead>
-      <DiagRow
-        status={data.disk.status}
-        name='DISK'
-        detail={data.disk.detail}
-        sub={`recordings ${fmtBytes(data.disk.breakdown.recordings)} · hls tmp ${fmtBytes(data.disk.breakdown.hlsTmpfs)}`}
-        extra={
-          <div className='mt-1.5 w-full max-w-[220px]'>
-            <div className='h-[3px] overflow-hidden rounded-[1px] bg-muted'>
-              <div
-                className={cn('h-full', data.disk.status === 'ok' ? 'bg-success' : 'bg-amber-500')}
-                style={{ width: `${diskPct}%` }}
-              />
+      <SectHead>System</SectHead>
+      <div className='grid grid-cols-1 items-start gap-2.5 lg:grid-cols-2'>
+        <DiagRow
+          status={data.disk.status}
+          name='DISK'
+          detail={data.disk.detail}
+          sub={`recordings ${fmtBytes(data.disk.breakdown.recordings)} · hls tmp ${fmtBytes(data.disk.breakdown.hlsTmpfs)}`}
+          extra={
+            <div className='mt-1.5 w-full max-w-[220px]'>
+              <div className='h-[3px] overflow-hidden rounded-[1px] bg-muted'>
+                <div
+                  className={cn('h-full', data.disk.status === 'ok' ? 'bg-success' : 'bg-amber-500')}
+                  style={{ width: `${diskPct}%` }}
+                />
+              </div>
+              {data.disk.status !== 'ok' && (
+                <p className='mt-1 font-sans text-footnote tabular-nums text-amber-500'>{diskPct}% used</p>
+              )}
             </div>
-            {data.disk.status !== 'ok' && (
-              <p className='mt-1 font-sans text-[0.6875rem] tabular-nums text-amber-500'>{diskPct}% used</p>
-            )}
-          </div>
-        }
-        logTail={null}
-      />
-
-      <SectHead>Runtime</SectHead>
-      <DiagRow
-        status={data.postgres.status}
-        name='POSTGRES'
-        detail={data.postgres.detail}
-        logTail={<HealthLogTail subsystem='postgres' status={data.postgres.status} />}
-      />
+          }
+          logTail={null}
+        />
+        <DiagRow
+          status={data.postgres.status}
+          name='POSTGRES'
+          detail={data.postgres.detail}
+          logTail={<HealthLogTail subsystem='postgres' status={data.postgres.status} />}
+        />
+      </div>
     </div>
   )
 }
@@ -204,13 +202,13 @@ function ThemeSegment() {
 
 function DisplayTab() {
   return (
-    <div className='mx-auto max-w-[720px] px-5 pb-10 font-sans max-[480px]:px-2.5'>
+    <div className='mx-auto max-w-[1200px] px-5 pb-10 font-sans max-[480px]:px-2.5'>
       <SectHead>テーマ</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+      <div className='overflow-hidden rounded-[4px] border border-border bg-card lg:max-w-[600px]'>
         <div className='flex items-center justify-between gap-4 px-3.5 py-3'>
           <div>
-            <p className='text-[0.875rem] font-medium text-foreground'>テーマ</p>
-            <p className='mt-0.5 text-[0.75rem] text-muted-foreground'>Light / Dark / システム設定に従う</p>
+            <p className='text-body font-medium text-foreground'>テーマ</p>
+            <p className='mt-0.5 text-footnote text-muted-foreground'>Light / Dark / システム設定に従う</p>
           </div>
           <ThemeSegment />
         </div>
@@ -277,8 +275,8 @@ function Row({ title, sub, children }: { title: string; sub?: string; children: 
   return (
     <div className='flex items-center justify-between gap-4 border-b border-border/60 px-3.5 py-3 last:border-b-0'>
       <div className='min-w-0'>
-        <p className='text-[0.875rem] font-medium text-foreground'>{title}</p>
-        {sub && <p className='mt-0.5 text-[0.75rem] text-muted-foreground'>{sub}</p>}
+        <p className='text-body font-medium text-foreground'>{title}</p>
+        {sub && <p className='mt-0.5 text-footnote text-muted-foreground'>{sub}</p>}
       </div>
       <div className='shrink-0'>{children}</div>
     </div>
@@ -289,62 +287,70 @@ function PlaybackTab() {
   const { prefs, update } = usePlaybackPrefs()
 
   return (
-    <div className='mx-auto max-w-[720px] px-5 pb-10 font-sans max-[480px]:px-2.5'>
-      <SectHead>画質</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <Row title='デフォルト画質' sub='画質は解像度の上限を切替えます。ビットレートは各解像度に応じて自動決定'>
-          <Segment<QualityChoice>
-            ariaLabel='画質プリセット'
-            value={prefs.quality}
-            options={QUALITY_OPTIONS}
-            onChange={(v) => update({ quality: v })}
-          />
-        </Row>
-        <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-2.5 text-[0.75rem]'>
-          {QUALITY_OPTIONS.map((o) => (
-            <div key={o.value} className='flex items-baseline gap-3 py-1'>
-              <dt
-                className={cn(
-                  'w-[64px] shrink-0 font-sans text-[0.75rem] font-semibold',
-                  prefs.quality === o.value ? 'text-primary' : 'text-muted-foreground'
-                )}
-              >
-                {o.label}
-              </dt>
-              <dd className='w-[56px] shrink-0 font-sans tabular-nums text-[0.75rem] text-foreground'>
-                {o.resolution}
-              </dd>
-              <dd className='min-w-0 text-[0.75rem] text-muted-foreground'>{o.detail}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
+    <div className='mx-auto max-w-[1200px] px-5 pb-10 font-sans max-[480px]:px-2.5'>
+      {/* Quality + codec share a row on wide screens — their cards are
+          similarly shaped (segment + detail table) and naturally pair. */}
+      <div className='grid grid-cols-1 items-start gap-x-6 lg:grid-cols-2'>
+        <div>
+          <SectHead>画質</SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+            <Row title='デフォルト画質' sub='画質は解像度の上限を切替えます。ビットレートは各解像度に応じて自動決定'>
+              <Segment<QualityChoice>
+                ariaLabel='画質プリセット'
+                value={prefs.quality}
+                options={QUALITY_OPTIONS}
+                onChange={(v) => update({ quality: v })}
+              />
+            </Row>
+            <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-2.5 text-footnote'>
+              {QUALITY_OPTIONS.map((o) => (
+                <div key={o.value} className='flex items-baseline gap-3 py-1'>
+                  <dt
+                    className={cn(
+                      'w-[64px] shrink-0 font-sans text-footnote font-semibold',
+                      prefs.quality === o.value ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  >
+                    {o.label}
+                  </dt>
+                  <dd className='w-[56px] shrink-0 font-sans tabular-nums text-footnote text-foreground'>
+                    {o.resolution}
+                  </dd>
+                  <dd className='min-w-0 text-footnote text-muted-foreground'>{o.detail}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
 
-      <SectHead>コーデック</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        <Row title='優先コーデック' sub='未対応環境では自動的に AVC へフォールバック'>
-          <Segment<CodecChoice>
-            ariaLabel='コーデック'
-            value={prefs.codec}
-            options={CODEC_OPTIONS}
-            onChange={(v) => update({ codec: v })}
-          />
-        </Row>
-        <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-2.5'>
-          {CODEC_OPTIONS.map((o) => (
-            <div key={o.value} className='flex items-baseline gap-3 py-1.5'>
-              <dt
-                className={cn(
-                  'w-[90px] shrink-0 font-sans text-[0.75rem] font-semibold',
-                  prefs.codec === o.value ? 'text-primary' : 'text-muted-foreground'
-                )}
-              >
-                {o.label}
-              </dt>
-              <dd className='min-w-0 text-[0.75rem] text-muted-foreground'>{o.detail}</dd>
-            </div>
-          ))}
-        </dl>
+        <div>
+          <SectHead>コーデック</SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+            <Row title='優先コーデック' sub='未対応環境では自動的に AVC へフォールバック'>
+              <Segment<CodecChoice>
+                ariaLabel='コーデック'
+                value={prefs.codec}
+                options={CODEC_OPTIONS}
+                onChange={(v) => update({ codec: v })}
+              />
+            </Row>
+            <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-2.5'>
+              {CODEC_OPTIONS.map((o) => (
+                <div key={o.value} className='flex items-baseline gap-3 py-1.5'>
+                  <dt
+                    className={cn(
+                      'w-[90px] shrink-0 font-sans text-footnote font-semibold',
+                      prefs.codec === o.value ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  >
+                    {o.label}
+                  </dt>
+                  <dd className='min-w-0 text-footnote text-muted-foreground'>{o.detail}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
       </div>
 
       <SectHead>再生動作</SectHead>
@@ -373,7 +379,7 @@ function PlaybackTab() {
         </Row>
       </div>
 
-      <p className='mt-3 font-sans text-[0.75rem] text-muted-foreground'>
+      <p className='mt-3 font-sans text-footnote text-muted-foreground'>
         ブラウザのローカルストレージに保存されます (端末ごと・アカウント同期なし)
       </p>
     </div>
@@ -397,49 +403,55 @@ const LINK_ROWS = [
 
 function AboutTab() {
   return (
-    <div className='mx-auto max-w-[720px] px-5 pb-10 max-[480px]:px-2.5'>
-      <SectHead>Version</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        {ABOUT_ROWS.map(({ key, val }, i) => (
-          <div key={key} className={cn('flex gap-0', i < ABOUT_ROWS.length - 1 && 'border-b border-border/60')}>
-            <td className='w-[100px] shrink-0 px-3 py-1.5 font-sans text-[0.75rem] font-semibold text-muted-foreground'>
-              {key}
-            </td>
-            <td className='px-3 py-1.5 font-sans text-[0.75rem] text-foreground'>
-              {val}
-              {key === 'version' && (
-                <StatusChip variant='info' size='sm' className='ml-1.5'>
-                  DEV
-                </StatusChip>
-              )}
-            </td>
-          </div>
-        ))}
-      </div>
-
-      <SectHead>Links</SectHead>
-      <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-        {LINK_ROWS.map(({ key, val, href }, i) => (
-          <div key={key} className={cn('flex gap-0', i < LINK_ROWS.length - 1 && 'border-b border-border/60')}>
-            <td className='w-[100px] shrink-0 px-3 py-1.5 font-sans text-[0.75rem] font-semibold text-muted-foreground'>
-              {key}
-            </td>
-            <td className='px-3 py-1.5 font-sans text-[0.75rem]'>
-              {href ? (
-                <a
-                  href={href}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
-                >
+    <div className='mx-auto max-w-[1200px] px-5 pb-10 max-[480px]:px-2.5'>
+      <div className='grid grid-cols-1 items-start gap-x-6 lg:grid-cols-2'>
+        <div>
+          <SectHead>Version</SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+            {ABOUT_ROWS.map(({ key, val }, i) => (
+              <div key={key} className={cn('flex gap-0', i < ABOUT_ROWS.length - 1 && 'border-b border-border/60')}>
+                <div className='w-[100px] shrink-0 px-3 py-1.5 font-sans text-footnote font-semibold text-muted-foreground'>
+                  {key}
+                </div>
+                <div className='px-3 py-1.5 font-sans text-footnote text-foreground'>
                   {val}
-                </a>
-              ) : (
-                <span className='text-muted-foreground'>{val}</span>
-              )}
-            </td>
+                  {key === 'version' && (
+                    <StatusChip variant='info' size='sm' className='ml-1.5'>
+                      DEV
+                    </StatusChip>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        <div>
+          <SectHead>Links</SectHead>
+          <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
+            {LINK_ROWS.map(({ key, val, href }, i) => (
+              <div key={key} className={cn('flex gap-0', i < LINK_ROWS.length - 1 && 'border-b border-border/60')}>
+                <div className='w-[100px] shrink-0 px-3 py-1.5 font-sans text-footnote font-semibold text-muted-foreground'>
+                  {key}
+                </div>
+                <div className='px-3 py-1.5 font-sans text-footnote'>
+                  {href ? (
+                    <a
+                      href={href}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
+                    >
+                      {val}
+                    </a>
+                  ) : (
+                    <span className='text-muted-foreground'>{val}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -473,16 +485,14 @@ function SettingsPage() {
               key={key}
               className='flex shrink-0 items-center gap-1.5 border-r border-border px-3.5 py-[5px] last:border-r-0'
             >
-              <span className='font-mono text-[0.5625rem] font-bold uppercase tracking-[0.08em] text-muted-foreground'>
+              <span className='font-mono text-caption font-bold uppercase tracking-[0.08em] text-muted-foreground'>
                 {label}
               </span>
               <StatusChip variant={st} size='sm'>
                 {st.toUpperCase()}
               </StatusChip>
               {sub && (
-                <span
-                  className={cn('font-mono text-[0.5625rem] text-muted-foreground', st !== 'ok' && 'text-amber-500')}
-                >
+                <span className={cn('font-mono text-caption text-muted-foreground', st !== 'ok' && 'text-amber-500')}>
                   {sub.detail}
                 </span>
               )}
@@ -490,7 +500,7 @@ function SettingsPage() {
           )
         })}
         <div className='ml-auto flex shrink-0 items-center px-3.5'>
-          <span className='font-mono text-[0.5625rem] text-muted-foreground/60'>更新 15s</span>
+          <span className='font-mono text-caption text-muted-foreground/60'>更新 15s</span>
         </div>
       </div>
 
@@ -500,25 +510,25 @@ function SettingsPage() {
           <TabsList className='h-auto w-full justify-start rounded-none bg-transparent p-0'>
             <TabsTrigger
               value='status'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
             >
               ステータス
             </TabsTrigger>
             <TabsTrigger
               value='playback'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
             >
               再生
             </TabsTrigger>
             <TabsTrigger
               value='display'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
             >
               表示設定
             </TabsTrigger>
             <TabsTrigger
               value='about'
-              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+              className='rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-footnote font-bold uppercase tracking-[0.06em] text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
             >
               About
             </TabsTrigger>
