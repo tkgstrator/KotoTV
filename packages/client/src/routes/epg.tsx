@@ -240,9 +240,9 @@ function EpgHeader({ type, onChangeType, windowStart, onPrevDay, onNextDay, onNo
         size='sm'
         className='h-7 shrink-0 px-3 text-footnote font-bold'
         onClick={onNow}
-        aria-label='現在時刻へジャンプ'
+        aria-label='今日へジャンプ'
       >
-        今すぐ
+        今日
       </Button>
     </PageHeader>
   )
