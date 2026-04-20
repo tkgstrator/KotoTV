@@ -80,7 +80,7 @@
      * header (title / filter / tabs / back button) is page-specific, but the
      * vertical budget is theme-controlled so the visual rhythm across pages
      * stays consistent. SegmentedFilter is the primary content for this slot. */
-    --page-header-h: 40px;
+    --page-header-h: 48px;
 
     /* ── Player surfaces ───────────────────────────────────────────── */
     /* live-player v10: permanent diagnostic sidebar on desktop. */
