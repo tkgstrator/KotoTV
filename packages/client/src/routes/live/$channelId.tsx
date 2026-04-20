@@ -10,7 +10,6 @@ import { StatusChip } from '@/components/shared/status-chip'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { useChannels } from '@/hooks/useChannels'
-import { useClock } from '@/hooks/useClock'
 import { useStream } from '@/hooks/useStream'
 import { useStreamInfo } from '@/hooks/useStreamInfo'
 import { cn } from '@/lib/utils'
@@ -224,8 +223,6 @@ function LivePage() {
   const [quality, setQuality] = useState<'low' | 'mid' | 'high'>('mid')
   const stream = useStream({ type: 'live', channelId, codec, quality })
   const videoRef = useRef<HTMLVideoElement>(null)
-  const clock = useClock()
-
   const { data: channelsData } = useChannels()
   const channel = channelsData?.channels.find((c) => c.id === channelId)
 
@@ -258,25 +255,6 @@ function LivePage() {
           {channel?.channelNumber && (
             <span className='ml-1 text-[0.75rem] font-normal text-muted-foreground'>{channel.channelNumber}</span>
           )}
-        </span>
-
-        <div className='flex items-center gap-1.5'>
-          {stream.status === 'ready' ? (
-            <>
-              <StatusChip variant='live' dot>
-                LIVE
-              </StatusChip>
-              <StatusChip variant='ok'>OK</StatusChip>
-            </>
-          ) : stream.status === 'error' ? (
-            <StatusChip variant='fatal'>FATAL</StatusChip>
-          ) : (
-            <StatusChip variant='info'>INIT</StatusChip>
-          )}
-        </div>
-
-        <span className='font-mono text-status font-semibold tabular-nums text-muted-foreground'>
-          {format(clock, 'HH:mm:ss')}
         </span>
 
         {/* Diagnostic panel toggle — hidden by default; power users open it on demand */}
