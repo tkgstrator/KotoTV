@@ -202,8 +202,11 @@ function EpgHeader({ type, onChangeType, windowStart, onPrevDay, onNextDay, onNo
     <PageHeader ariaLabel='番組表ヘッダー' className='items-center gap-2 pr-3'>
       {/* Left half: channel-type filter — takes the free space so the tabs
           stretch to fill the available width without growing into the
-          date-navigation cluster on the right. */}
-      <div className='flex min-w-0 flex-1'>
+          date-navigation cluster on the right. `self-stretch` overrides
+          the PageHeader's `items-center` so the tab buttons fill the
+          full 48px height (otherwise they collapse to text height and
+          the bottom underline detaches). */}
+      <div className='flex min-w-0 flex-1 self-stretch'>
         <SegmentedFilter ariaLabel='チャンネル種別' tabs={CHANNEL_TYPE_TABS} value={type} onChange={onChangeType} />
       </div>
 
