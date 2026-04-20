@@ -238,13 +238,20 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                 <ToggleGroup
                   type='single'
                   value={keywordMode}
+                  variant='outline'
                   onValueChange={(v) => v && setValue('keywordMode', v as 'literal' | 'regex')}
                   className='w-full gap-1 sm:w-auto'
                 >
-                  <ToggleGroupItem value='literal' className='h-8 flex-1 px-3 text-footnote sm:flex-none'>
+                  <ToggleGroupItem
+                    value='literal'
+                    className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                  >
                     部分一致
                   </ToggleGroupItem>
-                  <ToggleGroupItem value='regex' className='h-8 flex-1 px-3 text-footnote sm:flex-none'>
+                  <ToggleGroupItem
+                    value='regex'
+                    className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                  >
                     正規表現
                   </ToggleGroupItem>
                 </ToggleGroup>
@@ -253,14 +260,21 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                 <span className='text-footnote font-semibold text-muted-foreground'>対象</span>
                 <ToggleGroup
                   type='single'
+                  variant='outline'
                   value={keywordTarget}
                   onValueChange={(v) => v && setValue('keywordTarget', v as 'title' | 'title_description')}
                   className='w-full gap-1 sm:w-auto'
                 >
-                  <ToggleGroupItem value='title' className='h-8 flex-1 px-3 text-footnote sm:flex-none'>
+                  <ToggleGroupItem
+                    value='title'
+                    className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                  >
                     タイトル
                   </ToggleGroupItem>
-                  <ToggleGroupItem value='title_description' className='h-8 flex-1 px-3 text-footnote sm:flex-none'>
+                  <ToggleGroupItem
+                    value='title_description'
+                    className='h-8 flex-1 px-3 text-footnote sm:flex-none data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
+                  >
                     タイトル+説明
                   </ToggleGroupItem>
                 </ToggleGroup>
