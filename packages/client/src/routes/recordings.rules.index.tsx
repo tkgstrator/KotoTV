@@ -49,7 +49,7 @@ function DeleteRuleButton({ rule }: { rule: RecordingRule }) {
         <Button
           variant='ghost'
           size='sm'
-          className='h-7 gap-1 px-2 font-mono text-caption font-bold text-destructive hover:bg-destructive/10 hover:text-destructive'
+          className='h-7 gap-1 px-2 text-caption font-bold text-destructive hover:bg-destructive/10 hover:text-destructive'
           disabled={isPending}
           aria-label='ルール削除'
         >
@@ -58,13 +58,13 @@ function DeleteRuleButton({ rule }: { rule: RecordingRule }) {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className='font-mono'>ルールを削除しますか？</AlertDialogTitle>
+          <AlertDialogTitle>ルールを削除しますか？</AlertDialogTitle>
           <AlertDialogDescription>「{rule.name}」を削除します。この操作は元に戻せません。</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className='font-mono text-footnote'>CANCEL</AlertDialogCancel>
+          <AlertDialogCancel className='text-footnote'>CANCEL</AlertDialogCancel>
           <AlertDialogAction
-            className='bg-destructive font-mono text-footnote text-destructive-foreground hover:bg-destructive/90'
+            className='bg-destructive text-footnote text-destructive-foreground hover:bg-destructive/90'
             onClick={() => mutate(rule.id, { onSuccess: () => toast.success('ルールを削除しました') })}
           >
             DELETE
@@ -101,26 +101,26 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
         onClick={() => navigate({ to: '/recordings/rules/$id', params: { id: rule.id } })}
         aria-label={`ルール「${rule.name}」を編集`}
       >
-        <span className='truncate font-mono text-subheadline font-semibold text-foreground'>{rule.name}</span>
-        <span className='truncate font-mono text-caption2 text-muted-foreground'>{keywordSummary}</span>
+        <span className='truncate text-subheadline font-semibold text-foreground'>{rule.name}</span>
+        <span className='truncate text-caption2 text-muted-foreground'>{keywordSummary}</span>
       </button>
 
       {/* channels */}
       <div className='hidden w-16 shrink-0 sm:block'>
-        <span className='font-mono tabular-nums text-caption text-muted-foreground'>
+        <span className='tabular-nums text-caption text-muted-foreground'>
           {rule.channelIds.length === 0 ? 'ALL' : `${rule.channelIds.length} CH`}
         </span>
       </div>
 
       {/* day+time */}
       <div className='hidden w-28 shrink-0 flex-col gap-0.5 sm:flex'>
-        <span className='font-mono text-caption2 text-muted-foreground'>{dowLabel}</span>
-        <span className='font-mono text-caption2 text-muted-foreground'>{timeLabel}</span>
+        <span className='text-caption2 text-muted-foreground'>{dowLabel}</span>
+        <span className='text-caption2 text-muted-foreground'>{timeLabel}</span>
       </div>
 
       {/* priority */}
       <div className='hidden w-10 shrink-0 text-right sm:block'>
-        <span className='font-mono tabular-nums text-caption text-muted-foreground'>{rule.priority}</span>
+        <span className='tabular-nums text-caption text-muted-foreground'>{rule.priority}</span>
       </div>
 
       {/* actions */}
@@ -129,7 +129,7 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
           <Button
             variant='ghost'
             size='sm'
-            className='h-7 gap-1 px-2 font-mono text-caption text-muted-foreground hover:text-foreground'
+            className='h-7 gap-1 px-2 text-caption text-muted-foreground hover:text-foreground'
             aria-label='編集'
           >
             <Pencil className='size-3' />
@@ -232,14 +232,14 @@ function RecordingRulesPage() {
   return (
     <>
       <PageHeader ariaLabel='録画ルールヘッダー' className='items-center gap-2 px-3'>
-        <Link to='/recordings' className='font-mono text-caption text-muted-foreground hover:text-foreground'>
+        <Link to='/recordings' className='text-caption text-muted-foreground hover:text-foreground'>
           録画
         </Link>
-        <span className='font-mono text-caption text-border'>/</span>
-        <h1 className='font-mono text-title3 font-bold leading-none'>録画ルール</h1>
+        <span className='text-caption text-border'>/</span>
+        <h1 className='text-title3 font-bold leading-none'>録画ルール</h1>
         <div className='flex-1' />
         <Link to='/recordings/rules/new'>
-          <Button size='sm' className='h-7 gap-1.5 px-3 font-mono text-footnote font-bold'>
+          <Button size='sm' className='h-7 gap-1.5 px-3 text-footnote font-bold'>
             <Plus className='size-3.5' />
             新規ルール
           </Button>
@@ -249,16 +249,16 @@ function RecordingRulesPage() {
       {/* Column headers (desktop) */}
       <div className='hidden items-center gap-3 border-b border-border bg-muted/30 px-4 py-1.5 sm:flex'>
         <div className='w-9 shrink-0' />
-        <div className='flex-1 font-mono text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
+        <div className='flex-1 text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
           NAME / KEYWORD
         </div>
-        <div className='w-16 shrink-0 font-mono text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
+        <div className='w-16 shrink-0 text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
           CHANNELS
         </div>
-        <div className='w-28 shrink-0 font-mono text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
+        <div className='w-28 shrink-0 text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
           SCHEDULE
         </div>
-        <div className='w-10 shrink-0 text-right font-mono text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
+        <div className='w-10 shrink-0 text-right text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
           PRI
         </div>
         <div className='w-16 shrink-0' />
@@ -275,7 +275,7 @@ function RecordingRulesPage() {
 
       {isError && (
         <div className='px-4 py-12'>
-          <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 font-mono text-footnote text-destructive'>
+          <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 text-footnote text-destructive'>
             ERR ルール一覧の取得に失敗しました
           </div>
         </div>

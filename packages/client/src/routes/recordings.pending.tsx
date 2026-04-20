@@ -52,7 +52,7 @@ function PendingPage() {
   if (isError) {
     return (
       <div className='px-4 py-12'>
-        <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 font-mono text-footnote text-destructive'>
+        <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 text-footnote text-destructive'>
           ERR 録画データの取得に失敗しました
         </div>
       </div>
@@ -64,10 +64,8 @@ function PendingPage() {
       <div className='flex-1 overflow-y-auto pb-16'>
         {pendingItems.length === 0 ? (
           <div className='px-4 py-12'>
-            <p className='mb-3 font-mono text-subheadline font-semibold text-muted-foreground'>
-              $ nothing scheduled yet
-            </p>
-            <Button variant='outline' size='sm' className='font-mono text-footnote' onClick={() => setFormOpen(true)}>
+            <p className='mb-3 text-subheadline font-semibold text-muted-foreground'>$ nothing scheduled yet</p>
+            <Button variant='outline' size='sm' className='text-footnote' onClick={() => setFormOpen(true)}>
               + 最初の予約を追加
             </Button>
           </div>

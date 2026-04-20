@@ -137,7 +137,7 @@ function ReservationRow({ r }: { r: Reservation }) {
       <div className='flex min-w-0 flex-1 flex-col gap-1 px-3.5 py-3'>
         {/* Top: time · duration · title */}
         <div className='flex items-baseline gap-2'>
-          <span className='shrink-0 font-mono text-footnote font-semibold tabular-nums text-foreground'>
+          <span className='shrink-0 text-footnote font-semibold tabular-nums text-foreground'>
             {format(r.startAt, 'HH:mm', { locale: ja })}
           </span>
           <span className='shrink-0 text-caption text-muted-foreground'>
