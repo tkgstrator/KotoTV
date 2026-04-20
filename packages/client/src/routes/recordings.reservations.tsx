@@ -154,11 +154,11 @@ function ReservationRow({ r }: { r: Reservation }) {
           </span>
           {r.ruleName ? (
             <StatusChip variant='info' size='sm'>
-              RULE {r.ruleName}
+              ルール: {r.ruleName}
             </StatusChip>
           ) : (
             <StatusChip variant='muted' size='sm'>
-              MANUAL
+              手動
             </StatusChip>
           )}
         </div>

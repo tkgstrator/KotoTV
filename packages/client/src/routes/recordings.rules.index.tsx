@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { useDeleteRecordingRule, useRecordingRules, useUpdateRecordingRule } from '@/hooks/useRecordingRules'
 import { DOW_LABELS, minutesToHHMM } from '@/lib/recording-rules'
+import { cn } from '@/lib/utils'
 import type { RecordingRule } from '@/types/RecordingRule'
 
 export const Route = createFileRoute('/recordings/rules/')({
@@ -62,12 +63,12 @@ function DeleteRuleButton({ rule }: { rule: RecordingRule }) {
           <AlertDialogDescription>「{rule.name}」を削除します。この操作は元に戻せません。</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className='text-footnote'>CANCEL</AlertDialogCancel>
+          <AlertDialogCancel className='text-footnote'>キャンセル</AlertDialogCancel>
           <AlertDialogAction
             className='bg-destructive text-footnote text-destructive-foreground hover:bg-destructive/90'
             onClick={() => mutate(rule.id, { onSuccess: () => toast.success('ルールを削除しました') })}
           >
-            DELETE
+            削除
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -85,19 +86,30 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
       ? `${minutesToHHMM(rule.timeStartMinutes)}〜${minutesToHHMM(rule.timeEndMinutes)}`
       : '終日'
 
-  const keywordSummary = rule.keyword ? `${rule.keyword} [${rule.keywordMode === 'regex' ? 'RE' : 'LIT'}]` : '—'
+  const keywordSummary = rule.keyword
+    ? `${rule.keyword} (${rule.keywordMode === 'regex' ? '正規表現' : '部分一致'})`
+    : '—'
 
   return (
-    <div className='group flex items-center gap-3 border-b border-border bg-card px-4 py-2.5 transition-colors hover:bg-muted/40'>
+    <div
+      className={cn(
+        'group items-center gap-3 border-b border-border bg-card px-4 py-2.5 transition-colors hover:bg-muted/40',
+        // Mobile: toggle + name column + actions stack as a 3-col flex.
+        // Desktop: share the exact grid template with the column header
+        // below so every field lines up perfectly regardless of content.
+        'flex',
+        'sm:grid sm:grid-cols-[40px_minmax(0,1fr)_120px_140px_48px_72px]'
+      )}
+    >
       {/* enabled — stop propagation so toggle doesn't trigger row nav */}
-      <div className='flex shrink-0 items-center'>
+      <div className='flex items-center'>
         <EnabledToggle rule={rule} />
       </div>
 
       {/* name + keyword — clickable area */}
       <button
         type='button'
-        className='flex min-w-0 flex-1 flex-col gap-0.5 text-left'
+        className='flex min-w-0 flex-1 flex-col gap-0.5 text-left sm:flex-initial'
         onClick={() => navigate({ to: '/recordings/rules/$id', params: { id: rule.id } })}
         aria-label={`ルール「${rule.name}」を編集`}
       >
@@ -106,25 +118,25 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
       </button>
 
       {/* channels */}
-      <div className='hidden w-16 shrink-0 sm:block'>
-        <span className='tabular-nums text-caption text-muted-foreground'>
-          {rule.channelIds.length === 0 ? 'ALL' : `${rule.channelIds.length} CH`}
+      <div className='hidden min-w-0 sm:block'>
+        <span className='truncate tabular-nums text-caption text-muted-foreground'>
+          {rule.channelIds.length === 0 ? '全チャンネル' : `${rule.channelIds.length} 局`}
         </span>
       </div>
 
       {/* day+time */}
-      <div className='hidden w-28 shrink-0 flex-col gap-0.5 sm:flex'>
-        <span className='text-caption2 text-muted-foreground'>{dowLabel}</span>
-        <span className='text-caption2 text-muted-foreground'>{timeLabel}</span>
+      <div className='hidden min-w-0 flex-col gap-0.5 sm:flex'>
+        <span className='truncate text-caption2 text-muted-foreground'>{dowLabel}</span>
+        <span className='truncate text-caption2 text-muted-foreground'>{timeLabel}</span>
       </div>
 
       {/* priority */}
-      <div className='hidden w-10 shrink-0 text-right sm:block'>
+      <div className='hidden text-right sm:block'>
         <span className='tabular-nums text-caption text-muted-foreground'>{rule.priority}</span>
       </div>
 
       {/* actions */}
-      <div className='flex shrink-0 items-center gap-1'>
+      <div className='flex items-center justify-end gap-1'>
         <Link to='/recordings/rules/$id' params={{ id: rule.id }}>
           <Button
             variant='ghost'
@@ -246,22 +258,15 @@ function RecordingRulesPage() {
         </Link>
       </PageHeader>
 
-      {/* Column headers (desktop) */}
-      <div className='hidden items-center gap-3 border-b border-border bg-muted/30 px-4 py-1.5 sm:flex'>
-        <div className='w-9 shrink-0' />
-        <div className='flex-1 text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
-          NAME / KEYWORD
-        </div>
-        <div className='w-16 shrink-0 text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
-          CHANNELS
-        </div>
-        <div className='w-28 shrink-0 text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
-          SCHEDULE
-        </div>
-        <div className='w-10 shrink-0 text-right text-caption2 font-bold uppercase tracking-wider text-muted-foreground'>
-          PRI
-        </div>
-        <div className='w-16 shrink-0' />
+      {/* Column headers (desktop) — same grid template as RuleRow so the
+          field positions always line up. */}
+      <div className='hidden items-center gap-3 border-b border-border bg-muted/30 px-4 py-1.5 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_120px_140px_48px_72px]'>
+        <div />
+        <div className='text-caption2 font-semibold text-muted-foreground'>名前 / キーワード</div>
+        <div className='text-caption2 font-semibold text-muted-foreground'>対象</div>
+        <div className='text-caption2 font-semibold text-muted-foreground'>スケジュール</div>
+        <div className='text-right text-caption2 font-semibold text-muted-foreground'>優先度</div>
+        <div />
       </div>
 
       {isPending && (
@@ -276,7 +281,7 @@ function RecordingRulesPage() {
       {isError && (
         <div className='px-4 py-12'>
           <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 text-footnote text-destructive'>
-            ERR ルール一覧の取得に失敗しました
+            ルール一覧の取得に失敗しました
           </div>
         </div>
       )}
