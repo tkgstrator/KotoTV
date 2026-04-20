@@ -1,8 +1,6 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { ChevronLeft } from 'lucide-react'
+import { createFileRoute } from '@tanstack/react-router'
 import { RuleForm } from '@/components/recording/RuleForm'
 import { PageHeader } from '@/components/shell/PageHeader'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import { useRecordingRule } from '@/hooks/useRecordingRules'
@@ -19,12 +17,7 @@ function EditRulePage() {
 
   return (
     <div className='flex h-full flex-col overflow-hidden'>
-      <PageHeader ariaLabel='ルール編集ヘッダー' className='items-center gap-2 pl-2 pr-3'>
-        <Link to='/recordings/rules' aria-label='録画ルール一覧へ戻る'>
-          <Button variant='ghost' size='icon' className='size-9 text-muted-foreground hover:text-foreground'>
-            <ChevronLeft className='size-5' />
-          </Button>
-        </Link>
+      <PageHeader ariaLabel='ルール編集ヘッダー' className='items-center px-4'>
         <h1 className='min-w-0 truncate text-body font-bold text-foreground'>{rule?.name ?? id}</h1>
       </PageHeader>
 
