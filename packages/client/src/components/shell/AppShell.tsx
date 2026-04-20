@@ -25,7 +25,7 @@ interface AppShellProps {
 // `/recordings/{id}` is playback, but `/recordings/{literalSegment}` is
 // a sibling list page — keep the sidebar open there. Add new literal
 // children of `/recordings/*` here as they get created.
-const RECORDINGS_NON_PLAYBACK = new Set(['rules', 'reservations'])
+const RECORDINGS_NON_PLAYBACK = new Set(['rules', 'reservations', 'pending', 'completed', 'failed'])
 
 function isPlaybackRoute(path: string): boolean {
   if (path.startsWith('/live/')) return true

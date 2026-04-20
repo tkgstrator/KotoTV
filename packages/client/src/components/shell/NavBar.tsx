@@ -38,13 +38,10 @@ import {
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 
-// `search` items share `/recordings` and differ only by the tab search
-// param, so the sidebar surfaces each recording sub-state as its own row.
 interface NavItem {
   to: string
   label: string
   Icon: LucideIcon
-  search?: { tab?: 'pending' | 'completed' | 'failed' }
 }
 
 const MAIN_ITEMS: readonly NavItem[] = [
@@ -53,9 +50,9 @@ const MAIN_ITEMS: readonly NavItem[] = [
 ]
 
 const RECORDING_ITEMS: readonly NavItem[] = [
-  { to: '/recordings', search: { tab: 'pending' }, label: '録画中', Icon: Radio },
-  { to: '/recordings', search: { tab: 'completed' }, label: '録画済み', Icon: Archive },
-  { to: '/recordings', search: { tab: 'failed' }, label: 'エンコード', Icon: FileVideo },
+  { to: '/recordings/pending', label: '録画中', Icon: Radio },
+  { to: '/recordings/completed', label: '録画済み', Icon: Archive },
+  { to: '/recordings/failed', label: 'エンコード', Icon: FileVideo },
   { to: '/recordings/reservations', label: '録画予約', Icon: CalendarClock },
   { to: '/recordings/rules', label: '録画ルール', Icon: ListFilter }
 ]
@@ -71,30 +68,16 @@ const ALL_ITEMS: readonly NavItem[] = [...MAIN_ITEMS, ...RECORDING_ITEMS, ...STA
 function useIsActive() {
   const { location } = useRouterState()
   const path = location.pathname
-  const search = (location.search ?? {}) as Record<string, string | undefined>
 
   return (item: NavItem): boolean => {
-    if (item.search) {
-      if (path !== item.to) return false
-      // Match every key in the item's search against the current URL.
-      // Special case: an absent `tab` on `/recordings` defaults to 'pending'
-      // (the page's initial tab), so the 録画中 row still lights up on a
-      // bare `/recordings` visit.
-      return Object.entries(item.search).every(([k, v]) => {
-        const got = search[k]
-        if (got === undefined && k === 'tab' && path === '/recordings') return v === 'pending'
-        return got === v
-      })
-    }
     if (item.to === '/') return path === '/'
     const matches = (route: string) => path === route || path.startsWith(`${route}/`)
     if (!matches(item.to)) return false
-    // Reject if a longer sibling path also matches — keeps `/recordings`
-    // dark when the user is deep in `/recordings/rules` etc.
-    return !ALL_ITEMS.some((other) => {
-      if (other === item || other.search) return false
-      return other.to.length > item.to.length && other.to.startsWith(item.to) && matches(other.to)
-    })
+    // Reject if a longer sibling path also matches — keeps a parent row
+    // dark when the user is deep in one of its children.
+    return !ALL_ITEMS.some(
+      (other) => other !== item && other.to.length > item.to.length && other.to.startsWith(item.to) && matches(other.to)
+    )
   }
 }
 
@@ -117,18 +100,14 @@ const MENU_BUTTON_CLS =
 const MENU_CONTAINER_CLS = 'px-4'
 
 function renderItem(item: NavItem, isActiveFn: (item: NavItem) => boolean) {
-  const key = item.search?.tab ? `${item.to}?tab=${item.search.tab}` : item.to
   return (
-    <SidebarMenuItem key={key}>
+    <SidebarMenuItem key={item.to}>
       <SidebarMenuButton asChild isActive={isActiveFn(item)} className={MENU_BUTTON_CLS}>
         {/*
-         * TanStack Router typechecks `to` against its route tree and `search`
-         * against each route's `validateSearch`. Our items are a uniform
-         * shape, so we cast the props to what Link expects for that route;
-         * values come directly from the static NAV_ITEMS arrays, so this
-         * is safe at runtime.
+         * TanStack Router typechecks `to` against its route tree; items come
+         * from the static NAV_ITEMS arrays, so this cast is safe at runtime.
          */}
-        <Link {...({ to: item.to, search: item.search } as React.ComponentProps<typeof Link>)}>
+        <Link {...({ to: item.to } as React.ComponentProps<typeof Link>)}>
           <item.Icon aria-hidden='true' />
           <span>{item.label}</span>
         </Link>
@@ -174,12 +153,11 @@ export function MobileTabs() {
       className='fixed bottom-0 left-0 right-0 z-[60] flex h-[var(--mobile-nav-h)] shrink-0 border-t border-border bg-card sm:hidden'
     >
       {ALL_ITEMS.map((item) => {
-        const key = item.search?.tab ? `${item.to}?tab=${item.search.tab}` : item.to
         const active = isActive(item)
         return (
           <Link
-            key={key}
-            {...({ to: item.to, search: item.search } as React.ComponentProps<typeof Link>)}
+            key={item.to}
+            {...({ to: item.to } as React.ComponentProps<typeof Link>)}
             className={cn(
               'relative flex flex-1 flex-col items-center justify-center gap-0.5 bg-transparent text-caption font-bold text-muted-foreground no-underline transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm focus-visible:-outline-offset-[3px]',
