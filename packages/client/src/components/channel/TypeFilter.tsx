@@ -38,8 +38,14 @@ export function TypeFilter({ value, onChange }: TypeFilterProps) {
     }
   }
 
+  const activeIdx = Math.max(
+    0,
+    TABS.findIndex((t) => t.value === value)
+  )
+  const tabPct = 100 / TABS.length
+
   return (
-    <div ref={listRef} role='tablist' aria-label='チャンネル種別' className='flex h-full w-full'>
+    <div ref={listRef} role='tablist' aria-label='チャンネル種別' className='relative flex h-full w-full'>
       {TABS.map((tab, idx) => (
         <button
           key={tab.value}
@@ -50,16 +56,20 @@ export function TypeFilter({ value, onChange }: TypeFilterProps) {
           onClick={() => onChange(tab.value)}
           onKeyDown={(e) => handleKeyDown(e, idx)}
           className={cn(
-            'flex-1 text-sm font-medium border-b-2 -mb-px transition-colors',
+            'flex-1 text-sm font-medium transition-colors',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-            value === tab.value
-              ? 'text-foreground border-foreground font-semibold'
-              : 'text-muted-foreground border-transparent hover:text-foreground/80'
+            value === tab.value ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground/80'
           )}
         >
           {tab.label}
         </button>
       ))}
+      {/* Shared animated underline — slides left/right between tabs. */}
+      <span
+        aria-hidden='true'
+        className='pointer-events-none absolute bottom-0 h-0.5 bg-foreground transition-[left] duration-200 ease-out'
+        style={{ left: `${activeIdx * tabPct}%`, width: `${tabPct}%` }}
+      />
     </div>
   )
 }
