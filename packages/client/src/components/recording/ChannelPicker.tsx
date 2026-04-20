@@ -76,9 +76,6 @@ export function ChannelPicker({ channels, value, onChange }: ChannelPickerProps)
               <Label htmlFor={`group-${type}`} className='cursor-pointer text-body font-semibold'>
                 {TYPE_LABELS[type] ?? type}
               </Label>
-              <span className='ml-auto mr-2 tabular-nums text-footnote text-muted-foreground'>
-                {value.filter((id) => groups[type]?.some((ch) => ch.id === id)).length}/{groups[type]?.length ?? 0}
-              </span>
             </AccordionTrigger>
           </div>
           <AccordionContent className='pb-1'>
