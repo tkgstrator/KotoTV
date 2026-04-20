@@ -307,7 +307,7 @@ function PlaybackTab() {
         <div>
           <SectHead>画質</SectHead>
           <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-            <Row title='デフォルト画質' sub='画質は解像度の上限を切替えます。ビットレートは各解像度に応じて自動決定'>
+            <Row title='デフォルト画質'>
               <Segment<QualityChoice>
                 ariaLabel='画質プリセット'
                 value={prefs.quality}
@@ -315,9 +315,11 @@ function PlaybackTab() {
                 onChange={(v) => update({ quality: v })}
               />
             </Row>
-            <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-2.5 text-footnote'>
+            {/* Fixed h-7 per row so CJK glyphs in 可変 don't push the AUTO
+                line taller than the ASCII-only rows below it. */}
+            <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-1 text-footnote'>
               {QUALITY_OPTIONS.map((o) => (
-                <div key={o.value} className='flex items-baseline gap-3 py-1'>
+                <div key={o.value} className='flex h-7 items-center gap-3'>
                   <dt
                     className={cn(
                       'w-[64px] shrink-0 font-sans text-footnote font-semibold',
@@ -339,7 +341,7 @@ function PlaybackTab() {
         <div>
           <SectHead>コーデック</SectHead>
           <div className='overflow-hidden rounded-[4px] border border-border bg-card'>
-            <Row title='優先コーデック' sub='未対応環境では自動的に AVC へフォールバック'>
+            <Row title='優先コーデック'>
               <Segment<CodecChoice>
                 ariaLabel='コーデック'
                 value={prefs.codec}
@@ -347,9 +349,9 @@ function PlaybackTab() {
                 onChange={(v) => update({ codec: v })}
               />
             </Row>
-            <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-2.5'>
+            <dl className='divide-y divide-border/60 border-t border-border/60 bg-muted/20 px-3.5 py-1 text-footnote'>
               {CODEC_OPTIONS.map((o) => (
-                <div key={o.value} className='flex items-baseline gap-3 py-1.5'>
+                <div key={o.value} className='flex h-7 items-center gap-3'>
                   <dt
                     className={cn(
                       'w-[90px] shrink-0 font-sans text-footnote font-semibold',
