@@ -3,6 +3,9 @@
 
 export type KeywordMode = 'literal' | 'regex'
 export type KeywordTarget = 'title' | 'title_description'
+export type EncodeCodec = 'avc' | 'hevc' | 'vp9'
+export type EncodeQuality = 'high' | 'medium' | 'low'
+export type EncodeTiming = 'immediate' | 'idle'
 
 export interface RecordingRule {
   id: string
@@ -19,6 +22,18 @@ export interface RecordingRule {
   timeEndMinutes?: number | null
   priority: number
   avoidDuplicates: boolean
+  excludeReruns: boolean
+  newOnly: boolean
+  marginStartMinutes: number
+  marginEndMinutes: number
+  /** 0 = no minimum */
+  minDurationMinutes: number
+  /** 0 = unlimited retention */
+  keepLatestN: number
+  postEncode: boolean
+  postEncodeCodec: EncodeCodec
+  postEncodeQuality: EncodeQuality
+  postEncodeTiming: EncodeTiming
   createdAt: string
   updatedAt: string
 }

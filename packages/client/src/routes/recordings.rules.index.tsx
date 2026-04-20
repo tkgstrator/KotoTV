@@ -159,6 +159,19 @@ function RuleRow({ rule }: { rule: RecordingRule }) {
 // Fallback rules while the backend endpoints are still being built
 // (docs/plans/phase-4-recording-rules.md). Swap out when real data lands.
 
+const DUMMY_DEFAULTS = {
+  excludeReruns: false,
+  newOnly: false,
+  marginStartMinutes: 0,
+  marginEndMinutes: 0,
+  minDurationMinutes: 0,
+  keepLatestN: 0,
+  postEncode: false,
+  postEncodeCodec: 'avc',
+  postEncodeQuality: 'medium',
+  postEncodeTiming: 'immediate'
+} as const
+
 const DUMMY_RULES: RecordingRule[] = [
   {
     id: 'rule-1',
@@ -175,6 +188,7 @@ const DUMMY_RULES: RecordingRule[] = [
     timeEndMinutes: 22 * 60,
     priority: 10,
     avoidDuplicates: true,
+    ...DUMMY_DEFAULTS,
     createdAt: '2026-04-10T09:00:00.000Z',
     updatedAt: '2026-04-15T09:00:00.000Z'
   },
@@ -193,6 +207,10 @@ const DUMMY_RULES: RecordingRule[] = [
     timeEndMinutes: null,
     priority: 20,
     avoidDuplicates: true,
+    ...DUMMY_DEFAULTS,
+    excludeReruns: true,
+    postEncode: true,
+    postEncodeCodec: 'hevc',
     createdAt: '2026-03-22T12:00:00.000Z',
     updatedAt: '2026-04-18T03:00:00.000Z'
   },
@@ -211,6 +229,7 @@ const DUMMY_RULES: RecordingRule[] = [
     timeEndMinutes: 24 * 60,
     priority: 30,
     avoidDuplicates: true,
+    ...DUMMY_DEFAULTS,
     createdAt: '2026-02-14T08:00:00.000Z',
     updatedAt: '2026-04-01T08:00:00.000Z'
   },
@@ -229,6 +248,7 @@ const DUMMY_RULES: RecordingRule[] = [
     timeEndMinutes: 24 * 60,
     priority: 40,
     avoidDuplicates: false,
+    ...DUMMY_DEFAULTS,
     createdAt: '2026-01-05T10:00:00.000Z',
     updatedAt: '2026-03-28T10:00:00.000Z'
   }
