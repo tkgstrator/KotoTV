@@ -557,7 +557,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                         max={100}
                         value={field.value}
                         onChange={(e) => field.onChange(Number(e.target.value))}
-                        className='h-8 w-24 tabular-nums text-body'
+                        className='h-9 w-24 tabular-nums text-body'
                       />
                     </FormControl>
                   </FormItem>
