@@ -4,11 +4,17 @@ import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 import {
+  type BenchmarkHistoryResponse,
+  type BenchmarkLog,
+  BenchmarkLogSchema,
+  BenchmarkRequestSchema,
+  type BenchmarkResponse,
   CreateEncodeProfileSchema,
   type EncodeProfile,
   EncodeProfileSchema,
   UpdateEncodeProfileSchema
 } from '../schemas/EncodeProfile.dto'
+import { benchmarkProfile, isBenchmarkBusy } from '../services/encode-benchmark'
 
 const IdParamSchema = z.object({ id: z.string().uuid() })
 
@@ -24,6 +30,8 @@ function serialize(row: {
   bitrateKbps: number
   qpValue: number
   isDefault: boolean
+  keepOriginalResolution: boolean
+  resolution: string
   createdAt: Date
   updatedAt: Date
 }): EncodeProfile {
@@ -39,6 +47,8 @@ function serialize(row: {
     bitrateKbps: row.bitrateKbps,
     qpValue: row.qpValue,
     isDefault: row.isDefault,
+    keepOriginalResolution: row.keepOriginalResolution,
+    resolution: row.resolution,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
   })
@@ -74,6 +84,27 @@ export async function ensureDefaultEncodeProfile(): Promise<void> {
   })
 }
 
+function serializeBenchmarkLog(row: {
+  id: string
+  createdAt: Date
+  codec: string
+  hwAccel: string
+  rateControl: string
+  bitrateKbps: number
+  qpValue: number
+  keepOriginalResolution: boolean
+  resolution: string
+  ok: boolean
+  fps: number
+  wallSeconds: number
+  reason: string | null
+}): BenchmarkLog {
+  return BenchmarkLogSchema.parse({
+    ...row,
+    createdAt: row.createdAt.toISOString()
+  })
+}
+
 const encodeProfilesRoute = new Hono()
   .get('/', async (c) => {
     const rows = await prisma.encodeProfile.findMany({ orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] })
@@ -93,11 +124,49 @@ const encodeProfilesRoute = new Hono()
         rateControl: body.rateControl,
         bitrateKbps: body.bitrateKbps,
         qpValue: body.qpValue,
-        isDefault: body.isDefault
+        isDefault: body.isDefault,
+        keepOriginalResolution: body.keepOriginalResolution,
+        resolution: body.resolution
       }
     })
     if (row.isDefault) await promoteAsDefault(row.id)
     return c.json(serialize(row), 201)
+  })
+
+  // /benchmark and /benchmark/history must be declared BEFORE /:id — otherwise
+  // Hono would match the literal string 'benchmark' as the :id param and reject it.
+  .post('/benchmark', zValidator('json', BenchmarkRequestSchema), async (c) => {
+    const body = c.req.valid('json')
+    if (isBenchmarkBusy()) {
+      throw new HTTPException(409, { message: 'benchmark_busy' })
+    }
+    // Map DB hwAccel ('cpu') to the FFmpeg hwAccel type ('none').
+    const ffmpegHwAccel = body.hwAccel === 'cpu' ? 'none' : body.hwAccel
+    try {
+      const result = await benchmarkProfile({
+        hwAccel: ffmpegHwAccel,
+        codec: body.codec as 'avc' | 'hevc',
+        rateControl: body.rateControl,
+        bitrateKbps: body.bitrateKbps,
+        qpValue: body.qpValue,
+        keepOriginalResolution: body.keepOriginalResolution,
+        resolution: body.resolution
+      })
+      return c.json(result satisfies BenchmarkResponse)
+    } catch (err) {
+      if (err instanceof Error && err.message === 'benchmark_busy') {
+        throw new HTTPException(409, { message: 'benchmark_busy' })
+      }
+      throw err
+    }
+  })
+
+  .get('/benchmark/history', async (c) => {
+    const rows = await prisma.benchmarkLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100
+    })
+    return c.json({ items: rows.map(serializeBenchmarkLog) } satisfies BenchmarkHistoryResponse)
   })
 
   .get('/:id', zValidator('param', IdParamSchema), async (c) => {
@@ -126,7 +195,9 @@ const encodeProfilesRoute = new Hono()
         ...(body.rateControl !== undefined ? { rateControl: body.rateControl } : {}),
         ...(body.bitrateKbps !== undefined ? { bitrateKbps: body.bitrateKbps } : {}),
         ...(body.qpValue !== undefined ? { qpValue: body.qpValue } : {}),
-        ...(body.isDefault !== undefined ? { isDefault: body.isDefault } : {})
+        ...(body.isDefault !== undefined ? { isDefault: body.isDefault } : {}),
+        ...(body.keepOriginalResolution !== undefined ? { keepOriginalResolution: body.keepOriginalResolution } : {}),
+        ...(body.resolution !== undefined ? { resolution: body.resolution } : {})
       }
     })
     if (row.isDefault) await promoteAsDefault(row.id)
