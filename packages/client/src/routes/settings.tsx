@@ -459,6 +459,15 @@ const TIMING_LABELS: Record<EncodeTiming, string> = { immediate: '録画直後',
 const HW_LABELS: Record<HwAccelType, string> = { cpu: 'CPU', nvenc: 'NVEnc', vaapi: 'VAAPI' }
 const RATE_LABELS: Record<RateControl, string> = { cbr: 'CBR', vbr: 'VBR', cqp: 'CQP' }
 
+// Picking a simple-mode preset writes these concrete values into the advanced
+// fields so the profile always persists the resolved rateControl / bitrate /
+// qp, regardless of which mode the user edited in.
+const QUALITY_PRESETS: Record<EncodeQuality, { rateControl: RateControl; bitrateKbps: number; qpValue: number }> = {
+  high: { rateControl: 'vbr', bitrateKbps: 6000, qpValue: 20 },
+  medium: { rateControl: 'vbr', bitrateKbps: 3000, qpValue: 23 },
+  low: { rateControl: 'vbr', bitrateKbps: 1500, qpValue: 28 }
+}
+
 const TOGGLE_ON_CLS =
   'data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground'
 
@@ -532,7 +541,7 @@ function ProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className='sm:max-w-[480px]'>
+      <DialogContent className='sm:max-w-[600px]'>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -547,106 +556,117 @@ function ProfileDialog({
               autoFocus
             />
           </div>
-          <div className='flex flex-col gap-1.5'>
-            <Label className='text-footnote font-semibold text-muted-foreground'>コーデック</Label>
-            <ToggleGroup
-              type='single'
-              variant='outline'
-              value={draft.codec}
-              onValueChange={(v) => v && setDraft((d) => ({ ...d, codec: v as EncodeCodec }))}
-              className='gap-1'
-            >
-              {CODEC_VALUES.map((c) => (
-                <ToggleGroupItem key={c} value={c} className={cn('h-9 px-3 text-body uppercase', TOGGLE_ON_CLS)}>
-                  {c}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
-          <div className='flex flex-col gap-1.5'>
-            <div className='flex items-center justify-between gap-2'>
-              <Label className='text-footnote font-semibold text-muted-foreground'>ビットレート設定</Label>
+          <div className='grid grid-cols-2 items-start gap-4'>
+            <div className='flex flex-col gap-1.5'>
+              <Label className='text-footnote font-semibold text-muted-foreground'>コーデック</Label>
               <ToggleGroup
                 type='single'
                 variant='outline'
-                value={draft.mode}
-                onValueChange={(v) => v && setDraft((d) => ({ ...d, mode: v as EncodeMode }))}
+                value={draft.codec}
+                onValueChange={(v) => v && setDraft((d) => ({ ...d, codec: v as EncodeCodec }))}
                 className='gap-1'
               >
-                <ToggleGroupItem value='simple' className={cn('h-8 px-3 text-footnote', TOGGLE_ON_CLS)}>
-                  シンプル
-                </ToggleGroupItem>
-                <ToggleGroupItem value='advanced' className={cn('h-8 px-3 text-footnote', TOGGLE_ON_CLS)}>
-                  詳細
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-            {draft.mode === 'simple' ? (
-              <ToggleGroup
-                type='single'
-                variant='outline'
-                value={draft.quality}
-                onValueChange={(v) => v && setDraft((d) => ({ ...d, quality: v as EncodeQuality }))}
-                className='gap-1'
-              >
-                {(['high', 'medium', 'low'] as const).map((q) => (
-                  <ToggleGroupItem key={q} value={q} className={cn('h-9 px-3 text-body', TOGGLE_ON_CLS)}>
-                    {QUALITY_LABELS[q]}
+                {CODEC_VALUES.map((c) => (
+                  <ToggleGroupItem key={c} value={c} className={cn('h-9 px-3 text-body uppercase', TOGGLE_ON_CLS)}>
+                    {c}
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
-            ) : (
-              <div className='flex flex-col gap-2.5 rounded-md border border-border bg-card/40 px-3 py-2.5'>
-                <div className='flex items-center justify-between gap-2'>
-                  <Label className='text-body text-foreground'>レートコントロール</Label>
-                  <ToggleGroup
-                    type='single'
-                    variant='outline'
-                    value={draft.rateControl}
-                    onValueChange={(v) => v && setDraft((d) => ({ ...d, rateControl: v as RateControl }))}
-                    className='gap-1'
-                  >
-                    {(['cbr', 'vbr', 'cqp'] as const).map((r) => (
-                      <ToggleGroupItem key={r} value={r} className={cn('h-9 px-3 text-body uppercase', TOGGLE_ON_CLS)}>
-                        {RATE_LABELS[r]}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
-                </div>
-                {draft.rateControl === 'cqp' ? (
-                  <div className='flex items-center justify-between gap-2'>
-                    <Label className='text-body text-foreground'>QP 値</Label>
-                    <div className='flex items-center gap-1.5'>
-                      <Input
-                        type='number'
-                        min={0}
-                        max={51}
-                        value={draft.qpValue}
-                        onChange={(e) => setDraft((d) => ({ ...d, qpValue: Number(e.target.value) }))}
-                        className='h-9 w-24 tabular-nums text-body'
-                      />
-                      <span className='text-footnote text-muted-foreground'>(0=最高〜51=最低)</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className='flex items-center justify-between gap-2'>
-                    <Label className='text-body text-foreground'>ビットレート</Label>
-                    <div className='flex items-center gap-1.5'>
-                      <Input
-                        type='number'
-                        min={500}
-                        max={80000}
-                        step={100}
-                        value={draft.bitrateKbps}
-                        onChange={(e) => setDraft((d) => ({ ...d, bitrateKbps: Number(e.target.value) }))}
-                        className='h-9 w-28 tabular-nums text-body'
-                      />
-                      <span className='text-footnote text-muted-foreground'>kbps</span>
-                    </div>
-                  </div>
-                )}
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <div className='flex items-center justify-between gap-2'>
+                <Label className='text-footnote font-semibold text-muted-foreground'>プリセット</Label>
+                <ToggleGroup
+                  type='single'
+                  variant='outline'
+                  value={draft.mode}
+                  onValueChange={(v) => v && setDraft((d) => ({ ...d, mode: v as EncodeMode }))}
+                  className='gap-1'
+                >
+                  <ToggleGroupItem value='simple' className={cn('h-8 px-3 text-footnote', TOGGLE_ON_CLS)}>
+                    シンプル
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value='advanced' className={cn('h-8 px-3 text-footnote', TOGGLE_ON_CLS)}>
+                    詳細
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
-            )}
+              {draft.mode === 'simple' ? (
+                <ToggleGroup
+                  type='single'
+                  variant='outline'
+                  value={draft.quality}
+                  onValueChange={(v) => {
+                    if (!v) return
+                    const quality = v as EncodeQuality
+                    const preset = QUALITY_PRESETS[quality]
+                    setDraft((d) => ({ ...d, quality, ...preset }))
+                  }}
+                  className='gap-1'
+                >
+                  {(['high', 'medium', 'low'] as const).map((q) => (
+                    <ToggleGroupItem key={q} value={q} className={cn('h-9 px-3 text-body', TOGGLE_ON_CLS)}>
+                      {QUALITY_LABELS[q]}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              ) : (
+                <div className='flex flex-col gap-2.5 rounded-md border border-border bg-card/40 px-3 py-2.5'>
+                  <div className='flex flex-col gap-1'>
+                    <Label className='text-footnote font-semibold text-muted-foreground'>レートコントロール</Label>
+                    <ToggleGroup
+                      type='single'
+                      variant='outline'
+                      value={draft.rateControl}
+                      onValueChange={(v) => v && setDraft((d) => ({ ...d, rateControl: v as RateControl }))}
+                      className='gap-1'
+                    >
+                      {(['cbr', 'vbr', 'cqp'] as const).map((r) => (
+                        <ToggleGroupItem
+                          key={r}
+                          value={r}
+                          className={cn('h-9 px-3 text-body uppercase', TOGGLE_ON_CLS)}
+                        >
+                          {RATE_LABELS[r]}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
+                  </div>
+                  {draft.rateControl === 'cqp' ? (
+                    <div className='flex flex-col gap-1'>
+                      <Label className='text-footnote font-semibold text-muted-foreground'>QP 値</Label>
+                      <div className='flex items-center gap-1.5'>
+                        <Input
+                          type='number'
+                          min={0}
+                          max={51}
+                          value={draft.qpValue}
+                          onChange={(e) => setDraft((d) => ({ ...d, qpValue: Number(e.target.value) }))}
+                          className='h-9 w-24 tabular-nums text-body'
+                        />
+                        <span className='text-caption2 text-muted-foreground'>(0=最高〜51=最低)</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className='flex flex-col gap-1'>
+                      <Label className='text-footnote font-semibold text-muted-foreground'>ビットレート</Label>
+                      <div className='flex items-center gap-1.5'>
+                        <Input
+                          type='number'
+                          min={500}
+                          max={80000}
+                          step={100}
+                          value={draft.bitrateKbps}
+                          onChange={(e) => setDraft((d) => ({ ...d, bitrateKbps: Number(e.target.value) }))}
+                          className='h-9 w-28 tabular-nums text-body'
+                        />
+                        <span className='text-footnote text-muted-foreground'>kbps</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div className='flex flex-col gap-1.5'>
             <Label className='text-footnote font-semibold text-muted-foreground'>タイミング</Label>
