@@ -61,11 +61,12 @@ services:
     #           capabilities: [gpu, video]
 
     # ── Intel QSV / VA-API ────────────────────────────────────────────────────
-    # Uncomment and set HW_ACCEL_TYPE=qsv or vaapi to enable Intel/AMD GPU.
-    # Requires the /dev/dri device to be present on the host.
-    #
-    # devices:
-    #   - /dev/dri:/dev/dri
+    # VA-API render node is passed through by default. Set HW_ACCEL_TYPE=vaapi
+    # (or qsv) in the environment above to actually exercise it in FFmpeg.
+    # On hosts without /dev/dri, drop the device line or set HW_ACCEL_TYPE=none
+    # to fall back to CPU.
+    devices:
+      - /dev/dri:/dev/dri
 
 volumes:
   epg-data:
