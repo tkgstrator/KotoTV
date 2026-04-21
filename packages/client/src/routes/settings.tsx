@@ -1104,10 +1104,11 @@ function EncodeTab() {
                 <thead>
                   <tr className='border-b border-border bg-muted/40 text-left text-caption2 font-semibold uppercase tracking-wider text-muted-foreground'>
                     <th className='w-[140px] px-3 py-2'>プロファイル</th>
-                    <th className='px-3 py-2'>実行日</th>
                     <th className='px-3 py-2'>コーデック</th>
                     <th className='px-3 py-2'>HW支援</th>
+                    <th className='px-3 py-2'>解像度</th>
                     <th className='px-3 py-2 tabular-nums'>fps</th>
+                    <th className='px-3 py-2'>実行日</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1129,11 +1130,10 @@ function EncodeTab() {
                           <span className='text-muted-foreground'>—</span>
                         )}
                       </td>
-                      <td className='px-3 py-2 tabular-nums text-muted-foreground'>
-                        {format(toDate(row.createdAt), 'MM/dd HH:mm', { locale: ja })}
-                      </td>
                       <td className='px-3 py-2 uppercase'>{row.codec}</td>
                       <td className='px-3 py-2'>{HW_LABELS[row.hwAccel]}</td>
+                      {/* Benchmark always runs at 1080p regardless of the profile's target — pin the label. */}
+                      <td className='px-3 py-2 text-muted-foreground'>1080p</td>
                       <td className={cn('px-3 py-2 tabular-nums', row.ok ? 'text-foreground' : 'text-destructive')}>
                         {row.ok || !row.reason ? (
                           <span>{row.fps.toFixed(1)}</span>
@@ -1149,6 +1149,9 @@ function EncodeTab() {
                             </Tooltip>
                           </TooltipProvider>
                         )}
+                      </td>
+                      <td className='px-3 py-2 tabular-nums text-muted-foreground'>
+                        {format(toDate(row.createdAt), 'MM/dd HH:mm', { locale: ja })}
                       </td>
                     </tr>
                   ))}

@@ -314,14 +314,15 @@ test('encode tab: ベンチマーク履歴 panel renders 5 columns, failed fps i
 
   const panel = page.locator('details').filter({ hasText: 'ベンチマーク履歴' })
 
-  // Exactly 5 header cells in the new order: プロファイル / 実行日 / コーデック / HW支援 / fps
+  // Exactly 6 header cells: プロファイル / コーデック / HW支援 / 解像度 / fps / 実行日
   const headers = panel.locator('thead th')
-  await expect(headers, 'table must have exactly 5 columns').toHaveCount(5)
+  await expect(headers, 'table must have exactly 6 columns').toHaveCount(6)
   await expect(headers.nth(0)).toHaveText('プロファイル')
-  await expect(headers.nth(1)).toHaveText('実行日')
-  await expect(headers.nth(2)).toHaveText('コーデック')
-  await expect(headers.nth(3)).toHaveText('HW支援')
+  await expect(headers.nth(1)).toHaveText('コーデック')
+  await expect(headers.nth(2)).toHaveText('HW支援')
+  await expect(headers.nth(3)).toHaveText('解像度')
   await expect(headers.nth(4)).toHaveText('fps')
+  await expect(headers.nth(5)).toHaveText('実行日')
 
   // Table must have 2 data rows
   const rows = panel.locator('tbody tr')
