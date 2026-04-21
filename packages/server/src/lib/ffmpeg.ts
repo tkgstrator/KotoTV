@@ -1,6 +1,87 @@
 // FFmpeg command builder — pure function, no side effects.
 // All encoder flag tuning lives here; never inline flags in transcoder.ts.
 
+import { existsSync, readdirSync } from 'node:fs'
+import { env } from './config'
+import { logger } from './logger'
+
+const vaapiLogger = logger.child({ module: 'ffmpeg-vaapi' })
+
+// ---------------------------------------------------------------------------
+// VAAPI render-node resolution — cached per-process
+// ---------------------------------------------------------------------------
+
+let cachedVaapiDevice: string | undefined
+
+/**
+ * Resolve the VAAPI render-node path to pass to FFmpeg.
+ *
+ * Priority:
+ *   1. VAAPI_DEVICE env if it exists on disk.
+ *   2. /dev/dri/renderD128 (historical default) if it exists.
+ *   3. The first /dev/dri/renderD* node present at lookup time.
+ *   4. Fall back to the configured VAAPI_DEVICE value even if missing — let
+ *      FFmpeg produce the "No VA display found" error so the operator sees a
+ *      concrete reason.
+ *
+ * Cached per-process: resolved once on first call. The render-node layout
+ * doesn't change without a reboot, and re-scanning /dev/dri on every FFmpeg
+ * spawn is wasted syscalls.
+ */
+export function resolveVaapiDevice(fsOverride?: {
+  existsSync: (p: string) => boolean
+  readdirSync: (p: string) => string[]
+}): string {
+  if (cachedVaapiDevice !== undefined) return cachedVaapiDevice
+
+  const fs = fsOverride ?? { existsSync, readdirSync: (p: string) => readdirSync(p) as string[] }
+
+  const configured = env.VAAPI_DEVICE
+
+  // Priority 1: env-configured path exists on disk
+  if (fs.existsSync(configured)) {
+    cachedVaapiDevice = configured
+    vaapiLogger.info({ device: cachedVaapiDevice }, 'VAAPI render node resolved (env-configured)')
+    return cachedVaapiDevice
+  }
+
+  // Scan /dev/dri for renderD* nodes
+  let renderNodes: string[] = []
+  try {
+    renderNodes = fs.readdirSync('/dev/dri').filter((e) => /^renderD\d+$/.test(e))
+    renderNodes.sort()
+  } catch {
+    // /dev/dri does not exist or is not readable — fall through to fallback
+  }
+
+  // Priority 2: historical default renderD128 if present
+  if (renderNodes.includes('renderD128')) {
+    cachedVaapiDevice = '/dev/dri/renderD128'
+    vaapiLogger.info({ device: cachedVaapiDevice }, 'VAAPI render node resolved (renderD128 found on disk)')
+    return cachedVaapiDevice
+  }
+
+  // Priority 3: first available renderD* node
+  if (renderNodes.length > 0) {
+    cachedVaapiDevice = `/dev/dri/${renderNodes[0]}`
+    vaapiLogger.info({ device: cachedVaapiDevice }, 'VAAPI render node resolved (first available node)')
+    return cachedVaapiDevice
+  }
+
+  // Priority 4: fall back to configured value so FFmpeg surfaces a clear error
+  cachedVaapiDevice = configured
+  vaapiLogger.info(
+    { device: cachedVaapiDevice },
+    'VAAPI render node not found on disk — using configured value; FFmpeg will surface the error'
+  )
+  return cachedVaapiDevice
+}
+
+/** Reset the per-process VAAPI device cache. For tests only. */
+export function _resetVaapiDeviceCacheForTests(): void {
+  cachedVaapiDevice = undefined
+}
+
 export type HwAccel = 'none' | 'nvenc' | 'qsv' | 'vaapi'
 export type Codec = 'avc' | 'hevc'
 export type Quality = 'low' | 'mid' | 'high'
@@ -217,8 +298,8 @@ function buildHwPreInput(hwAccel: HwAccel): string[] {
     case 'qsv':
       return ['-hwaccel', 'qsv']
     case 'vaapi':
-      // vaapi_device must be set before the input
-      return ['-vaapi_device', '/dev/dri/renderD128']
+      // vaapi_device must be set before the input; path is auto-resolved
+      return ['-vaapi_device', resolveVaapiDevice()]
     default:
       return []
   }

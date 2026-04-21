@@ -19,7 +19,10 @@ const EnvSchema = z.object({
   HLS_WATCHDOG_INTERVAL_MS: z.coerce.number().int().positive().default(10_000),
   /* When truthy, openLiveStream returns a synthetic testsrc2 MPEG-TS instead of
    * hitting Mirakc. Used by Playwright E2E in envs without an antenna signal. */
-  MIRAKC_MOCK_STREAM: z.coerce.boolean().default(false)
+  MIRAKC_MOCK_STREAM: z.coerce.boolean().default(false),
+  /* VAAPI render-node device path. Override when the kernel assigns a node
+   * number other than renderD128 (e.g. renderD129 on multi-GPU hosts). */
+  VAAPI_DEVICE: z.string().startsWith('/dev/dri/').default('/dev/dri/renderD128')
 })
 
 const result = EnvSchema.safeParse(Bun.env)
