@@ -175,6 +175,11 @@ const encodeProfilesRoute = new Hono()
     return c.json({ items: rows.map(serializeBenchmarkLog) } satisfies BenchmarkHistoryResponse)
   })
 
+  .delete('/benchmark/history', async (c) => {
+    await prisma.benchmarkLog.deleteMany()
+    return new Response(null, { status: 204 })
+  })
+
   .get('/:id', zValidator('param', IdParamSchema), async (c) => {
     const { id } = c.req.valid('param')
     const row = await prisma.encodeProfile.findUnique({ where: { id } })

@@ -30,6 +30,7 @@ import {
   useBenchmarkEncodeProfile,
   useBenchmarkHistory,
   useCreateEncodeProfile,
+  useDeleteBenchmarkHistory,
   useDeleteEncodeProfile,
   useEncodeProfiles,
   useUpdateEncodeProfile
@@ -854,6 +855,7 @@ function EncodeTab() {
   const deleteMutation = useDeleteEncodeProfile()
   const benchmarkMutation = useBenchmarkEncodeProfile()
   const history = useBenchmarkHistory()
+  const deleteHistoryMutation = useDeleteBenchmarkHistory()
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<EncodeProfile | null>(null)
   const [remeasuringId, setRemeasuringId] = useState<string | null>(null)
@@ -1089,7 +1091,41 @@ function EncodeTab() {
       <details className='rounded-[4px] border border-border bg-card'>
         <summary className='flex cursor-pointer items-center justify-between gap-2 px-4 py-2.5 text-body font-semibold'>
           <span>ベンチマーク履歴</span>
-          <span className='text-footnote text-muted-foreground'>{history.data?.items.length ?? 0} 件</span>
+          <span className='flex items-center gap-2 text-footnote text-muted-foreground'>
+            <span>{history.data?.items.length ?? 0} 件</span>
+            {(history.data?.items.length ?? 0) > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant='ghost' size='icon' className='size-7' onClick={(e) => e.stopPropagation()}>
+                    <Trash2 className='size-3.5 text-muted-foreground' />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>ベンチマーク履歴を削除</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      すべてのベンチマーク履歴を削除します。この操作は取り消せません。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant='destructive'
+                      disabled={deleteHistoryMutation.isPending}
+                      onClick={() => {
+                        deleteHistoryMutation.mutate(undefined, {
+                          onSuccess: () => toast.success('ベンチマーク履歴を削除しました'),
+                          onError: () => toast.error('削除に失敗しました')
+                        })
+                      }}
+                    >
+                      削除
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </span>
         </summary>
         <div className='border-t border-border'>
           {history.isLoading ? (

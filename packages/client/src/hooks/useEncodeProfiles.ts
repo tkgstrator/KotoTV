@@ -117,3 +117,14 @@ export function useBenchmarkHistory() {
     staleTime: 10_000
   })
 }
+
+export function useDeleteBenchmarkHistory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/encode-profiles/benchmark/history', { method: 'DELETE' })
+      if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: BENCHMARK_HISTORY_KEY })
+  })
+}
