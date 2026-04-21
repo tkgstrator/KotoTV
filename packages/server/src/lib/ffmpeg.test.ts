@@ -1,6 +1,13 @@
-import { describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import type { FfmpegArgsOptions } from './ffmpeg'
-import { buildBenchmarkArgs, buildFfmpegArgs, QUALITY_PRESETS, resolutionFor } from './ffmpeg'
+import {
+  _resetVaapiDeviceCacheForTests,
+  buildBenchmarkArgs,
+  buildFfmpegArgs,
+  QUALITY_PRESETS,
+  resolutionFor,
+  resolveVaapiDevice
+} from './ffmpeg'
 
 const BASE_OPTS = {
   outputDir: '/app/data/hls/test-session',
@@ -223,8 +230,10 @@ describe('hwAccel: vaapi (avc)', () => {
     expect(flagValue(args, '-c:v')).toBe('h264_vaapi')
   })
 
-  test('includes -vaapi_device /dev/dri/renderD128', () => {
-    expect(flagValue(args, '-vaapi_device')).toBe('/dev/dri/renderD128')
+  test('includes -vaapi_device pointing at a /dev/dri/renderD* node', () => {
+    // The exact node is auto-resolved; assert the path shape rather than a
+    // hardcoded node number so the test passes on any host.
+    expect(flagValue(args, '-vaapi_device')).toMatch(/^\/dev\/dri\/renderD\d+$/)
   })
 
   test('includes -vf format=nv12,hwupload', () => {
@@ -678,5 +687,74 @@ describe('buildBenchmarkArgs: parity with buildFfmpegArgs for rate-control + cod
     const hwIdx = args.indexOf('-hwaccel')
     expect(hwIdx).toBeGreaterThan(iIdx)
     expect(hwIdx).toBeLessThan(cvIdx)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolveVaapiDevice — fs-injection tests
+// ---------------------------------------------------------------------------
+
+describe('resolveVaapiDevice', () => {
+  // Reset the module-level cache before every test so each case starts fresh.
+  beforeEach(() => {
+    _resetVaapiDeviceCacheForTests()
+  })
+
+  /** Build a minimal fsOverride for the given set of present render nodes. */
+  function makeFsOverride(presentNodes: string[]) {
+    return {
+      existsSync: (p: string) => presentNodes.map((n) => `/dev/dri/${n}`).includes(p),
+      readdirSync: (_p: string) => presentNodes
+    }
+  }
+
+  test('only renderD129 present → returns /dev/dri/renderD129', () => {
+    const result = resolveVaapiDevice(makeFsOverride(['renderD129']))
+    expect(result).toBe('/dev/dri/renderD129')
+  })
+
+  test('only renderD128 present → returns /dev/dri/renderD128', () => {
+    const result = resolveVaapiDevice(makeFsOverride(['renderD128']))
+    expect(result).toBe('/dev/dri/renderD128')
+  })
+
+  test('both renderD128 and renderD129 present, env default renderD128 → returns /dev/dri/renderD128', () => {
+    // env.VAAPI_DEVICE defaults to /dev/dri/renderD128; existsSync returns true for it
+    const result = resolveVaapiDevice(makeFsOverride(['renderD128', 'renderD129']))
+    expect(result).toBe('/dev/dri/renderD128')
+  })
+
+  test('env says renderD200 (absent), only renderD129 exists → falls back to first existing /dev/dri/renderD129', () => {
+    // env.VAAPI_DEVICE is /dev/dri/renderD128 (the default), renderD128 is absent
+    // and only renderD129 is present — simulates the host described in the bug.
+    const result = resolveVaapiDevice(makeFsOverride(['renderD129']))
+    expect(result).toBe('/dev/dri/renderD129')
+  })
+
+  test('/dev/dri completely missing → returns configured default', () => {
+    const fs = {
+      existsSync: (_p: string) => false,
+      readdirSync: (_p: string) => {
+        throw new Error('ENOENT: /dev/dri')
+      }
+    }
+    const result = resolveVaapiDevice(fs)
+    // Must be the env-configured value (default /dev/dri/renderD128) so FFmpeg
+    // surfaces the "No VA display found" error with a concrete path.
+    expect(result).toMatch(/^\/dev\/dri\/renderD\d+$/)
+  })
+
+  test('result is cached — second call returns same value without re-scanning', () => {
+    const fs = makeFsOverride(['renderD129'])
+    const first = resolveVaapiDevice(fs)
+    // Replace the fs impl with one that always throws; the cache must shield us
+    const broken = {
+      existsSync: () => false,
+      readdirSync: () => {
+        throw new Error('should not be called')
+      }
+    }
+    const second = resolveVaapiDevice(broken)
+    expect(second).toBe(first)
   })
 })
