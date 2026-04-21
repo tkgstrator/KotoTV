@@ -86,18 +86,29 @@ async function runOnce(opts: BenchmarkArgsOptions, timeoutMs: number): Promise<B
     stderr: 'pipe'
   })
 
-  // Track latest fps and collect stderr lines for error reporting.
+  // Track latest fps and frame count. FFmpeg doesn't always print an fps=
+  // line for jobs that complete in under its stats interval, so we also
+  // track frame= and fall back to frame / wallSeconds below.
   let lastFps: number | null = null
+  let lastFrame: number | null = null
   const stderrLines: string[] = []
 
   // AbortController drives the hard timeout.
   const controller = new AbortController()
   const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs)
 
-  // Pipe stderr: parse fps= lines and buffer last ~20 lines for error reporting.
-  const stderrDone = pipeAndParseBenchmarkStderr(proc.stderr, childLogger, stderrLines, (fps) => {
-    lastFps = fps
-  })
+  // Pipe stderr: parse fps= / frame= lines and buffer last ~20 lines for error reporting.
+  const stderrDone = pipeAndParseBenchmarkStderr(
+    proc.stderr,
+    childLogger,
+    stderrLines,
+    (fps) => {
+      lastFps = fps
+    },
+    (frame) => {
+      lastFrame = frame
+    }
+  )
 
   // Race the process exit against the abort signal.
   let exitCode: number | null = null
@@ -137,17 +148,22 @@ async function runOnce(opts: BenchmarkArgsOptions, timeoutMs: number): Promise<B
 
   const wallSeconds = (performance.now() - t0) / 1000
 
+  // Fallback when FFmpeg didn't print a fps= line (short jobs / no stats
+  // interval elapsed): derive fps from the final frame count and wall time.
+  const derivedFps = lastFrame != null && wallSeconds > 0 ? lastFrame / wallSeconds : null
+  const fps = lastFps ?? derivedFps ?? 0
+
   let result: BenchmarkResult
 
   if (timedOut) {
-    result = { ok: false, fps: lastFps ?? 0, wallSeconds, reason: 'timeout' }
+    result = { ok: false, fps, wallSeconds, reason: 'timeout' }
   } else if (exitCode !== 0) {
     const tail = stderrLines.slice(-20).join('\n')
-    result = { ok: false, fps: lastFps ?? 0, wallSeconds, reason: tail }
-  } else if ((lastFps ?? 0) >= MIN_REALTIME_FPS) {
-    result = { ok: true, fps: lastFps ?? 0, wallSeconds }
+    result = { ok: false, fps, wallSeconds, reason: tail }
+  } else if (fps >= MIN_REALTIME_FPS) {
+    result = { ok: true, fps, wallSeconds }
   } else {
-    result = { ok: false, fps: lastFps ?? 0, wallSeconds, reason: 'below_realtime' }
+    result = { ok: false, fps, wallSeconds, reason: 'below_realtime' }
   }
 
   logger.info({ result, opts }, 'encode benchmark done')
@@ -201,38 +217,46 @@ async function pipeAndParseBenchmarkStderr(
   stderr: ReadableStream<Uint8Array>,
   childLogger: { debug: (msg: string | object, ...args: unknown[]) => void },
   linesBuffer: string[],
-  onFps: (fps: number) => void
+  onFps: (fps: number) => void,
+  onFrame: (frame: number) => void
 ): Promise<void> {
   const decoder = new TextDecoder()
   const reader = stderr.getReader()
   let buf = ''
+
+  function parseLine(line: string): void {
+    if (!line.trim()) return
+    childLogger.debug(line)
+    linesBuffer.push(line)
+    STATS_RE.lastIndex = 0
+    let last: RegExpExecArray | null = null
+    for (;;) {
+      const m = STATS_RE.exec(line)
+      if (m === null) break
+      last = m
+    }
+    if (last) {
+      const frame = Number.parseInt(last[1] ?? '0', 10)
+      const fps = Number.parseFloat(last[2] ?? '0')
+      if (frame > 0) onFrame(frame)
+      if (fps > 0) onFps(fps)
+    }
+  }
+
   try {
     for (;;) {
       const { value, done } = await reader.read()
       if (done) break
       buf += decoder.decode(value, { stream: true })
-      const lines = buf.split('\n')
+      // FFmpeg emits progress updates separated by \r and terminal lines by
+      // \n; split on either so we don't miss either stream.
+      const lines = buf.split(/[\r\n]/)
       buf = lines.pop() ?? ''
-      for (const line of lines) {
-        if (!line.trim()) continue
-        childLogger.debug(line)
-        linesBuffer.push(line)
-        // Parse fps= from progress lines (may have multiple \r-separated updates).
-        STATS_RE.lastIndex = 0
-        let last: RegExpExecArray | null = null
-        for (;;) {
-          const m = STATS_RE.exec(line)
-          if (m === null) break
-          const fps = Number.parseFloat(m[2] ?? '0')
-          if (fps > 0) last = m
-        }
-        if (last) onFps(Number.parseFloat(last[2] ?? '0'))
-      }
+      for (const line of lines) parseLine(line)
     }
-    if (buf.trim()) {
-      childLogger.debug(buf)
-      linesBuffer.push(buf)
-    }
+    // Short jobs often leave the final "frame= X fps= Y" summary in the
+    // pending buffer — parse it before giving up.
+    if (buf.trim()) parseLine(buf)
   } catch {
     // Stream closed abruptly
   }
