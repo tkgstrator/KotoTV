@@ -69,6 +69,12 @@ enum RateControl {
   cqp
 }
 
+enum Resolution {
+  hd1080
+  hd720
+  sd480
+}
+
 enum EncodeMode {
   simple
   advanced
@@ -85,9 +91,11 @@ model EncodeProfile {
   rateControl RateControl       @default(vbr)   @map("rate_control")
   bitrateKbps Int               @default(4000)  @map("bitrate_kbps")
   qpValue     Int               @default(23)    @map("qp_value")
-  isDefault   Boolean           @default(false) @map("is_default")
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt      @map("updated_at")
+  isDefault              Boolean    @default(false) @map("is_default")
+  keepOriginalResolution Boolean    @default(true)  @map("keep_original_resolution")
+  resolution             Resolution @default(hd720)
+  createdAt              DateTime   @default(now()) @map("created_at")
+  updatedAt              DateTime   @updatedAt      @map("updated_at")
 
   rules     RecordingRule[]
   schedules RecordingSchedule[]
@@ -190,4 +198,23 @@ model Recording {
 
   @@index([status, startedAt])
   @@map("recordings")
+}
+
+model BenchmarkLog {
+  id                     String          @id @default(uuid())
+  createdAt              DateTime        @default(now()) @map("created_at")
+  codec                  RuleEncodeCodec
+  hwAccel                HwAccelType     @map("hw_accel")
+  rateControl            RateControl     @map("rate_control")
+  bitrateKbps            Int             @map("bitrate_kbps")
+  qpValue                Int             @map("qp_value")
+  keepOriginalResolution Boolean         @map("keep_original_resolution")
+  resolution             Resolution
+  ok                     Boolean
+  fps                    Float
+  wallSeconds            Float           @map("wall_seconds")
+  reason                 String?
+
+  @@index([createdAt])
+  @@map("benchmark_logs")
 }
