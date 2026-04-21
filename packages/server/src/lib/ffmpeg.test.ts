@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { FfmpegArgsOptions } from './ffmpeg'
-import { buildFfmpegArgs, QUALITY_PRESETS, resolutionFor } from './ffmpeg'
+import { buildBenchmarkArgs, buildFfmpegArgs, QUALITY_PRESETS, resolutionFor } from './ffmpeg'
 
 const BASE_OPTS = {
   outputDir: '/app/data/hls/test-session',
@@ -371,5 +371,312 @@ describe('argument ordering', () => {
   test('-hwaccel cuda appears before -i for nvenc', () => {
     const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'nvenc', codec: 'avc' })
     expect(args.indexOf('-hwaccel')).toBeLessThan(args.indexOf('-i'))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Scale-filter cases (recording-only; live path never sets keepOriginalResolution)
+// ---------------------------------------------------------------------------
+
+describe('scale filter: keepOriginalResolution true (default) — no scale filter emitted', () => {
+  for (const hwAccel of ['none', 'nvenc', 'qsv', 'vaapi'] as const) {
+    test(`hwAccel=${hwAccel} with keepOriginalResolution:true emits no scale_* filter`, () => {
+      const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel, keepOriginalResolution: true })
+      expect(args.some((a) => a.startsWith('scale'))).toBe(false)
+      expect(
+        args.some(
+          (a) =>
+            a.includes('scale_cuda') || a.includes('scale_qsv') || a.includes('scale_vaapi') || a.startsWith('scale=')
+        )
+      ).toBe(false)
+    })
+
+    test(`hwAccel=${hwAccel} with keepOriginalResolution:true retains -s from quality preset`, () => {
+      const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel, keepOriginalResolution: true, quality: 'mid' })
+      expect(flagValue(args, '-s')).toBe('1280x720')
+    })
+  }
+})
+
+describe('scale filter: keepOriginalResolution omitted behaves as true (live-path compat)', () => {
+  test('none hwAccel without keepOriginalResolution still emits -s', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none' })
+    expect(flagValue(args, '-s')).toBe('1280x720')
+    expect(args.some((a) => a.includes('scale='))).toBe(false)
+  })
+})
+
+describe('scale filter: keepOriginalResolution false — scale filter per hwAccel', () => {
+  test('hwAccel=none, resolution=hd720 → -vf scale=1280:720:flags=bicubic', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', keepOriginalResolution: false, resolution: 'hd720' })
+    expect(flagValue(args, '-vf')).toBe('scale=1280:720:flags=bicubic')
+    expect(contains(args, '-s')).toBe(false)
+  })
+
+  test('hwAccel=nvenc, resolution=hd1080 → -vf scale_cuda=1920:1080 before -c:v h264_nvenc', () => {
+    const args = buildFfmpegArgs({
+      ...BASE_OPTS,
+      hwAccel: 'nvenc',
+      keepOriginalResolution: false,
+      resolution: 'hd1080'
+    })
+    expect(flagValue(args, '-vf')).toBe('scale_cuda=1920:1080')
+    expect(args.indexOf('-vf')).toBeLessThan(args.indexOf('-c:v'))
+    expect(flagValue(args, '-c:v')).toBe('h264_nvenc')
+  })
+
+  test('hwAccel=vaapi, resolution=sd480 → single -vf chain with scale_vaapi', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'vaapi', keepOriginalResolution: false, resolution: 'sd480' })
+    expect(flagValue(args, '-vf')).toBe('format=nv12,hwupload,scale_vaapi=w=854:h=480')
+    // Must be exactly one -vf flag (not two)
+    expect(args.filter((a) => a === '-vf').length).toBe(1)
+  })
+
+  test('hwAccel=qsv, resolution=hd720 → -vf scale_qsv=w=1280:h=720', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'qsv', keepOriginalResolution: false, resolution: 'hd720' })
+    expect(flagValue(args, '-vf')).toBe('scale_qsv=w=1280:h=720')
+    expect(contains(args, '-s')).toBe(false)
+  })
+
+  test('ordering invariant: -vf appears before -c:v for all hwAccels', () => {
+    for (const hwAccel of ['none', 'nvenc', 'qsv', 'vaapi'] as const) {
+      const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel, keepOriginalResolution: false, resolution: 'hd720' })
+      const vfIdx = args.indexOf('-vf')
+      const cvIdx = args.indexOf('-c:v')
+      expect(vfIdx).toBeGreaterThan(-1)
+      expect(vfIdx).toBeLessThan(cvIdx)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Rate-control flag matrix
+// ---------------------------------------------------------------------------
+
+describe('rate-control: vbr (default)', () => {
+  test('none, bitrateKbps=4000 → -b:v 4000k, -maxrate:v 6000k, -bufsize 8000k; no -minrate:v', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', rateControl: 'vbr', videoBitrate: 4000 })
+    expect(flagValue(args, '-b:v')).toBe('4000k')
+    expect(flagValue(args, '-maxrate:v')).toBe('6000k')
+    expect(flagValue(args, '-bufsize')).toBe('8000k')
+    expect(contains(args, '-minrate:v')).toBe(false)
+  })
+
+  test('nvenc, bitrateKbps=4000 → same vbr shape', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'nvenc', rateControl: 'vbr', videoBitrate: 4000 })
+    expect(flagValue(args, '-b:v')).toBe('4000k')
+    expect(flagValue(args, '-maxrate:v')).toBe('6000k')
+    expect(flagValue(args, '-bufsize')).toBe('8000k')
+    expect(contains(args, '-minrate:v')).toBe(false)
+  })
+
+  test('qsv, bitrateKbps=4000 → same vbr shape', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'qsv', rateControl: 'vbr', videoBitrate: 4000 })
+    expect(flagValue(args, '-b:v')).toBe('4000k')
+    expect(flagValue(args, '-maxrate:v')).toBe('6000k')
+    expect(flagValue(args, '-bufsize')).toBe('8000k')
+    expect(contains(args, '-minrate:v')).toBe(false)
+  })
+
+  test('vaapi, bitrateKbps=4000 → same vbr shape', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'vaapi', rateControl: 'vbr', videoBitrate: 4000 })
+    expect(flagValue(args, '-b:v')).toBe('4000k')
+    expect(flagValue(args, '-maxrate:v')).toBe('6000k')
+    expect(flagValue(args, '-bufsize')).toBe('8000k')
+    expect(contains(args, '-minrate:v')).toBe(false)
+  })
+})
+
+describe('rate-control: cbr', () => {
+  test('none, bitrateKbps=4000 → -b:v 4000k, -minrate:v 4000k, -maxrate:v 4000k, -bufsize 8000k', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', rateControl: 'cbr', videoBitrate: 4000 })
+    expect(flagValue(args, '-b:v')).toBe('4000k')
+    expect(flagValue(args, '-minrate:v')).toBe('4000k')
+    expect(flagValue(args, '-maxrate:v')).toBe('4000k')
+    expect(flagValue(args, '-bufsize')).toBe('8000k')
+  })
+
+  test('nvenc, bitrateKbps=4000 → cbr shape', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'nvenc', rateControl: 'cbr', videoBitrate: 4000 })
+    expect(flagValue(args, '-b:v')).toBe('4000k')
+    expect(flagValue(args, '-minrate:v')).toBe('4000k')
+    expect(flagValue(args, '-maxrate:v')).toBe('4000k')
+    expect(flagValue(args, '-bufsize')).toBe('8000k')
+  })
+
+  test('qsv, bitrateKbps=4000 → cbr shape', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'qsv', rateControl: 'cbr', videoBitrate: 4000 })
+    expect(flagValue(args, '-b:v')).toBe('4000k')
+    expect(flagValue(args, '-minrate:v')).toBe('4000k')
+    expect(flagValue(args, '-maxrate:v')).toBe('4000k')
+    expect(flagValue(args, '-bufsize')).toBe('8000k')
+  })
+
+  test('vaapi, bitrateKbps=4000 → cbr shape', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'vaapi', rateControl: 'cbr', videoBitrate: 4000 })
+    expect(flagValue(args, '-b:v')).toBe('4000k')
+    expect(flagValue(args, '-minrate:v')).toBe('4000k')
+    expect(flagValue(args, '-maxrate:v')).toBe('4000k')
+    expect(flagValue(args, '-bufsize')).toBe('8000k')
+  })
+})
+
+describe('rate-control: cqp — encoder-specific quantizer flag, no -b:v', () => {
+  test('hwAccel=none, qpValue=22 → -qp 22; no -b:v', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'none', rateControl: 'cqp', qpValue: 22 })
+    expect(contains(args, '-qp')).toBe(true)
+    expect(flagValue(args, '-qp')).toBe('22')
+    expect(contains(args, '-b:v')).toBe(false)
+  })
+
+  test('hwAccel=nvenc, qpValue=22 → -cq 22; no -b:v', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'nvenc', rateControl: 'cqp', qpValue: 22 })
+    expect(contains(args, '-cq')).toBe(true)
+    expect(flagValue(args, '-cq')).toBe('22')
+    expect(contains(args, '-b:v')).toBe(false)
+  })
+
+  test('hwAccel=qsv, qpValue=22 → -global_quality 22; no -b:v', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'qsv', rateControl: 'cqp', qpValue: 22 })
+    expect(contains(args, '-global_quality')).toBe(true)
+    expect(flagValue(args, '-global_quality')).toBe('22')
+    expect(contains(args, '-b:v')).toBe(false)
+  })
+
+  test('hwAccel=vaapi, qpValue=22 → -qp 22; no -b:v', () => {
+    const args = buildFfmpegArgs({ ...BASE_OPTS, hwAccel: 'vaapi', rateControl: 'cqp', qpValue: 22 })
+    expect(contains(args, '-qp')).toBe(true)
+    expect(flagValue(args, '-qp')).toBe('22')
+    expect(contains(args, '-b:v')).toBe(false)
+  })
+})
+
+describe('live-path parity: omitting recording fields preserves legacy flag set', () => {
+  // VBR with preset bitrate should still include -b:v at the preset value.
+  test('none/avc/mid without recording fields → -b:v 3000k, -maxrate:v 4500k, -bufsize 6000k', () => {
+    const args = buildFfmpegArgs({ hwAccel: 'none', codec: 'avc', quality: 'mid', outputDir: '/tmp/sess' })
+    expect(flagValue(args, '-b:v')).toBe('3000k')
+    expect(flagValue(args, '-maxrate:v')).toBe('4500k')
+    expect(flagValue(args, '-bufsize')).toBe('6000k')
+    // No scale filter on live path
+    expect(args.some((a) => a.startsWith('scale'))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildBenchmarkArgs — step 5
+// ---------------------------------------------------------------------------
+
+describe('buildBenchmarkArgs: input format', () => {
+  test('starts with -y -f lavfi -i testsrc2=duration=5:size=1920x1080:rate=30 (default duration)', () => {
+    const args = buildBenchmarkArgs({
+      hwAccel: 'none',
+      codec: 'avc',
+      rateControl: 'vbr',
+      bitrateKbps: 4000,
+      qpValue: 23,
+      keepOriginalResolution: true,
+      resolution: 'hd720'
+    })
+    expect(args[0]).toBe('-y')
+    expect(args[1]).toBe('-f')
+    expect(args[2]).toBe('lavfi')
+    expect(args[3]).toBe('-i')
+    expect(args[4]).toBe('testsrc2=duration=5:size=1920x1080:rate=30')
+  })
+
+  test('durationSec:10 → duration=10 in testsrc2 string', () => {
+    const args = buildBenchmarkArgs({
+      hwAccel: 'none',
+      codec: 'avc',
+      rateControl: 'vbr',
+      bitrateKbps: 4000,
+      qpValue: 23,
+      keepOriginalResolution: true,
+      resolution: 'hd720',
+      durationSec: 10
+    })
+    expect(args[4]).toBe('testsrc2=duration=10:size=1920x1080:rate=30')
+  })
+
+  test('ends with -an -f null -', () => {
+    const args = buildBenchmarkArgs({
+      hwAccel: 'none',
+      codec: 'avc',
+      rateControl: 'vbr',
+      bitrateKbps: 4000,
+      qpValue: 23,
+      keepOriginalResolution: true,
+      resolution: 'hd720'
+    })
+    const n = args.length
+    expect(args[n - 4]).toBe('-an')
+    expect(args[n - 3]).toBe('-f')
+    expect(args[n - 2]).toBe('null')
+    expect(args[n - 1]).toBe('-')
+  })
+})
+
+describe('buildBenchmarkArgs: parity with buildFfmpegArgs for rate-control + codec flags', () => {
+  // The middle slice (between -i and -an) of buildBenchmarkArgs must share the
+  // same -c:v, -preset, and rate-control flags as buildFfmpegArgs with keepOriginalResolution:true.
+  function rateControlTail(args: string[]): string[] {
+    // Returns everything from -c:v onward up to -c:a (live) or -an (bench).
+    const cvIdx = args.indexOf('-c:v')
+    const caIdx = args.indexOf('-c:a')
+    const anIdx = args.indexOf('-an')
+    const end = caIdx !== -1 ? caIdx : anIdx !== -1 ? anIdx : args.length
+    return args.slice(cvIdx, end)
+  }
+
+  const fixedOpts = {
+    hwAccel: 'none' as const,
+    codec: 'avc' as const,
+    rateControl: 'vbr' as const,
+    bitrateKbps: 4000,
+    qpValue: 23
+  }
+
+  test('none/vbr: benchmark and recording share -c:v, -preset, and rate-control flags', () => {
+    const benchArgs = buildBenchmarkArgs({ ...fixedOpts, keepOriginalResolution: true, resolution: 'hd720' })
+    const recArgs = buildFfmpegArgs({
+      ...fixedOpts,
+      quality: 'mid',
+      outputDir: '/tmp',
+      keepOriginalResolution: true,
+      videoBitrate: 4000
+    })
+    expect(rateControlTail(benchArgs)).toEqual(rateControlTail(recArgs))
+  })
+
+  test('nvenc/cbr: same codec flags in both paths', () => {
+    const opts = { ...fixedOpts, hwAccel: 'nvenc' as const, rateControl: 'cbr' as const }
+    const benchArgs = buildBenchmarkArgs({ ...opts, keepOriginalResolution: true, resolution: 'hd720' })
+    const recArgs = buildFfmpegArgs({
+      ...opts,
+      quality: 'mid',
+      outputDir: '/tmp',
+      keepOriginalResolution: true,
+      videoBitrate: 4000
+    })
+    expect(rateControlTail(benchArgs)).toEqual(rateControlTail(recArgs))
+  })
+
+  test('benchmark middle slice contains hwPreInput before -c:v for nvenc', () => {
+    const args = buildBenchmarkArgs({
+      hwAccel: 'nvenc',
+      codec: 'avc',
+      rateControl: 'vbr',
+      bitrateKbps: 4000,
+      qpValue: 23,
+      keepOriginalResolution: true,
+      resolution: 'hd720'
+    })
+    // hwPreInput ('-hwaccel cuda') comes in between -i and -c:v
+    const iIdx = args.indexOf('-i')
+    const cvIdx = args.indexOf('-c:v')
+    const hwIdx = args.indexOf('-hwaccel')
+    expect(hwIdx).toBeGreaterThan(iIdx)
+    expect(hwIdx).toBeLessThan(cvIdx)
   })
 })
