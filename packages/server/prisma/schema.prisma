@@ -97,8 +97,9 @@ model EncodeProfile {
   createdAt              DateTime   @default(now()) @map("created_at")
   updatedAt              DateTime   @updatedAt      @map("updated_at")
 
-  rules     RecordingRule[]
-  schedules RecordingSchedule[]
+  rules         RecordingRule[]
+  schedules     RecordingSchedule[]
+  benchmarkLogs BenchmarkLog[]
 
   @@index([isDefault])
   @@map("encode_profiles")
@@ -201,8 +202,10 @@ model Recording {
 }
 
 model BenchmarkLog {
-  id                     String          @id @default(uuid())
-  createdAt              DateTime        @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  profileId String?  @map("profile_id")
+  profile   EncodeProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
   codec                  RuleEncodeCodec
   hwAccel                HwAccelType     @map("hw_accel")
   rateControl            RateControl     @map("rate_control")
@@ -216,5 +219,6 @@ model BenchmarkLog {
   reason                 String?
 
   @@index([createdAt])
+  @@index([profileId])
   @@map("benchmark_logs")
 }

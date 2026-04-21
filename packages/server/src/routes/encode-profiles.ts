@@ -87,6 +87,8 @@ export async function ensureDefaultEncodeProfile(): Promise<void> {
 function serializeBenchmarkLog(row: {
   id: string
   createdAt: Date
+  profileId: string | null
+  profile: { name: string } | null
   codec: string
   hwAccel: string
   rateControl: string
@@ -101,7 +103,9 @@ function serializeBenchmarkLog(row: {
 }): BenchmarkLog {
   return BenchmarkLogSchema.parse({
     ...row,
-    createdAt: row.createdAt.toISOString()
+    createdAt: row.createdAt.toISOString(),
+    profileId: row.profileId,
+    profileName: row.profile?.name ?? null
   })
 }
 
@@ -150,7 +154,8 @@ const encodeProfilesRoute = new Hono()
         bitrateKbps: body.bitrateKbps,
         qpValue: body.qpValue,
         keepOriginalResolution: body.keepOriginalResolution,
-        resolution: body.resolution
+        resolution: body.resolution,
+        ...(body.profileId !== undefined ? { profileId: body.profileId } : {})
       })
       return c.json(result satisfies BenchmarkResponse)
     } catch (err) {
@@ -164,7 +169,8 @@ const encodeProfilesRoute = new Hono()
   .get('/benchmark/history', async (c) => {
     const rows = await prisma.benchmarkLog.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 100
+      take: 100,
+      include: { profile: { select: { name: true } } }
     })
     return c.json({ items: rows.map(serializeBenchmarkLog) } satisfies BenchmarkHistoryResponse)
   })
