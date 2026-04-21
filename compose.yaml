@@ -63,6 +63,9 @@ services:
     # ── Intel QSV / VA-API ────────────────────────────────────────────────────
     # VA-API render node is passed through by default. Set HW_ACCEL_TYPE=vaapi
     # (or qsv) in the environment above to actually exercise it in FFmpeg.
+    # The typical render node is /dev/dri/renderD128, but some hosts expose
+    # renderD129 or higher. Set VAAPI_DEVICE=/dev/dri/renderDNNN in the
+    # environment above to override the node path the transcoder opens.
     # On hosts without /dev/dri, drop the device line or set HW_ACCEL_TYPE=none
     # to fall back to CPU.
     devices:
