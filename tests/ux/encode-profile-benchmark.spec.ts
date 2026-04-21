@@ -251,7 +251,9 @@ test('encode profile dialog: benchmark failure → AlertDialog with correct copy
 
 // ─── scenario 5: Benchmark history panel ────────────────────────────────────
 
-test('encode tab: ベンチマーク履歴 panel renders 2 rows, ok check icon, fail X icon with tooltip', async ({ page }) => {
+test('encode tab: ベンチマーク履歴 panel renders 5 columns, failed fps is red, tooltip shows reason', async ({
+  page
+}) => {
   const historyPayload = {
     items: [
       {
@@ -300,35 +302,41 @@ test('encode tab: ベンチマーク履歴 panel renders 2 rows, ok check icon, 
 
   await openEncodeTab(page)
 
-  // The <details> element: find by its summary text
   const detailsSummary = page.locator('details').filter({ hasText: 'ベンチマーク履歴' }).locator('summary')
   await expect(detailsSummary, 'ベンチマーク履歴 summary must be visible').toBeVisible()
 
-  // Click to expand
   await detailsSummary.click()
   await page.waitForTimeout(150)
 
-  // Table must have 2 data rows (tbody tr)
-  const rows = page.locator('details').filter({ hasText: 'ベンチマーク履歴' }).locator('tbody tr')
+  const panel = page.locator('details').filter({ hasText: 'ベンチマーク履歴' })
+
+  // Exactly 5 header cells with the new labels
+  const headers = panel.locator('thead th')
+  await expect(headers, 'table must have exactly 5 columns').toHaveCount(5)
+  await expect(headers.nth(0)).toHaveText('実行日')
+  await expect(headers.nth(1)).toHaveText('コーデック')
+  await expect(headers.nth(2)).toHaveText('HW支援')
+  await expect(headers.nth(3)).toHaveText('解像度')
+  await expect(headers.nth(4)).toHaveText('fps')
+
+  // Table must have 2 data rows
+  const rows = panel.locator('tbody tr')
   await expect(rows, '2 history rows must render').toHaveCount(2)
 
-  // First row (ok=true): must contain a CheckCircle2 svg — locate by its lucide class or title
-  // Playwright can't directly query SVG title, but the ok row has a .text-primary icon
-  // and the fail row has .text-destructive. Assert via aria or visible text.
-  // The ok check icon: CheckCircle2 renders as an SVG without text; we verify the fail icon shows
-  // and the ok row does NOT show an XCircle.
+  // Failed row's fps cell must carry text-destructive class
   const failRow = rows.nth(1)
-  const xCircleIcon = failRow.locator('svg')
-  await expect(xCircleIcon.first(), 'fail row must contain an svg icon').toBeVisible()
+  // fps is the 5th td (index 4)
+  const failFpsCell = failRow.locator('td').nth(4)
+  await expect(failFpsCell, 'failed fps cell must be visible').toBeVisible()
+  const failFpsCls = await failFpsCell.getAttribute('class')
+  expect(failFpsCls, 'failed fps cell must have text-destructive').toContain('text-destructive')
 
-  // Hover the XCircle to trigger the tooltip
-  await xCircleIcon.first().hover()
-  await page.waitForTimeout(300) // tooltip animation
+  // Hover the fps cell of the failed row to trigger the tooltip
+  await failFpsCell.hover()
+  await page.waitForTimeout(300)
 
-  // Tooltip with reason text must appear
   const tooltip = page.locator('[role="tooltip"]')
-  await expect(tooltip, 'tooltip must appear on hover over X icon').toBeVisible({ timeout: 2000 })
-  // Tooltip should contain part of the 200-char reason
+  await expect(tooltip, 'tooltip must appear on hover over failed fps cell').toBeVisible({ timeout: 2000 })
   const tooltipText = await tooltip.innerText()
   expect(tooltipText.length, 'tooltip text must be non-empty').toBeGreaterThan(0)
 })

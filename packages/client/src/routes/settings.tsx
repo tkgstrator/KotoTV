@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { format, toDate } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { CheckCircle2, Pencil, Plus, Star, Trash2, XCircle } from 'lucide-react'
+import { Pencil, Plus, Star, TimerReset, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { HealthLogTail } from '@/components/settings/HealthLogTail'
@@ -849,9 +849,11 @@ function EncodeTab() {
   const createMutation = useCreateEncodeProfile()
   const updateMutation = useUpdateEncodeProfile()
   const deleteMutation = useDeleteEncodeProfile()
+  const benchmarkMutation = useBenchmarkEncodeProfile()
   const history = useBenchmarkHistory()
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<EncodeProfile | null>(null)
+  const [remeasuringId, setRemeasuringId] = useState<string | null>(null)
 
   const profiles = data?.profiles ?? []
 
@@ -891,6 +893,36 @@ function EncodeTab() {
       toast.success(`「${profile.name}」を既定にしました`)
     } catch (err) {
       toast.error(`更新失敗: ${err instanceof Error ? err.message : 'unknown'}`)
+    }
+  }
+
+  async function handleRemeasure(profile: EncodeProfile) {
+    setRemeasuringId(profile.id)
+    try {
+      await benchmarkMutation.mutateAsync({
+        codec: profile.codec,
+        quality: profile.quality,
+        timing: profile.timing,
+        hwAccel: profile.hwAccel,
+        mode: profile.mode,
+        rateControl: profile.rateControl,
+        bitrateKbps: profile.bitrateKbps,
+        qpValue: profile.qpValue,
+        keepOriginalResolution: profile.keepOriginalResolution,
+        resolution: profile.resolution
+      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (
+        /busy/i.test(msg) ||
+        (err instanceof Error && 'status' in err && (err as { status?: number }).status === 409)
+      ) {
+        toast.error('他のプロファイルを検証中です')
+      } else {
+        toast.error(msg)
+      }
+    } finally {
+      setRemeasuringId(null)
     }
   }
 
@@ -970,6 +1002,16 @@ function EncodeTab() {
                   <span>{HW_LABELS[p.hwAccel]}</span>
                 </div>
               </div>
+              <Button
+                variant='ghost'
+                size='icon'
+                className='size-9 text-muted-foreground hover:text-foreground'
+                onClick={() => handleRemeasure(p)}
+                disabled={remeasuringId !== null}
+                aria-label='このプロファイルで再測定'
+              >
+                <TimerReset className={cn('size-4', remeasuringId === p.id && 'animate-spin')} />
+              </Button>
               <Button
                 variant='ghost'
                 size='icon'
@@ -1056,13 +1098,11 @@ function EncodeTab() {
               <table className='w-full text-footnote'>
                 <thead>
                   <tr className='border-b border-border bg-muted/40 text-left text-caption2 font-semibold uppercase tracking-wider text-muted-foreground'>
-                    <th className='px-3 py-2'>実行時刻</th>
+                    <th className='px-3 py-2'>実行日</th>
                     <th className='px-3 py-2'>コーデック</th>
-                    <th className='px-3 py-2'>HW</th>
+                    <th className='px-3 py-2'>HW支援</th>
                     <th className='px-3 py-2'>解像度</th>
-                    <th className='px-3 py-2'>レート</th>
                     <th className='px-3 py-2 tabular-nums'>fps</th>
-                    <th className='px-3 py-2'>結果</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1076,28 +1116,18 @@ function EncodeTab() {
                       <td className='px-3 py-2'>
                         {row.keepOriginalResolution ? '原寸' : RESOLUTION_LABELS[row.resolution]}
                       </td>
-                      <td className='px-3 py-2 tabular-nums'>
-                        {row.rateControl === 'cqp'
-                          ? `QP=${row.qpValue}`
-                          : `${row.bitrateKbps}kbps (${row.rateControl.toUpperCase()})`}
-                      </td>
-                      <td className={cn('px-3 py-2 tabular-nums', !row.ok && 'text-destructive')}>
-                        {row.fps.toFixed(1)}
-                      </td>
-                      <td className='px-3 py-2'>
-                        {row.ok ? (
-                          <CheckCircle2 className='size-4 text-primary' />
+                      <td className={cn('px-3 py-2 tabular-nums', row.ok ? 'text-foreground' : 'text-destructive')}>
+                        {row.ok || !row.reason ? (
+                          <span>{row.fps.toFixed(1)}</span>
                         ) : (
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <XCircle className='size-4 text-destructive' />
+                                <span>{row.fps.toFixed(1)}</span>
                               </TooltipTrigger>
-                              {row.reason && (
-                                <TooltipContent side='left' className='max-w-[320px]'>
-                                  <p className='break-words font-mono text-caption2'>{row.reason.slice(0, 500)}</p>
-                                </TooltipContent>
-                              )}
+                              <TooltipContent side='left' className='max-w-[320px]'>
+                                <p className='break-words font-mono text-caption2'>{row.reason.slice(0, 500)}</p>
+                              </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         )}
