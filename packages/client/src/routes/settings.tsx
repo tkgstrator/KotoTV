@@ -533,7 +533,7 @@ function toDraft(profile: EncodeProfile): ProfileDraft {
   }
 }
 
-function toBenchmarkRequest(d: ProfileDraft): BenchmarkRequest {
+function toBenchmarkRequest(d: ProfileDraft, profileId?: string): BenchmarkRequest {
   return {
     codec: d.codec,
     quality: d.quality,
@@ -544,7 +544,8 @@ function toBenchmarkRequest(d: ProfileDraft): BenchmarkRequest {
     bitrateKbps: d.bitrateKbps,
     qpValue: d.qpValue,
     keepOriginalResolution: d.keepOriginalResolution,
-    resolution: d.resolution
+    resolution: d.resolution,
+    ...(profileId !== undefined ? { profileId } : {})
   }
 }
 
@@ -555,7 +556,8 @@ function ProfileDialog({
   title,
   submitLabel,
   onSubmit,
-  isPending
+  isPending,
+  existingProfileId
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
@@ -564,6 +566,7 @@ function ProfileDialog({
   submitLabel: string
   onSubmit: (draft: CreateEncodeProfile) => void
   isPending: boolean
+  existingProfileId?: string
 }) {
   const [draft, setDraft] = useState<ProfileDraft>(initial)
   const [pendingBenchResult, setPendingBenchResult] = useState<BenchmarkResponse | null>(null)
@@ -582,7 +585,7 @@ function ProfileDialog({
 
   async function handleSave() {
     try {
-      const res = await benchmark.mutateAsync(toBenchmarkRequest(draft))
+      const res = await benchmark.mutateAsync(toBenchmarkRequest(draft, existingProfileId))
       if (res.ok) {
         onSubmit(draft)
       } else {
@@ -909,7 +912,8 @@ function EncodeTab() {
         bitrateKbps: profile.bitrateKbps,
         qpValue: profile.qpValue,
         keepOriginalResolution: profile.keepOriginalResolution,
-        resolution: profile.resolution
+        resolution: profile.resolution,
+        profileId: profile.id
       })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -1077,6 +1081,7 @@ function EncodeTab() {
           submitLabel='更新'
           onSubmit={(draft) => handleUpdate(editing.id, draft)}
           isPending={updateMutation.isPending}
+          existingProfileId={editing.id}
         />
       )}
 
@@ -1098,24 +1103,37 @@ function EncodeTab() {
               <table className='w-full text-footnote'>
                 <thead>
                   <tr className='border-b border-border bg-muted/40 text-left text-caption2 font-semibold uppercase tracking-wider text-muted-foreground'>
+                    <th className='w-[140px] px-3 py-2'>プロファイル</th>
                     <th className='px-3 py-2'>実行日</th>
                     <th className='px-3 py-2'>コーデック</th>
                     <th className='px-3 py-2'>HW支援</th>
-                    <th className='px-3 py-2'>解像度</th>
                     <th className='px-3 py-2 tabular-nums'>fps</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.data?.items.map((row) => (
                     <tr key={row.id} className='border-b border-border/50 last:border-b-0'>
+                      <td className='w-[140px] px-3 py-2'>
+                        {row.profileName ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className='block max-w-[140px] truncate text-foreground'>{row.profileName}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side='right' className='max-w-[320px]'>
+                                <p className='break-words text-caption2'>{row.profileName}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <span className='text-muted-foreground'>—</span>
+                        )}
+                      </td>
                       <td className='px-3 py-2 tabular-nums text-muted-foreground'>
                         {format(toDate(row.createdAt), 'MM/dd HH:mm', { locale: ja })}
                       </td>
                       <td className='px-3 py-2 uppercase'>{row.codec}</td>
                       <td className='px-3 py-2'>{HW_LABELS[row.hwAccel]}</td>
-                      <td className='px-3 py-2'>
-                        {row.keepOriginalResolution ? '原寸' : RESOLUTION_LABELS[row.resolution]}
-                      </td>
                       <td className={cn('px-3 py-2 tabular-nums', row.ok ? 'text-foreground' : 'text-destructive')}>
                         {row.ok || !row.reason ? (
                           <span>{row.fps.toFixed(1)}</span>

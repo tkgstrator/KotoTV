@@ -37,6 +37,7 @@ export interface BenchmarkRequest {
   qpValue: number
   keepOriginalResolution: boolean
   resolution: Resolution
+  profileId?: string
 }
 
 export interface BenchmarkResponse {
@@ -60,6 +61,8 @@ export interface BenchmarkLog {
   fps: number
   wallSeconds: number
   reason: string | null
+  profileId: string | null
+  profileName: string | null
 }
 
 export interface BenchmarkHistoryResponse {

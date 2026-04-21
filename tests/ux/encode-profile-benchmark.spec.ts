@@ -269,7 +269,9 @@ test('encode tab: ベンチマーク履歴 panel renders 5 columns, failed fps i
         ok: true,
         fps: 45.0,
         wallSeconds: 5.2,
-        reason: null
+        reason: null,
+        profileId: 'profile-id-a',
+        profileName: 'テストA'
       },
       {
         id: 'h-fail-1',
@@ -284,7 +286,9 @@ test('encode tab: ベンチマーク履歴 panel renders 5 columns, failed fps i
         ok: false,
         fps: 12.3,
         wallSeconds: 7.3,
-        reason: 'x'.repeat(200) // 200-char reason
+        reason: 'x'.repeat(200), // 200-char reason
+        profileId: null,
+        profileName: null
       }
     ]
   }
@@ -310,33 +314,45 @@ test('encode tab: ベンチマーク履歴 panel renders 5 columns, failed fps i
 
   const panel = page.locator('details').filter({ hasText: 'ベンチマーク履歴' })
 
-  // Exactly 5 header cells with the new labels
+  // Exactly 5 header cells in the new order: プロファイル / 実行日 / コーデック / HW支援 / fps
   const headers = panel.locator('thead th')
   await expect(headers, 'table must have exactly 5 columns').toHaveCount(5)
-  await expect(headers.nth(0)).toHaveText('実行日')
-  await expect(headers.nth(1)).toHaveText('コーデック')
-  await expect(headers.nth(2)).toHaveText('HW支援')
-  await expect(headers.nth(3)).toHaveText('解像度')
+  await expect(headers.nth(0)).toHaveText('プロファイル')
+  await expect(headers.nth(1)).toHaveText('実行日')
+  await expect(headers.nth(2)).toHaveText('コーデック')
+  await expect(headers.nth(3)).toHaveText('HW支援')
   await expect(headers.nth(4)).toHaveText('fps')
 
   // Table must have 2 data rows
   const rows = panel.locator('tbody tr')
   await expect(rows, '2 history rows must render').toHaveCount(2)
 
+  // First row's first td must show the profile name
+  const firstRow = rows.nth(0)
+  const firstProfileCell = firstRow.locator('td').nth(0)
+  await expect(firstProfileCell, 'first row profile cell must contain テストA').toContainText('テストA')
+
+  // Null-name row's first td must show em-dash
+  const nullNameRow = rows.nth(1)
+  const nullProfileCell = nullNameRow.locator('td').nth(0)
+  await expect(nullProfileCell, 'null-name row must show —').toContainText('—')
+
   // Failed row's fps cell must carry text-destructive class
   const failRow = rows.nth(1)
-  // fps is the 5th td (index 4)
+  // fps is the 5th td (index 4) in the new column order
   const failFpsCell = failRow.locator('td').nth(4)
   await expect(failFpsCell, 'failed fps cell must be visible').toBeVisible()
   const failFpsCls = await failFpsCell.getAttribute('class')
   expect(failFpsCls, 'failed fps cell must have text-destructive').toContain('text-destructive')
 
-  // Hover the fps cell of the failed row to trigger the tooltip
-  await failFpsCell.hover()
-  await page.waitForTimeout(300)
+  // Hover the inner span (TooltipTrigger) — hovering the td itself lands outside
+  // the trigger boundary on wide viewports and never fires the tooltip.
+  const fpsTriggerSpan = failFpsCell.locator('span').first()
+  await fpsTriggerSpan.hover()
+  await page.waitForTimeout(500)
 
   const tooltip = page.locator('[role="tooltip"]')
-  await expect(tooltip, 'tooltip must appear on hover over failed fps cell').toBeVisible({ timeout: 2000 })
+  await expect(tooltip, 'tooltip must appear on hover over failed fps cell').toBeVisible({ timeout: 3000 })
   const tooltipText = await tooltip.innerText()
   expect(tooltipText.length, 'tooltip text must be non-empty').toBeGreaterThan(0)
 })
