@@ -1151,7 +1151,7 @@ function EncodeTab() {
                         )}
                       </td>
                       <td className='px-3 py-2 tabular-nums text-muted-foreground'>
-                        {format(toDate(row.createdAt), 'MM/dd HH:mm', { locale: ja })}
+                        {format(toDate(row.createdAt), 'yyyy/MM/dd HH:mm', { locale: ja })}
                       </td>
                     </tr>
                   ))}
