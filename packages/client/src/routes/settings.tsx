@@ -470,7 +470,7 @@ function PlaybackTab() {
 const CODEC_VALUES: EncodeCodec[] = ['avc', 'hevc', 'vp9']
 const QUALITY_LABELS: Record<EncodeQuality, string> = { high: '高', medium: '中', low: '低' }
 const TIMING_LABELS: Record<EncodeTiming, string> = { immediate: '録画直後', idle: 'アイドル時' }
-const HW_LABELS: Record<HwAccelType, string> = { cpu: 'CPU', nvenc: 'NVEnc', vaapi: 'VAAPI' }
+const HW_LABELS: Record<HwAccelType, string> = { cpu: 'なし', nvenc: 'NVEnc', vaapi: 'VAAPI' }
 const RATE_LABELS: Record<RateControl, string> = { cbr: 'CBR', vbr: 'VBR', cqp: 'CQP' }
 const RESOLUTION_LABELS: Record<Resolution, string> = { hd1080: '1080p', hd720: '720p', sd480: '480p' }
 

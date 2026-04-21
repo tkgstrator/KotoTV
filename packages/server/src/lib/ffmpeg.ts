@@ -184,27 +184,21 @@ export type BenchmarkArgsOptions = {
  * by construction.
  */
 export function buildBenchmarkArgs(opts: BenchmarkArgsOptions): string[] {
-  const { hwAccel, codec, rateControl, bitrateKbps, qpValue, keepOriginalResolution, durationSec = 5 } = opts
-  const resolution = keepOriginalResolution ? 'hd1080' : opts.resolution
+  const { hwAccel, codec, rateControl, bitrateKbps, qpValue, durationSec = 5 } = opts
 
-  // testsrc2 size is ALWAYS 1920x1080@30 regardless of target resolution.
-  // Japanese broadcast originals are 1080i/1080p, so this matches the
-  // worst-case real pipeline. Even when keepOriginalResolution=true the encoder
-  // sees the same pixel count it would during a real recording.
+  // Benchmark ALWAYS encodes at 1920x1080@30 regardless of the profile's
+  // target resolution. Scaling down to 720p/480p hides the encoder workload
+  // the question we actually want answered is "can this hardware do 1080p
+  // realtime?". The profile's target resolution is still captured in the
+  // BenchmarkLog row for display in the history table.
   // See: docs/plans/encode-profile-resolution-and-benchmark.md Decisions #3
   const input = ['-y', '-f', 'lavfi', '-i', `testsrc2=duration=${durationSec}:size=1920x1080:rate=30`]
 
   const hwPreInput = buildHwPreInput(hwAccel)
 
-  const videoFlags = buildVideoFlags(
-    hwAccel,
-    codec,
-    bitrateKbps,
-    rateControl,
-    qpValue,
-    keepOriginalResolution,
-    resolution
-  )
+  // Force keepOriginalResolution=true so no scale filter is inserted; the
+  // encoder processes the full 1080p source.
+  const videoFlags = buildVideoFlags(hwAccel, codec, bitrateKbps, rateControl, qpValue, true, 'hd1080')
 
   const noAudio = ['-an']
   const nullOutput = ['-f', 'null', '-']
