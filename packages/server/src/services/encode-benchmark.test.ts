@@ -391,6 +391,50 @@ describe('persistence: rollback — prune failure rolls back insert, service sti
 })
 
 // ---------------------------------------------------------------------------
+// profileId persistence
+// ---------------------------------------------------------------------------
+
+describe('persistence: profileId is stored when provided', () => {
+  test('row has profileId matching the seeded EncodeProfile uuid', async () => {
+    const profile = await prisma.encodeProfile.create({
+      data: {
+        name: 'テスト',
+        codec: 'avc',
+        hwAccel: 'cpu',
+        rateControl: 'vbr',
+        bitrateKbps: 4000,
+        qpValue: 23,
+        keepOriginalResolution: true,
+        resolution: 'hd720'
+      }
+    })
+
+    const restore = withSpawnStub(() => fakeProc([progressLine(45.0)], 0))
+    try {
+      await benchmarkProfile({ ...BENCH_OPTS, profileId: profile.id })
+      const row = await prisma.benchmarkLog.findFirstOrThrow()
+      expect(row.profileId).toBe(profile.id)
+    } finally {
+      restore()
+      await prisma.encodeProfile.deleteMany({ where: { id: profile.id } })
+    }
+  })
+})
+
+describe('persistence: profileId is null when not provided', () => {
+  test('row has profileId === null when omitted', async () => {
+    const restore = withSpawnStub(() => fakeProc([progressLine(45.0)], 0))
+    try {
+      await benchmarkProfile(BENCH_OPTS)
+      const row = await prisma.benchmarkLog.findFirstOrThrow()
+      expect(row.profileId).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
 // isBenchmarkBusy
 // ---------------------------------------------------------------------------
 

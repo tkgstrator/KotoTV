@@ -67,20 +67,22 @@ function withSpawnStub(stub: (...args: unknown[]) => FakeProc): () => void {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const VALID_BODY = {
-  codec: 'avc',
-  quality: 'low',
-  timing: 'immediate',
-  hwAccel: 'cpu',
-  mode: 'simple',
-  rateControl: 'vbr',
-  bitrateKbps: 1500,
-  qpValue: 23,
-  keepOriginalResolution: false,
-  resolution: 'sd480'
+async function seedProfile(name = 'テスト') {
+  return prisma.encodeProfile.create({
+    data: {
+      name,
+      codec: 'avc',
+      hwAccel: 'cpu',
+      rateControl: 'vbr',
+      bitrateKbps: 4000,
+      qpValue: 23,
+      keepOriginalResolution: true,
+      resolution: 'hd720'
+    }
+  })
 }
 
-async function seedBenchmarkLog(overrides?: { createdAt?: Date }) {
+async function seedBenchmarkLog(overrides?: { createdAt?: Date; profileId?: string | null }) {
   return prisma.benchmarkLog.create({
     data: {
       codec: 'avc',
@@ -94,6 +96,7 @@ async function seedBenchmarkLog(overrides?: { createdAt?: Date }) {
       fps: 42.5,
       wallSeconds: 5.1,
       reason: null,
+      profileId: overrides?.profileId !== undefined ? overrides.profileId : null,
       ...(overrides?.createdAt ? { createdAt: overrides.createdAt } : {})
     }
   })
@@ -101,6 +104,10 @@ async function seedBenchmarkLog(overrides?: { createdAt?: Date }) {
 
 async function cleanup() {
   await prisma.benchmarkLog.deleteMany()
+}
+
+async function cleanupProfiles(ids: string[]) {
+  await prisma.encodeProfile.deleteMany({ where: { id: { in: ids } } })
 }
 
 // ---------------------------------------------------------------------------
@@ -112,14 +119,26 @@ describe('POST /api/encode-profiles/benchmark', () => {
     await cleanup()
   })
 
-  test('returns 200 with BenchmarkResponse shape when benchmark succeeds', async () => {
-    // Stub FFmpeg to emit a healthy fps value and exit 0.
+  test('returns 200 with BenchmarkResponse shape when benchmark succeeds (with profileId)', async () => {
+    const profile = await seedProfile()
     const restore = withSpawnStub(() => fakeProc([progressLine(45.3)], 0))
     try {
       const res = await app.request('/api/encode-profiles/benchmark', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(VALID_BODY)
+        body: JSON.stringify({
+          codec: 'avc',
+          quality: 'low',
+          timing: 'immediate',
+          hwAccel: 'cpu',
+          mode: 'simple',
+          rateControl: 'vbr',
+          bitrateKbps: 1500,
+          qpValue: 23,
+          keepOriginalResolution: false,
+          resolution: 'sd480',
+          profileId: profile.id
+        })
       })
 
       expect(res.status).toBe(200)
@@ -129,11 +148,40 @@ describe('POST /api/encode-profiles/benchmark', () => {
       expect(body.ok).toBe(true)
     } finally {
       restore()
+      await cleanupProfiles([profile.id])
+    }
+  })
+
+  test('returns 200 with BenchmarkResponse shape when no profileId supplied', async () => {
+    const restore = withSpawnStub(() => fakeProc([progressLine(45.3)], 0))
+    try {
+      const res = await app.request('/api/encode-profiles/benchmark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codec: 'avc',
+          quality: 'low',
+          timing: 'immediate',
+          hwAccel: 'cpu',
+          mode: 'simple',
+          rateControl: 'vbr',
+          bitrateKbps: 1500,
+          qpValue: 23,
+          keepOriginalResolution: false,
+          resolution: 'sd480'
+        })
+      })
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      const parsed = BenchmarkResponseSchema.safeParse(body)
+      expect(parsed.success).toBe(true)
+    } finally {
+      restore()
     }
   })
 
   test('returns 409 with benchmark_busy message when a benchmark is already running', async () => {
-    // Start a hanging benchmark to set isBenchmarkBusy() = true.
     let resolveExit: (n: number) => void = () => {}
     const hangingExited = new Promise<number>((resolve) => {
       resolveExit = resolve
@@ -150,7 +198,6 @@ describe('POST /api/encode-profiles/benchmark', () => {
       }
     }))
 
-    // Import benchmarkProfile to start the first (hanging) run.
     const { benchmarkProfile } = await import('../services/encode-benchmark')
     let firstRun: Promise<unknown> | null = null
     try {
@@ -163,13 +210,23 @@ describe('POST /api/encode-profiles/benchmark', () => {
         keepOriginalResolution: false,
         resolution: 'sd480'
       })
-      // Advance microtasks so `running` is set before the HTTP request.
       await new Promise((r) => setTimeout(r, 0))
 
       const res = await app.request('/api/encode-profiles/benchmark', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(VALID_BODY)
+        body: JSON.stringify({
+          codec: 'avc',
+          quality: 'low',
+          timing: 'immediate',
+          hwAccel: 'cpu',
+          mode: 'simple',
+          rateControl: 'vbr',
+          bitrateKbps: 1500,
+          qpValue: 23,
+          keepOriginalResolution: false,
+          resolution: 'sd480'
+        })
       })
 
       expect(res.status).toBe(409)
@@ -183,11 +240,21 @@ describe('POST /api/encode-profiles/benchmark', () => {
   })
 
   test('returns 400 when hwAccel has an invalid enum value', async () => {
-    // Zod validation rejects the request before benchmarkProfile is called.
     const res = await app.request('/api/encode-profiles/benchmark', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...VALID_BODY, hwAccel: 'not-a-valid-accel' })
+      body: JSON.stringify({
+        codec: 'avc',
+        quality: 'low',
+        timing: 'immediate',
+        hwAccel: 'not-a-valid-accel',
+        mode: 'simple',
+        rateControl: 'vbr',
+        bitrateKbps: 1500,
+        qpValue: 23,
+        keepOriginalResolution: false,
+        resolution: 'sd480'
+      })
     })
 
     expect(res.status).toBe(400)
@@ -215,21 +282,74 @@ describe('GET /api/encode-profiles/benchmark/history', () => {
     expect(body).toEqual({ items: [] })
   })
 
-  test('returns 200 with 3 items when 3 rows are seeded', async () => {
-    await seedBenchmarkLog()
-    await seedBenchmarkLog()
+  test('returns profileId and profileName derived from JOIN when profile exists', async () => {
+    const profile = await seedProfile('テスト')
+    await seedBenchmarkLog({ profileId: profile.id })
+
+    try {
+      const res = await app.request('/api/encode-profiles/benchmark/history')
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.items).toHaveLength(1)
+      expect(body.items[0].profileId).toBe(profile.id)
+      expect(body.items[0].profileName).toBe('テスト')
+    } finally {
+      await cleanupProfiles([profile.id])
+    }
+  })
+
+  test('returns null profileId and profileName when no profile linked', async () => {
     await seedBenchmarkLog()
 
     const res = await app.request('/api/encode-profiles/benchmark/history')
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.items).toHaveLength(3)
+    expect(body.items).toHaveLength(1)
+    expect(body.items[0].profileId).toBeNull()
+    expect(body.items[0].profileName).toBeNull()
+  })
+
+  test('SetNull on delete — profile deleted → history row has profileId: null, profileName: null', async () => {
+    const profile = await seedProfile('削除テスト')
+    await seedBenchmarkLog({ profileId: profile.id })
+
+    // Delete the profile — FK onDelete: SetNull should null out profile_id in bench row.
+    await prisma.encodeProfile.delete({ where: { id: profile.id } })
+
+    const res = await app.request('/api/encode-profiles/benchmark/history')
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.items).toHaveLength(1)
+    expect(body.items[0].profileId).toBeNull()
+    expect(body.items[0].profileName).toBeNull()
+  })
+
+  test('returns 200 with 3 items; mixed profileId values round-trip', async () => {
+    const profile = await seedProfile('プロファイルA')
+    await seedBenchmarkLog({ profileId: null })
+    await seedBenchmarkLog({ profileId: null })
+    await seedBenchmarkLog({ profileId: profile.id })
+
+    try {
+      const res = await app.request('/api/encode-profiles/benchmark/history')
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.items).toHaveLength(3)
+
+      const ids = body.items.map((item: { profileId: string | null }) => item.profileId)
+      expect(ids).toContain(null)
+      expect(ids).toContain(profile.id)
+    } finally {
+      await cleanupProfiles([profile.id])
+    }
   })
 
   test('returns items ordered by createdAt DESC (newest first)', async () => {
     const now = Date.now()
-    // Seed with explicit timestamps spaced 1 s apart so ordering is deterministic.
     await seedBenchmarkLog({ createdAt: new Date(now - 2000) })
     await seedBenchmarkLog({ createdAt: new Date(now - 1000) })
     await seedBenchmarkLog({ createdAt: new Date(now) })

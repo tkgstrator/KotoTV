@@ -47,6 +47,9 @@ export type BenchmarkProfileOpts = BenchmarkArgsOptions & {
   codec: 'avc' | 'hevc'
   rateControl: 'cbr' | 'vbr' | 'cqp'
   resolution: 'hd1080' | 'hd720' | 'sd480'
+  // FK to the EncodeProfile row this bench was triggered for. Optional so
+  // admin-triggered and test invocations don't have to supply a profile.
+  profileId?: string
 }
 
 /**
@@ -59,7 +62,7 @@ export type BenchmarkProfileOpts = BenchmarkArgsOptions & {
  * @param overrides  Test-only overrides (timeoutMs).
  */
 export async function benchmarkProfile(
-  opts: BenchmarkArgsOptions,
+  opts: BenchmarkProfileOpts,
   overrides?: { timeoutMs?: number }
 ): Promise<BenchmarkResult> {
   if (running !== null) throw new Error('benchmark_busy')
@@ -73,7 +76,7 @@ export async function benchmarkProfile(
 // Internal
 // ---------------------------------------------------------------------------
 
-async function runOnce(opts: BenchmarkArgsOptions, timeoutMs: number): Promise<BenchmarkResult> {
+async function runOnce(opts: BenchmarkProfileOpts, timeoutMs: number): Promise<BenchmarkResult> {
   const t0 = performance.now()
   const childLogger = logger.child({ module: 'encode-benchmark' })
 
@@ -176,7 +179,7 @@ async function runOnce(opts: BenchmarkArgsOptions, timeoutMs: number): Promise<B
   return result
 }
 
-async function persistResult(opts: BenchmarkArgsOptions, result: BenchmarkResult): Promise<void> {
+async function persistResult(opts: BenchmarkProfileOpts, result: BenchmarkResult): Promise<void> {
   // Map ffmpeg HwAccel ('none'/'qsv') to the DB HwAccelType enum ('cpu'/'vaapi').
   // 'qsv' is not in the DB enum; store as 'cpu' (best approximation for history).
   const dbHwAccel: 'cpu' | 'nvenc' | 'vaapi' =
@@ -185,6 +188,7 @@ async function persistResult(opts: BenchmarkArgsOptions, result: BenchmarkResult
   await prisma.$transaction(async (tx) => {
     await tx.benchmarkLog.create({
       data: {
+        profileId: opts.profileId ?? null,
         codec: opts.codec,
         hwAccel: dbHwAccel,
         rateControl: opts.rateControl,

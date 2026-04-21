@@ -44,7 +44,9 @@ export const CreateEncodeProfileSchema = EncodeProfileSchema.omit({
 
 export const UpdateEncodeProfileSchema = CreateEncodeProfileSchema.partial()
 
-export const BenchmarkRequestSchema = CreateEncodeProfileSchema.omit({ name: true, isDefault: true })
+export const BenchmarkRequestSchema = CreateEncodeProfileSchema.omit({ name: true, isDefault: true }).extend({
+  profileId: z.string().uuid().optional()
+})
 
 export const BenchmarkResponseSchema = z.object({
   ok: z.boolean(),
@@ -56,6 +58,8 @@ export const BenchmarkResponseSchema = z.object({
 export const BenchmarkLogSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.string(),
+  profileId: z.string().uuid().nullable(),
+  profileName: z.string().nullable(),
   codec: RuleEncodeCodecSchema,
   hwAccel: HwAccelTypeSchema,
   rateControl: RateControlSchema,
