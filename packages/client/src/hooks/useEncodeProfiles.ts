@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { CreateEncodeProfile, EncodeProfile, UpdateEncodeProfile } from '@/types/EncodeProfile'
+import type {
+  BenchmarkHistoryResponse,
+  BenchmarkRequest,
+  BenchmarkResponse,
+  CreateEncodeProfile,
+  EncodeProfile,
+  UpdateEncodeProfile
+} from '@/types/EncodeProfile'
 
 export const ENCODE_PROFILES_KEY = ['encode-profiles'] as const
 
@@ -72,5 +79,41 @@ export function useDeleteEncodeProfile() {
       qc.invalidateQueries({ queryKey: ENCODE_PROFILES_KEY })
       qc.invalidateQueries({ queryKey: ['rules'] })
     }
+  })
+}
+
+export const BENCHMARK_HISTORY_KEY = ['encode-profiles', 'benchmark', 'history'] as const
+
+export function useBenchmarkEncodeProfile() {
+  const qc = useQueryClient()
+  return useMutation<BenchmarkResponse, Error, BenchmarkRequest>({
+    mutationKey: ['encode-profiles', 'benchmark'],
+    mutationFn: async (body) => {
+      const res = await fetch('/api/encode-profiles/benchmark', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      if (res.status === 409) {
+        throw new Error('他のプロファイルを検証中です。少し待って再試行してください')
+      }
+      if (!res.ok) throw new Error(`benchmark failed: ${res.status}`)
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BENCHMARK_HISTORY_KEY })
+    }
+  })
+}
+
+export function useBenchmarkHistory() {
+  return useQuery<BenchmarkHistoryResponse>({
+    queryKey: BENCHMARK_HISTORY_KEY,
+    queryFn: async () => {
+      const res = await fetch('/api/encode-profiles/benchmark/history')
+      if (!res.ok) throw new Error('history fetch failed')
+      return res.json()
+    },
+    staleTime: 10_000
   })
 }
