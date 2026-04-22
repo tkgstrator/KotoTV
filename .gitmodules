@@ -1,3 +1,0 @@
-[submodule ".devcontainer/mirakc"]
-	path = .devcontainer/mirakc
-	url = https://github.com/tkgstrator/mirakc.git
