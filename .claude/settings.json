@@ -48,5 +48,16 @@
         ]
       }
     ]
-  }
+  },
+  "model": "claude-opus-4-6",
+  "enabledMcpjsonServers": [
+    "docker",
+    "github",
+    "tailwindcss",
+    "shadcn",
+    "prisma",
+    "zod"
+  ],
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "high"
 }
