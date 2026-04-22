@@ -9,6 +9,7 @@
     "lint": "bunx biome check .",
     "lint:fix": "bunx biome check --write .",
     "format": "bunx biome format --write .",
+    "test": "bun test packages/",
     "test:e2e": "bunx playwright test --project=desktop-chromium --project=mobile-chromium",
     "test:visual": "bunx playwright test --project=visual-desktop --project=visual-mobile",
     "test:ux": "bunx playwright test --project=ux-audit",

@@ -1,0 +1,3 @@
+[test]
+# Playwright specs live under tests/ and must not be picked up by `bun test`.
+pathIgnorePatterns = ["**/tests/**", "**/node_modules/**"]
