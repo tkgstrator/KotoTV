@@ -1,10 +1,12 @@
 import type { Recording } from '@kototv/server/src/schemas/Recording.dto'
 import { createFileRoute } from '@tanstack/react-router'
 import { addMinutes, startOfHour, subDays, subHours } from 'date-fns'
+import { TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DoneCard } from '@/components/recording/recording-list-items'
 import { RecordingPageHeader } from '@/components/recording/recording-page-header'
 import { RecordingsReserveAction } from '@/components/recording/recordings-reserve-action'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRecordingEvents, useRecordings } from '@/hooks/useRecordings'
 
@@ -217,10 +219,12 @@ function CompletedPage() {
 
   if (isError) {
     return (
-      <div className='px-4 py-12'>
-        <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 text-footnote text-destructive'>
-          録画データの取得に失敗しました
-        </div>
+      <div className='p-4'>
+        <Alert variant='destructive'>
+          <TriangleAlert />
+          <AlertTitle>データの取得に失敗しました</AlertTitle>
+          <AlertDescription>録画データを読み込めませんでした。再度お試しください。</AlertDescription>
+        </Alert>
       </div>
     )
   }
