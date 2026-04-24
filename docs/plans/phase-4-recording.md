@@ -4,7 +4,7 @@
 |------|-----|
 | **目標** | 録画予約の作成・一覧表示・削除が `/recordings` で可能。予約時刻に Mirakc→FFmpeg で録画ファイルを生成 |
 | **工数** | 3-4 日 |
-| **ステータス** | 実行中 (Mirakc-free パート着手 2026-04-18) |
+| **ステータス** | 完了 (2026-04-24) |
 | **前提フェーズ** | Phase 1, Phase 2 |
 
 ## 全体フロー
@@ -53,8 +53,8 @@ Recording.thumbnailUrl: string | null   # ← 独立フィールド。status の
 ## チェックリスト
 
 ### planner
-- [ ] `RecordingSchedule` / `Recording` の状態遷移 + backend/streaming の責任分担を `docs/plans/phase-4-recording-design.md` (sub doc) に明記
-- [ ] スケジューラの実装方針 (node-cron vs 自前 `setTimeout` + DB ポーリング) を選定
+- [x] `RecordingSchedule` / `Recording` の状態遷移 + backend/streaming の責任分担を `docs/plans/phase-4-recording-design.md` (sub doc) に明記
+- [x] スケジューラの実装方針 (node-cron vs 自前 `setTimeout` + DB ポーリング) を選定
 
 ### designer ✅ 完了 2026-04-17
 - [x] `docs/mocks/recordings/` に v1-v12 バリアント生成
@@ -62,43 +62,43 @@ Recording.thumbnailUrl: string | null   # ← 独立フィールド。status の
 - [x] StatusChip マッピング: `scheduled → sched`, `recording → rec`, `completed → done`, `failed → err`
 
 ### devops
-- [ ] `compose.yaml` の app サービスに `volumes: [recordings:/app/data/recordings]` と named volume を追加 — `compose.yaml`
-- [ ] `.env.example` に `RECORDINGS_DIR=/app/data/recordings` を追記 — `.env.example`
+- [x] `compose.yaml` の app サービスに `volumes: [recordings:/app/data/recordings]` と named volume を追加 — `compose.yaml`
+- [x] `.env.example` に `RECORDINGS_DIR=/app/data/recordings` を追記 — `.env.example`
 
 ### backend
-- [ ] `RecordingSchedule` / `Recording` モデルを Prisma スキーマに追加 — `packages/server/prisma/schema.prisma`
-- [ ] `bunx prisma migrate dev --name add-recording` を実行 — `packages/server/prisma/migrations/`
-- [ ] `RecordingScheduleSchema` / `RecordingSchema` / `CreateRecordingScheduleSchema` を定義 — `packages/server/src/schemas/Recording.dto.ts`
-- [ ] `GET /api/recordings` (一覧)、`POST /api/recordings` (予約作成)、`DELETE /api/recordings/:id` (削除) — `packages/server/src/routes/recordings.ts`
-- [ ] 予約作成時に Mirakc クライアント経由で番組存在確認 (past-in-time は 400) — `packages/server/src/routes/recordings.ts`
-- [ ] recordings ルートを `app.ts` にマウントし `AppType` を更新 — `packages/server/src/app.ts`
-- [ ] `Recording` モデルに `thumbnailUrl String?` フィールドを追加 (status の sub-state ではなく独立カラム) — `packages/server/src/prisma/schema.prisma`
-- [ ] `GET /api/recordings/events` を **Global SSE** で実装 (per-recording ストリームは実装しない。決定 2026-04-17)。イベント形式 `{ type: 'thumbnail-ready', recordingId, thumbnailUrl }` / `{ type: 'status-changed', recordingId, status }` ほか将来の状態遷移通知。一覧ページ + 詳細ページ両方がこの 1 本を subscribe し、詳細ページ側で `recordingId === currentId` を filter — `packages/server/src/routes/recordings.ts`
-- [ ] SSE ルートのクライアント切断検知 (`c.req.raw.signal`) と in-memory subscriber リストのクリーンアップ
+- [x] `RecordingSchedule` / `Recording` モデルを Prisma スキーマに追加 — `packages/server/prisma/schema.prisma`
+- [x] `bunx prisma migrate dev --name add-recording` を実行 — `packages/server/prisma/migrations/`
+- [x] `RecordingScheduleSchema` / `RecordingSchema` / `CreateRecordingScheduleSchema` を定義 — `packages/server/src/schemas/Recording.dto.ts`
+- [x] `GET /api/recordings` (一覧)、`POST /api/recordings` (予約作成)、`DELETE /api/recordings/:id` (削除) — `packages/server/src/routes/recordings.ts`
+- [x] 予約作成時に Mirakc クライアント経由で番組存在確認 (past-in-time は 400) — `packages/server/src/routes/recordings.ts`
+- [x] recordings ルートを `app.ts` にマウントし `AppType` を更新 — `packages/server/src/app.ts`
+- [x] `Recording` モデルに `thumbnailUrl String?` フィールドを追加 (status の sub-state ではなく独立カラム) — `packages/server/src/prisma/schema.prisma`
+- [x] `GET /api/recordings/events` を **Global SSE** で実装 (per-recording ストリームは実装しない。決定 2026-04-17)。イベント形式 `{ type: 'thumbnail-ready', recordingId, thumbnailUrl }` / `{ type: 'status-changed', recordingId, status }` ほか将来の状態遷移通知。一覧ページ + 詳細ページ両方がこの 1 本を subscribe し、詳細ページ側で `recordingId === currentId` を filter — `packages/server/src/routes/recordings.ts`
+- [x] SSE ルートのクライアント切断検知 (`c.req.raw.signal`) と in-memory subscriber リストのクリーンアップ
 
 ### streaming
-- [ ] `recording-manager.ts` を実装: 起動時に `pending` スケジュールをロードし `startAt` で `setTimeout` 登録 — `packages/server/src/services/recording-manager.ts`
-- [ ] 予約時刻到達 → Mirakc で `openLiveStream(serviceId)` → `Bun.spawn` FFmpeg で TS→MP4 (or MKV) 保存 → DB の `Recording` に `filePath`, `sizeBytes`, `durationSec` を INSERT
-- [ ] 録画用 FFmpeg は HLS とは別コマンド: `-c copy -f mp4 -movflags +faststart` ベース、再エンコード不要 — `packages/server/src/lib/ffmpeg.ts` に `buildRecordArgs()` 追加
-- [ ] 録画終了時刻 (`endAt`) で FFmpeg に `q` キー送信または `AbortSignal` で正常終了
-- [ ] エラー時は `status='failed'` + ログに stderr を保存
-- [ ] `completed` 遷移後にバックグラウンドでサムネイル抽出ジョブを enqueue: FFmpeg で代表フレーム 1 枚を `data/thumbnails/<recordingId>.jpg` に書き出し、`Recording.thumbnailUrl` を UPDATE → SSE で `thumbnail-ready` を emit。抽出失敗は `thumbnailUrl=null` のまま放置 (録画完了自体は成功扱い) — `packages/server/src/services/recording-manager.ts`
-- [ ] サムネ抽出ジョブは録画本体の FFmpeg プロセスとは分離し、`completed` 遷移自体は抽出完了を待たない
-- [ ] CRUD API から新しい予約が追加されたら `setTimeout` を再登録するための event emitter または DB ポーリング (30s 周期)
+- [x] `recording-manager.ts` を実装: 起動時に `pending` スケジュールをロードし `startAt` で `setTimeout` 登録 — `packages/server/src/services/recording-manager.ts`
+- [x] 予約時刻到達 → Mirakc で `openLiveStream(serviceId)` → `Bun.spawn` FFmpeg で TS→MP4 (or MKV) 保存 → DB の `Recording` に `filePath`, `sizeBytes`, `durationSec` を INSERT
+- [x] 録画用 FFmpeg は HLS とは別コマンド: `-c copy -f mp4 -movflags +faststart` ベース、再エンコード不要 — `packages/server/src/lib/ffmpeg.ts` に `buildRecordArgs()` 追加
+- [x] 録画終了時刻 (`endAt`) で FFmpeg に `q` キー送信または `AbortSignal` で正常終了
+- [x] エラー時は `status='failed'` + ログに stderr を保存
+- [x] `completed` 遷移後にバックグラウンドでサムネイル抽出ジョブを enqueue: FFmpeg で代表フレーム 1 枚を `data/thumbnails/<recordingId>.jpg` に書き出し、`Recording.thumbnailUrl` を UPDATE → SSE で `thumbnail-ready` を emit。抽出失敗は `thumbnailUrl=null` のまま放置 (録画完了自体は成功扱い) — `packages/server/src/services/recording-manager.ts`
+- [x] サムネ抽出ジョブは録画本体の FFmpeg プロセスとは分離し、`completed` 遷移自体は抽出完了を待たない
+- [x] CRUD API から新しい予約が追加されたら `setTimeout` を再登録するための event emitter または DB ポーリング (30s 周期)
 
 ### frontend
-- [ ] `useRecordings` フックを作成 (一覧取得・作成・削除の `useQuery`/`useMutation`、`onSuccess` で invalidate) — `packages/client/src/hooks/useRecordings.ts`
-- [ ] `RecordingScheduleForm` を `react-hook-form` + Zod スキーマで実装 (Shadcn `Form` + `Dialog`) — `packages/client/src/components/recording/RecordingScheduleForm.tsx`
-- [ ] `RecordingList` コンポーネント (ステータスバッジ、削除ボタン、削除確認 `AlertDialog`) — `packages/client/src/components/recording/RecordingList.tsx`
-- [ ] 録画一覧ページを作成 — `packages/client/src/routes/recordings/index.tsx`
-- [ ] 予約作成・削除の成功/失敗を `sonner` Toast で通知
-- [ ] `GET /api/recordings/events` に 1 本の SSE 接続を張り、`thumbnail-ready` 受信時に `queryClient.invalidateQueries({ queryKey: ['recordings'] })`。ポーリングではなく push で更新 — `packages/client/src/hooks/useRecordings.ts` または `packages/client/src/hooks/useRecordingEvents.ts`
-- [ ] ステータスバッジは Phase 2 で導入した `<StatusChip>` を variant マッピング (`scheduled→sched`, `recording→rec`, `completed→done`, `failed→err`) で再利用。ローカル再実装禁止 — `packages/client/src/components/recording/RecordingList.tsx`
-- [ ] サムネ未生成時は Shadcn `Skeleton` を placeholder に表示、`thumbnailUrl` が届いたら差し替え
+- [x] `useRecordings` フックを作成 (一覧取得・作成・削除の `useQuery`/`useMutation`、`onSuccess` で invalidate) — `packages/client/src/hooks/useRecordings.ts`
+- [x] `RecordingScheduleForm` を `react-hook-form` + Zod スキーマで実装 (Shadcn `Form` + `Dialog`) — `packages/client/src/components/recording/RecordingScheduleForm.tsx`
+- [x] `RecordingList` コンポーネント (ステータスバッジ、削除ボタン、削除確認 `AlertDialog`) — `packages/client/src/components/recording/RecordingList.tsx`
+- [x] 録画一覧ページを作成 — `packages/client/src/routes/recordings/index.tsx`
+- [x] 予約作成・削除の成功/失敗を `sonner` Toast で通知
+- [x] `GET /api/recordings/events` に 1 本の SSE 接続を張り、`thumbnail-ready` 受信時に `queryClient.invalidateQueries({ queryKey: ['recordings'] })`。ポーリングではなく push で更新 — `packages/client/src/hooks/useRecordings.ts` または `packages/client/src/hooks/useRecordingEvents.ts`
+- [x] ステータスバッジは Phase 2 で導入した `<StatusChip>` を variant マッピング (`scheduled→sched`, `recording→rec`, `completed→done`, `failed→err`) で再利用。ローカル再実装禁止 — `packages/client/src/components/recording/RecordingList.tsx`
+- [x] サムネ未生成時は Shadcn `Skeleton` を placeholder に表示、`thumbnailUrl` が届いたら差し替え
 
 ### qa
-- [ ] 型検査 + Biome
-- [ ] コミット単位: `feat(server): recording schema + routes`, `feat(streaming): recording manager`, `feat(client): recording UI`
+- [x] 型検査 + Biome
+- [x] コミット単位: `feat(server): recording schema + routes`, `feat(streaming): recording manager`, `feat(client): recording UI`
 
 ## 共有コントラクト
 
