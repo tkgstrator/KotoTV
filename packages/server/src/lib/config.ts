@@ -22,7 +22,8 @@ const EnvSchema = z.object({
   MIRAKC_MOCK_STREAM: z.coerce.boolean().default(false),
   /* VAAPI render-node device path. Override when the kernel assigns a node
    * number other than renderD128 (e.g. renderD129 on multi-GPU hosts). */
-  VAAPI_DEVICE: z.string().startsWith('/dev/dri/').default('/dev/dri/renderD128')
+  VAAPI_DEVICE: z.string().startsWith('/dev/dri/').default('/dev/dri/renderD128'),
+  RECORDINGS_DIR: z.string().default('./data/recordings')
 })
 
 const result = EnvSchema.safeParse(Bun.env)
