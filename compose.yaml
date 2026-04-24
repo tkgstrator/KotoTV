@@ -39,6 +39,7 @@ services:
       CODEC: ${CODEC:-avc}
       HLS_DIR: ${HLS_DIR:-/app/data/hls}
       HLS_IDLE_KILL_MS: ${HLS_IDLE_KILL_MS:-15000}
+      RECORDINGS_DIR: ${RECORDINGS_DIR:-/app/data/recordings}
     tmpfs:
       - /app/data/hls:size=512M,mode=0755,exec
     volumes:
