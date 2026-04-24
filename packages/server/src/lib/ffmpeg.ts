@@ -241,6 +241,92 @@ export function buildFfmpegArgs(opts: FfmpegArgsOptions): string[] {
   return [...overwrite, ...hwPreInput, ...input, ...mapping, ...scaleFlags, ...videoFlags, ...audioFlags, ...hlsFlags]
 }
 
+export type RecordArgsOptions = {
+  /** Absolute path to the output .tmp.mp4 file. Caller renames to .mp4 on success. */
+  outputPath: string
+}
+
+/**
+ * Build FFmpeg args for stream-copy recording (no re-encode, just remux to MP4).
+ * Input is always pipe:0.
+ * `-movflags +faststart` moves the moov atom to the front of the file on finalise;
+ * this is safe because we write to a .tmp.mp4 then rename on completion, giving
+ * FFmpeg a chance to flush the full atom before the caller does the rename.
+ */
+export function buildRecordArgs(opts: RecordArgsOptions): string[] {
+  return ['-i', 'pipe:0', '-c', 'copy', '-f', 'mp4', '-movflags', '+faststart', '-y', opts.outputPath]
+}
+
+export type RecordingHlsArgsOptions = {
+  /** Absolute path to the recorded MP4 file used as input. */
+  inputPath: string
+  /** Absolute path to the session HLS output directory (must exist before FFmpeg starts). */
+  outputDir: string
+  codec: Codec
+  quality: Quality
+  hwAccel: HwAccel
+  /** Video bitrate override in kbps. Defaults from quality preset. */
+  videoBitrate?: number
+  /** Audio bitrate in kbps. Default: 128. */
+  audioBitrate?: number
+  /** Length of each HLS segment in seconds. Default: 2. */
+  segmentSeconds?: number
+}
+
+/**
+ * Build FFmpeg args for transcoding a recording file to VOD HLS.
+ * Input is a file path (not pipe:0).
+ * Uses -hls_playlist_type vod and -hls_list_size 0 so all segments are retained.
+ * No -re flag: transcode as fast as possible (not live rate).
+ */
+export function buildRecordingHlsArgs(opts: RecordingHlsArgsOptions): string[] {
+  const { inputPath, outputDir, codec, quality, hwAccel, audioBitrate = 128, segmentSeconds = 2 } = opts
+
+  const preset = QUALITY_PRESETS[quality]
+  const videoBitrate = opts.videoBitrate ?? preset.bitrate
+
+  const overwrite = ['-y']
+  const hwPreInput = buildHwPreInput(hwAccel)
+  const input = ['-i', inputPath]
+  const mapping = ['-map', '0:v:0', '-map', '0:a:0']
+
+  const gop = preset.fps * segmentSeconds
+  const scaleFlags = [
+    '-s',
+    `${preset.width}x${preset.height}`,
+    '-r',
+    String(preset.fps),
+    '-g',
+    String(gop),
+    '-keyint_min',
+    String(gop),
+    '-sc_threshold',
+    '0'
+  ]
+
+  // VBR is a safe default for VOD; no CQP/CBR variants needed here
+  const videoFlags = buildVideoFlags(hwAccel, codec, videoBitrate, 'vbr', 23, true)
+  const audioFlags = ['-c:a', 'aac', '-b:a', `${audioBitrate}k`]
+
+  const hlsFlags = [
+    '-f',
+    'hls',
+    '-hls_time',
+    String(segmentSeconds),
+    '-hls_list_size',
+    '0',
+    '-hls_playlist_type',
+    'vod',
+    '-hls_flags',
+    'independent_segments',
+    '-hls_segment_filename',
+    `${outputDir}/%04d.ts`,
+    `${outputDir}/playlist.m3u8`
+  ]
+
+  return [...overwrite, ...hwPreInput, ...input, ...mapping, ...scaleFlags, ...videoFlags, ...audioFlags, ...hlsFlags]
+}
+
 export type BenchmarkArgsOptions = {
   hwAccel: HwAccel
   codec: Codec

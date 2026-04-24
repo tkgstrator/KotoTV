@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { z } from 'zod'
 import { logger } from '../lib/logger'
+import { prisma } from '../lib/prisma'
 import { StartStreamRequestSchema, type StartStreamResponse, StartStreamResponseSchema } from '../schemas/Stream.dto'
 import { streamManager } from '../services/stream-manager'
 
@@ -56,20 +57,45 @@ const streamsRoute = new Hono()
     }
   )
   .post('/recording/:recordingId', zValidator('param', StartRecordingStreamParamSchema), async (c) => {
-    const { recordingId: _recordingId } = c.req.valid('param')
+    const { recordingId } = c.req.valid('param')
 
-    // TODO(phase-5): replace with streamManager.acquireRecording(_recordingId, filePath)
-    const sessionId = crypto.randomUUID()
-    const playlistUrl = `/api/streams/${sessionId}/playlist.m3u8`
+    // Look up the Recording row to get the file path
+    const row = await prisma.recording.findUnique({ where: { id: recordingId } })
+    if (!row) {
+      return c.json({ error: { code: 'RECORDING_NOT_FOUND', message: 'recording not found' } }, 404)
+    }
+    if (!row.filePath) {
+      return c.json({ error: { code: 'RECORDING_FILE_MISSING', message: 'recording file path is not available' } }, 422)
+    }
 
-    const body = {
-      sessionId,
-      playlistUrl
-    } satisfies StartStreamResponse
+    // Verify the file actually exists on disk before spawning FFmpeg
+    const fileExists = await Bun.file(row.filePath).exists()
+    if (!fileExists) {
+      return c.json(
+        { error: { code: 'RECORDING_FILE_NOT_FOUND', message: `recording file not found on disk: ${row.filePath}` } },
+        404
+      )
+    }
 
-    StartStreamResponseSchema.parse(body)
+    try {
+      const { sessionId, playlistUrl } = await streamManager.acquireRecording(recordingId, row.filePath)
 
-    return c.json(body, 201)
+      const body = {
+        sessionId,
+        playlistUrl
+      } satisfies StartStreamResponse
+
+      StartStreamResponseSchema.parse(body)
+
+      return c.json(body, 201)
+    } catch (err) {
+      routeLogger.error({ recordingId, err }, 'failed to start recording stream')
+      return c.json(
+        { error: { code: 'STREAM_START_FAILED', message: err instanceof Error ? err.message : 'unknown error' } },
+        503,
+        { 'Retry-After': '2' }
+      )
+    }
   })
   .delete('/:sessionId', zValidator('param', SessionParamSchema), (c) => {
     const { sessionId } = c.req.valid('param')
