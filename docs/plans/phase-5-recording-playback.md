@@ -4,7 +4,7 @@
 |------|-----|
 | **目標** | `/recordings/:id` で録画ファイルがシーク対応の HLS 再生で視聴できる |
 | **工数** | 1-2 日 |
-| **ステータス** | 実行中 (Mirakc-free パート着手 2026-04-18) |
+| **ステータス** | 完了 (2026-04-24) |
 | **前提フェーズ** | Phase 2, Phase 4 |
 
 ## 全体フロー
@@ -38,25 +38,25 @@
 - [x] v12 採択 (inline strip + collapsed fault log)
 
 ### backend
-- [ ] `POST /api/streams/recording/:recordingId` ルートを実装 (stream-manager に委譲) — `packages/server/src/routes/streams.ts`
-- [ ] `recordingId` から DB 経由で `filePath` を取得して streaming 層に渡す — `packages/server/src/services/recording-service.ts` (新設)
-- [ ] `AppType` 更新 — `packages/server/src/app.ts`
+- [x] `POST /api/streams/recording/:recordingId` ルートを実装 (stream-manager に委譲) — `packages/server/src/routes/streams.ts`
+- [x] `recordingId` から DB 経由で `filePath` を取得して streaming 層に渡す — `packages/server/src/services/recording-service.ts` (新設)
+- [x] `AppType` 更新 — `packages/server/src/app.ts`
 
 ### streaming
-- [ ] `acquireRecording(recordingId, filePath)` メソッドを `streamManager` に追加 — `packages/server/src/services/stream-manager.ts`
-- [ ] 録画用 FFmpeg コマンドを追加: 入力 `-i <filePath>` + HLS 出力 + シーク対応 (`-ss` を使わずリクエストごとに再生成せず、セグメントは全時間分を一気に生成して playlist を `EVENT` タイプに) — `packages/server/src/lib/ffmpeg.ts` に `buildRecordingHlsArgs()` 追加
-- [ ] 録画再生は live とは異なり `-hls_playlist_type vod` + `-hls_list_size 0` で VOD 配信
+- [x] `acquireRecording(recordingId, filePath)` メソッドを `streamManager` に追加 — `packages/server/src/services/stream-manager.ts`
+- [x] 録画用 FFmpeg コマンドを追加: 入力 `-i <filePath>` + HLS 出力 + シーク対応 (`-ss` を使わずリクエストごとに再生成せず、セグメントは全時間分を一気に生成して playlist を `EVENT` タイプに) — `packages/server/src/lib/ffmpeg.ts` に `buildRecordingHlsArgs()` 追加
+- [x] 録画再生は live とは異なり `-hls_playlist_type vod` + `-hls_list_size 0` で VOD 配信
 
 ### frontend
-- [ ] `useStream` フックを拡張: `{ type: 'live'; channelId } | { type: 'recording'; recordingId }` のユニオン型 — `packages/client/src/hooks/useStream.ts`
-- [ ] 録画視聴ページを作成、`HlsPlayer` を `lowLatency={false}` で再利用 — `packages/client/src/routes/recordings/$id.tsx`
-- [ ] Phase 2 で実装した `<PlayerControls>` を `isLive={false}` で再利用。差分はシークバーが `role="slider"` となってインタラクティブになる点と、チャプター tick オーバーレイを seekbar 上に追加する点のみ (コンポーネント複製は禁止) — `packages/client/src/components/player/PlayerControls.tsx` (拡張), `packages/client/src/components/player/SeekbarChapters.tsx` (新設)
-- [ ] `<StatusChip>` を再利用して録画メタ表示 (完了時刻、長さ、解像度など) のラベルに使用
-- [ ] 録画一覧の各アイテムに `<Link to="/recordings/$id" params={{ id }}>` を追加 — `packages/client/src/components/recording/RecordingList.tsx`
+- [x] `useStream` フックを拡張: `{ type: 'live'; channelId } | { type: 'recording'; recordingId }` のユニオン型 — `packages/client/src/hooks/useStream.ts`
+- [x] 録画視聴ページを作成、`HlsPlayer` を `lowLatency={false}` で再利用 — `packages/client/src/routes/recordings/$id.tsx`
+- [x] Phase 2 で実装した `<PlayerControls>` を `isLive={false}` で再利用。差分はシークバーが `role="slider"` となってインタラクティブになる点と、チャプター tick オーバーレイを seekbar 上に追加する点のみ (コンポーネント複製は禁止) — `packages/client/src/components/player/PlayerControls.tsx` (拡張), `packages/client/src/components/player/SeekbarChapters.tsx` (新設)
+- [x] `<StatusChip>` を再利用して録画メタ表示 (完了時刻、長さ、解像度など) のラベルに使用
+- [x] 録画一覧の各アイテムに `<Link to="/recordings/$id" params={{ id }}>` を追加 — `packages/client/src/components/recording/RecordingList.tsx`
 
 ### qa
-- [ ] 型検査 + Biome
-- [ ] コミット: `feat(streaming): recording playback`, `feat(client): recording player page`
+- [x] 型検査 + Biome
+- [x] コミット: `feat(streaming): recording playback`, `feat(client): recording player page`
 
 ## 共有コントラクト (参照)
 

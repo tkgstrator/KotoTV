@@ -4,7 +4,7 @@
 |------|-----|
 | **目標** | ルール (キーワード/ジャンル/チャンネル/時間帯) で `RecordingSchedule` を自動生成。前提として EPG を DB に永続化し、マッチ / プレビューはすべて DB 検索ベースに統一する |
 | **工数** | 3-4 日 (EPG DB 化 +1 日分を追加評価) |
-| **ステータス** | 実装着手 (2026-04-18) |
+| **ステータス** | 完了 (2026-04-24) |
 | **前提** | Phase 4 本体 (`RecordingSchedule` / `Recording` スキーマ + CRUD + SSE + `/recordings` UI) が着地済み、Phase 3 (EPG fetch) が Mirakc 経由で動作中 |
 | **位置付け** | Phase 4 本体の延長。**主役はルール**、単発予約は副次 |
 
@@ -406,51 +406,51 @@ export const FailureReasonSchema = z.enum([
 
 ### planner
 - [x] 本ドキュメント
-- [ ] `docs/mocks/recording-rules/README.md` 骨子 (designer 向け依頼)
-- [ ] `docs/plans/phase-3-epg.md` 末尾に Phase 4-rules 追補参照を追加
+- [x] `docs/mocks/recording-rules/README.md` 骨子 (designer 向け依頼)
+- [x] `docs/plans/phase-3-epg.md` 末尾に Phase 4-rules 追補参照を追加
 
 ### backend (EPG 永続化)
-- [ ] Prisma schema に `Program` モデル追加 — `packages/server/prisma/schema.prisma`
-- [ ] `epg-sync.ts` 実装 (`syncAllPrograms`, `syncChannel`, scheduler) — `packages/server/src/services/epg-sync.ts`
-- [ ] サーバ起動時 `startEpgSyncScheduler()` + SIGTERM で `stopEpgSyncScheduler()` を await — `packages/server/src/index.ts`
-- [ ] `routes/programs.ts` を DB クエリベースに切替 + Mirakc フォールバック実装
-- [ ] `mirakc-client.ts` に `getStatus()` (tuner 総数取得 + キャッシュ) 追加
-- [ ] Program row → `ProgramSchema` serializer を `packages/server/src/schemas/Program.dto.ts` に追加
+- [x] Prisma schema に `Program` モデル追加 — `packages/server/prisma/schema.prisma`
+- [x] `epg-sync.ts` 実装 (`syncAllPrograms`, `syncChannel`, scheduler) — `packages/server/src/services/epg-sync.ts`
+- [x] サーバ起動時 `startEpgSyncScheduler()` + SIGTERM で `stopEpgSyncScheduler()` を await — `packages/server/src/index.ts`
+- [x] `routes/programs.ts` を DB クエリベースに切替 + Mirakc フォールバック実装
+- [x] `mirakc-client.ts` に `getStatus()` (tuner 総数取得 + キャッシュ) 追加
+- [x] Program row → `ProgramSchema` serializer を `packages/server/src/schemas/Program.dto.ts` に追加
 
 ### backend (rule エンジン)
-- [ ] Prisma schema に `RecordingRule` + enum 2 種 + `RecordingSchedule.ruleId` + `RecordingSchedule.failureReason` 追加
-- [ ] `bunx prisma migrate dev --name add-recording-rules-and-programs`
-- [ ] `RecordingRule.dto.ts` に Zod スキーマ群 — `packages/server/src/schemas/RecordingRule.dto.ts`
-- [ ] `Recording.dto.ts` に `rule-matched` / `epg-synced` event + `FailureReasonSchema` 追加
-- [ ] `/api/recording-rules` CRUD + `/preview` 実装 — `packages/server/src/routes/recording-rules.ts`
-- [ ] `app.ts` にマウント + `AppType` 更新
-- [ ] `rule-matcher.ts`: `matches()` 純関数 + `runRuleMatcher()` + `resolveConflicts()` + scheduler
-- [ ] サーバ起動時 EPG 初回同期完了 → `runRuleMatcher()` → `startRuleMatcherScheduler()` のシーケンス
-- [ ] regex keyword 保存時バリデーション (`new RegExp()` try/catch)
-- [ ] 単体テスト: `matches()` の真偽表 (keyword / genre / channel / time / dayOfWeek / exclude / 日跨ぎ)
-- [ ] 単体テスト: `resolveConflicts()` (tuner_total=2 で 3 本重複 → 低優先度 1 本が failed)
+- [x] Prisma schema に `RecordingRule` + enum 2 種 + `RecordingSchedule.ruleId` + `RecordingSchedule.failureReason` 追加
+- [x] `bunx prisma migrate dev --name add-recording-rules-and-programs`
+- [x] `RecordingRule.dto.ts` に Zod スキーマ群 — `packages/server/src/schemas/RecordingRule.dto.ts`
+- [x] `Recording.dto.ts` に `rule-matched` / `epg-synced` event + `FailureReasonSchema` 追加
+- [x] `/api/recording-rules` CRUD + `/preview` 実装 — `packages/server/src/routes/recording-rules.ts`
+- [x] `app.ts` にマウント + `AppType` 更新
+- [x] `rule-matcher.ts`: `matches()` 純関数 + `runRuleMatcher()` + `resolveConflicts()` + scheduler
+- [x] サーバ起動時 EPG 初回同期完了 → `runRuleMatcher()` → `startRuleMatcherScheduler()` のシーケンス
+- [x] regex keyword 保存時バリデーション (`new RegExp()` try/catch)
+- [x] 単体テスト: `matches()` の真偽表 (keyword / genre / channel / time / dayOfWeek / exclude / 日跨ぎ)
+- [x] 単体テスト: `resolveConflicts()` (tuner_total=2 で 3 本重複 → 低優先度 1 本が failed)
 
 ### frontend
-- [ ] `useRecordingRules` / `useCreateRecordingRule` / `useUpdateRecordingRule` / `useDeleteRecordingRule` — `packages/client/src/hooks/useRecordingRules.ts`
-- [ ] `useRecordingRulePreview` (debounce 500ms の mutation) — 同上
-- [ ] `/recordings` を 3 タブ化 (`?tab=pending|completed|failed`) — `packages/client/src/routes/recordings/index.tsx`
-- [ ] 失敗タブで `failureReason` の日本語表示 (tuner_conflict → "チューナー不足")
-- [ ] `/recordings/rules` 一覧 — `packages/client/src/routes/recordings/rules/index.tsx`
-- [ ] `/recordings/rules/$ruleId` 編集 — `packages/client/src/routes/recordings/rules/$ruleId.tsx`
-- [ ] `/recordings/rules/new` — `packages/client/src/routes/recordings/rules/new.tsx`
-- [ ] `RecordingRuleForm` (Shadcn Form + Switch + MultiSelect + Slider for time) — `packages/client/src/components/recording/RecordingRuleForm.tsx`
-- [ ] `RecordingRuleList` — `packages/client/src/components/recording/RecordingRuleList.tsx`
-- [ ] `RecordingRulePreview` (プレビューペイン + matchCount バッジ) — `packages/client/src/components/recording/RecordingRulePreview.tsx`
-- [ ] `ChannelPicker` (GR/BS/CS 一括ボタン + チェックボックス群) — `packages/client/src/components/recording/ChannelPicker.tsx`
-- [ ] SSE の `rule-matched` / `epg-synced` 受信で適切に invalidate
-- [ ] ルール削除確認 `AlertDialog` (紐づく pending スケジュール件数を表示)
+- [x] `useRecordingRules` / `useCreateRecordingRule` / `useUpdateRecordingRule` / `useDeleteRecordingRule` — `packages/client/src/hooks/useRecordingRules.ts`
+- [x] `useRecordingRulePreview` (debounce 500ms の mutation) — 同上
+- [x] `/recordings` を 3 タブ化 (`?tab=pending|completed|failed`) — `packages/client/src/routes/recordings/index.tsx`
+- [x] 失敗タブで `failureReason` の日本語表示 (tuner_conflict → "チューナー不足")
+- [x] `/recordings/rules` 一覧 — `packages/client/src/routes/recordings/rules/index.tsx`
+- [x] `/recordings/rules/$ruleId` 編集 — `packages/client/src/routes/recordings/rules/$ruleId.tsx`
+- [x] `/recordings/rules/new` — `packages/client/src/routes/recordings/rules/new.tsx`
+- [x] `RecordingRuleForm` (Shadcn Form + Switch + MultiSelect + Slider for time) — `packages/client/src/components/recording/RecordingRuleForm.tsx`
+- [x] `RecordingRuleList` — `packages/client/src/components/recording/RecordingRuleList.tsx`
+- [x] `RecordingRulePreview` (プレビューペイン + matchCount バッジ) — `packages/client/src/components/recording/RecordingRulePreview.tsx`
+- [x] `ChannelPicker` (GR/BS/CS 一括ボタン + チェックボックス群) — `packages/client/src/components/recording/ChannelPicker.tsx`
+- [x] SSE の `rule-matched` / `epg-synced` 受信で適切に invalidate
+- [x] ルール削除確認 `AlertDialog` (紐づく pending スケジュール件数を表示)
 
 ### streaming
-- [ ] 変更なし (recording-manager は `ruleId` / `failureReason` を意識しない。ただし FFmpeg 異常終了時に `failureReason='ffmpeg_exit_<code>'` を書き込む 1 行追加はあってよい)
+- [x] 変更なし (recording-manager は `ruleId` / `failureReason` を意識しない。ただし FFmpeg 異常終了時に `failureReason='ffmpeg_exit_<code>'` を書き込む 1 行追加はあってよい)
 
 ### qa
-- [ ] 型検査 + Biome clean
-- [ ] コミット単位 (推奨):
+- [x] 型検査 + Biome clean
+- [x] コミット単位 (推奨):
   - `feat(server): persist EPG to DB via epg-sync worker`
   - `feat(server): programs route backed by DB with mirakc fallback`
   - `feat(server): recording-rule schema + matcher + conflict resolver`
