@@ -235,6 +235,7 @@ $RECYCLE.BIN/
 # Act
 .secrets
 !.secrets.example
+.actrc
 
 # Bun workspace — per-package build outputs and local deps
 packages/*/dist/

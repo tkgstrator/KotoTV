@@ -76,7 +76,8 @@ function DeleteScheduleButton({ scheduleId }: { scheduleId: string }) {
         <AlertDialogFooter>
           <AlertDialogCancel className='font-mono text-[0.75rem]'>CANCEL</AlertDialogCancel>
           <AlertDialogAction
-            className='bg-destructive font-mono text-[0.75rem] text-destructive-foreground hover:bg-destructive/90'
+            variant='destructive'
+            className='font-mono text-[0.75rem]'
             onClick={() => mutate(scheduleId)}
           >
             DELETE
@@ -159,7 +160,7 @@ function FailRow({ rec }: { rec: Recording }) {
     <div className='border-b border-border bg-card'>
       <button
         type='button'
-        className='flex w-full items-stretch text-left transition-colors hover:bg-muted/50'
+        className='flex w-full items-stretch text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
