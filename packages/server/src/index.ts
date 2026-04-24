@@ -4,6 +4,7 @@ import { env } from './lib/config'
 import { logger } from './lib/logger'
 import { ensureDefaultEncodeProfile } from './routes/encode-profiles'
 import { startEpgSyncScheduler, stopEpgSyncScheduler } from './services/epg-sync'
+import { startRecordingManager, stopRecordingManager } from './services/recording-manager'
 import { stopRuleMatcherScheduler } from './services/rule-matcher'
 import { streamManager } from './services/stream-manager'
 
@@ -34,8 +35,16 @@ ensureDefaultEncodeProfile().catch((err) => {
 // Start EPG sync (initial run + 15-min scheduler); non-blocking
 startEpgSyncScheduler()
 
+// Start recording manager (loads pending schedules + 30s poll); non-blocking
+startRecordingManager()
+
 async function gracefulShutdown(): Promise<void> {
-  await Promise.all([stopEpgSyncScheduler(), stopRuleMatcherScheduler(), streamManager.shutdownAll()])
+  await Promise.all([
+    stopEpgSyncScheduler(),
+    stopRuleMatcherScheduler(),
+    stopRecordingManager(),
+    streamManager.shutdownAll()
+  ])
   await server.stop()
   process.exit(0)
 }

@@ -1,10 +1,17 @@
 // Stream manager: session lifecycle, viewer ref-counting, idle timeout.
 // One FFmpeg process per unique (channelId, codec, quality); viewers share the same session.
 
-import { mkdir, rm } from 'node:fs/promises'
+import { mkdir, readdir, rm, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { env } from '../lib/config'
-import { type Codec, QUALITY_PRESETS, type Quality, resolutionFor } from '../lib/ffmpeg'
+import {
+  buildRecordingHlsArgs,
+  type Codec,
+  type HwAccel,
+  QUALITY_PRESETS,
+  type Quality,
+  resolutionFor
+} from '../lib/ffmpeg'
 import { logger } from '../lib/logger'
 import type { StreamInfo } from '../schemas/Stream.dto'
 import { mirakcClient } from './mirakc-client'
@@ -14,10 +21,14 @@ import { startTranscoder, type TranscoderHandle } from './transcoder'
 // Session key
 // ---------------------------------------------------------------------------
 
-type SessionKey = `${string}|${'avc' | 'hevc'}|${'low' | 'mid' | 'high'}`
+type SessionKey = `${string}|${'avc' | 'hevc'}|${'low' | 'mid' | 'high'}` | `recording|${string}`
 
 function sessionKey(channelId: string, codec: Codec, quality: Quality): SessionKey {
   return `${channelId}|${codec}|${quality}` as SessionKey
+}
+
+function recordingSessionKey(recordingId: string): SessionKey {
+  return `recording|${recordingId}` as SessionKey
 }
 
 // ---------------------------------------------------------------------------
@@ -53,6 +64,111 @@ const bySession = new Map<string, SessionKey>()
 const pending = new Map<SessionKey, Promise<Session>>()
 
 const managerLogger = logger.child({ module: 'stream-manager' })
+
+// ---------------------------------------------------------------------------
+// Orphan cleanup — runs once at module init
+// ---------------------------------------------------------------------------
+
+/**
+ * Remove HLS session directories that are not tracked in the in-memory session
+ * maps. These are leftovers from a previous server crash and would otherwise
+ * accumulate on the tmpfs until it fills up.
+ */
+async function cleanOrphanSessions(): Promise<void> {
+  let entries: string[]
+  try {
+    entries = await readdir(env.HLS_DIR)
+  } catch {
+    // HLS_DIR may not exist yet on a fresh start; that's fine
+    return
+  }
+
+  const orphans = entries.filter((name) => !bySession.has(name))
+  if (orphans.length === 0) return
+
+  await Promise.all(
+    orphans.map(async (name) => {
+      const dir = path.join(env.HLS_DIR, name)
+      try {
+        await rm(dir, { recursive: true, force: true })
+        managerLogger.info({ dir }, 'cleaned orphan HLS session dir')
+      } catch (err) {
+        managerLogger.warn({ dir, err }, 'failed to remove orphan HLS session dir')
+      }
+    })
+  )
+
+  managerLogger.info({ count: orphans.length }, 'orphan cleanup complete')
+}
+
+// Run immediately at module load; errors are non-fatal
+cleanOrphanSessions().catch((err) => {
+  managerLogger.warn({ err }, 'orphan cleanup failed')
+})
+
+// ---------------------------------------------------------------------------
+// HLS directory size monitor — periodic check every 60 s
+// ---------------------------------------------------------------------------
+
+const HLS_SIZE_WARN_BYTES = 400 * 1024 * 1024 // 400 MB out of 512 MB tmpfs
+
+let sizeMonitorTimer: ReturnType<typeof setInterval> | null = null
+
+async function checkHlsDirSize(): Promise<void> {
+  let entries: string[]
+  try {
+    entries = await readdir(env.HLS_DIR)
+  } catch {
+    return
+  }
+
+  let totalBytes = 0
+  await Promise.all(
+    entries.map(async (name) => {
+      const sessionDir = path.join(env.HLS_DIR, name)
+      let sessionFiles: string[]
+      try {
+        sessionFiles = await readdir(sessionDir)
+      } catch {
+        return
+      }
+      await Promise.all(
+        sessionFiles.map(async (file) => {
+          try {
+            const s = await stat(path.join(sessionDir, file))
+            totalBytes += s.size
+          } catch {
+            // file may have been deleted by FFmpeg's delete_segments flag
+          }
+        })
+      )
+    })
+  )
+
+  if (totalBytes > HLS_SIZE_WARN_BYTES) {
+    managerLogger.warn(
+      { totalMB: Math.round(totalBytes / 1024 / 1024), limitMB: Math.round(HLS_SIZE_WARN_BYTES / 1024 / 1024) },
+      'HLS_DIR approaching tmpfs capacity limit'
+    )
+  } else {
+    managerLogger.debug({ totalMB: Math.round(totalBytes / 1024 / 1024) }, 'HLS_DIR size check OK')
+  }
+}
+
+function startSizeMonitor(): void {
+  if (sizeMonitorTimer !== null) return
+  sizeMonitorTimer = setInterval(() => {
+    void checkHlsDirSize()
+  }, 60_000)
+  // Don't keep the event loop alive just for size monitoring
+  sizeMonitorTimer.unref?.()
+}
+
+function stopSizeMonitor(): void {
+  if (sizeMonitorTimer === null) return
+  clearInterval(sizeMonitorTimer)
+  sizeMonitorTimer = null
+}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -108,6 +224,57 @@ export const streamManager = {
     }
 
     const bootPromise = bootSession(channelId, codec, quality)
+    pending.set(key, bootPromise)
+    let session: Session
+    try {
+      session = await bootPromise
+    } finally {
+      pending.delete(key)
+    }
+
+    return {
+      sessionId: session.sessionId,
+      playlistUrl: `/api/streams/${session.sessionId}/playlist.m3u8`
+    }
+  },
+
+  /**
+   * Acquire (or join) a VOD HLS session for a recorded file.
+   * Session key is `recording|${recordingId}` so multiple viewers of the same
+   * recording share one FFmpeg process.
+   */
+  async acquireRecording(recordingId: string, filePath: string): Promise<{ sessionId: string; playlistUrl: string }> {
+    const key = recordingSessionKey(recordingId)
+    const existing = byKey.get(key)
+
+    if (existing) {
+      if (existing.idleTimer !== null) {
+        clearTimeout(existing.idleTimer)
+        existing.idleTimer = null
+        managerLogger.debug({ sessionId: existing.sessionId, recordingId }, 'idle timer cancelled — viewer rejoined')
+      }
+      existing.viewerCount++
+      managerLogger.debug(
+        { sessionId: existing.sessionId, recordingId, viewerCount: existing.viewerCount },
+        'viewer joined existing recording session'
+      )
+      return {
+        sessionId: existing.sessionId,
+        playlistUrl: `/api/streams/${existing.sessionId}/playlist.m3u8`
+      }
+    }
+
+    const inFlight = pending.get(key)
+    if (inFlight) {
+      const session = await inFlight
+      session.viewerCount++
+      return {
+        sessionId: session.sessionId,
+        playlistUrl: `/api/streams/${session.sessionId}/playlist.m3u8`
+      }
+    }
+
+    const bootPromise = bootRecordingSession(recordingId, filePath)
     pending.set(key, bootPromise)
     let session: Session
     try {
@@ -201,6 +368,7 @@ export const streamManager = {
     managerLogger.info({ count: sessions.length }, 'shutting down all sessions')
 
     stopWatchdog()
+    stopSizeMonitor()
 
     await Promise.all(
       sessions.map(async (session) => {
@@ -241,6 +409,7 @@ function startWatchdog(): void {
   watchdogTimer = setInterval(watchdogScan, env.HLS_WATCHDOG_INTERVAL_MS)
   // Don't keep the event loop alive just for this timer.
   watchdogTimer.unref?.()
+  startSizeMonitor()
 }
 
 function stopWatchdog(): void {
@@ -249,7 +418,7 @@ function stopWatchdog(): void {
   watchdogTimer = null
 }
 
-function watchdogScan(): void {
+async function watchdogScan(): Promise<void> {
   if (byKey.size === 0) {
     stopWatchdog()
     return
@@ -259,6 +428,24 @@ function watchdogScan(): void {
   const threshold = env.HLS_ACCESS_TIMEOUT_MS
 
   for (const session of [...byKey.values()]) {
+    // Task 3: zombie detection — FFmpeg exited but session still tracked.
+    // Promise.race with an already-resolved false lets us check without blocking.
+    const isExited = await Promise.race([session.handle.exited.then(() => true), Promise.resolve(false)])
+
+    if (isExited) {
+      managerLogger.warn(
+        { sessionId: session.sessionId, channelId: session.channelId, codec: session.codec, quality: session.quality },
+        'watchdog: FFmpeg process already exited but session still tracked — cleaning up zombie'
+      )
+      if (session.idleTimer !== null) {
+        clearTimeout(session.idleTimer)
+        session.idleTimer = null
+      }
+      await rmDir(session.outputDir)
+      teardownEntry(session.sessionId)
+      continue
+    }
+
     const idleMs = now - session.lastAccessAt
     if (idleMs <= threshold) continue
 
@@ -396,4 +583,177 @@ async function bootSession(channelId: string, codec: Codec, quality: Quality): P
   })
 
   return session
+}
+
+/**
+ * Boot a VOD HLS session from a recorded file. The file is transcoded to HLS
+ * segments in a fresh session directory. Uses default quality (mid / avc) as
+ * recording playback doesn't originate from a live quality selector.
+ */
+async function bootRecordingSession(recordingId: string, filePath: string): Promise<Session> {
+  const key = recordingSessionKey(recordingId)
+  const sessionId = crypto.randomUUID()
+  const outputDir = path.join(env.HLS_DIR, sessionId)
+
+  // Default quality/codec for recording playback; could be extended to accept
+  // caller-supplied values in a future iteration.
+  const codec: Codec = 'avc'
+  const quality: Quality = 'mid'
+  const hwAccel: HwAccel = env.HW_ACCEL_TYPE
+  const resolution = resolutionFor(quality)
+
+  managerLogger.info({ sessionId, recordingId, filePath, outputDir }, 'starting new recording playback session')
+
+  await mkdir(outputDir, { recursive: true })
+
+  const args = buildRecordingHlsArgs({ inputPath: filePath, outputDir, codec, quality, hwAccel })
+
+  // For recording playback, we use a synthetic ReadableStream that immediately
+  // closes — FFmpeg reads from the file path directly (not stdin).
+  // We reuse startTranscoder's process structure but bypass stdin piping by
+  // spawning FFmpeg directly here.
+  let handle: TranscoderHandle
+  try {
+    handle = startRecordingTranscoder({ sessionId, outputDir, args })
+  } catch (err) {
+    await rmDir(outputDir)
+    throw err
+  }
+
+  try {
+    await handle.waitForPlaylist(60_000)
+  } catch (err) {
+    managerLogger.error({ sessionId, recordingId, err }, 'recording playlist_timeout — tearing down session')
+    await handle.abort()
+    await rmDir(outputDir)
+    throw err
+  }
+
+  const now = Date.now()
+  const session: Session = {
+    sessionId,
+    channelId: recordingId, // repurpose channelId field to store recordingId for logging
+    codec,
+    quality,
+    resolution,
+    outputDir,
+    handle,
+    viewerCount: 1,
+    idleTimer: null,
+    createdAt: now,
+    lastAccessAt: now
+  }
+
+  byKey.set(key, session)
+  bySession.set(sessionId, key)
+  startWatchdog()
+
+  managerLogger.info({ sessionId, recordingId }, 'recording playback session ready')
+
+  handle.exited.then((code) => {
+    // VOD transcode finishing normally (exit 0) is expected — don't log as error
+    if (code === 0) {
+      managerLogger.info({ sessionId, recordingId }, 'recording transcode completed')
+    } else {
+      managerLogger.warn({ sessionId, recordingId, code }, 'recording ffmpeg exited — removing session')
+    }
+    teardownEntry(sessionId)
+  })
+
+  return session
+}
+
+// ---------------------------------------------------------------------------
+// Recording-specific transcoder (file input, no stdin pump)
+// ---------------------------------------------------------------------------
+
+type RecordingTranscoderOpts = {
+  sessionId: string
+  outputDir: string
+  args: string[]
+}
+
+/**
+ * Spawn FFmpeg for recording VOD HLS. Unlike startTranscoder there is no stdin
+ * pump — FFmpeg reads the file directly via the -i <path> arg.
+ */
+function startRecordingTranscoder(opts: RecordingTranscoderOpts): TranscoderHandle {
+  const { sessionId, outputDir, args } = opts
+
+  const childLogger = logger.child({ module: 'transcoder-recording', sessionId })
+  childLogger.debug({ args }, 'spawning ffmpeg for recording playback')
+
+  const proc = Bun.spawn(['ffmpeg', ...args], {
+    stdin: 'ignore',
+    stdout: 'ignore',
+    stderr: 'pipe'
+  })
+
+  // Pipe stderr to pino at debug level
+  pipeStderrToLogger(proc.stderr, childLogger)
+
+  let abortCalled = false
+
+  const abort = async (): Promise<void> => {
+    if (abortCalled) return
+    abortCalled = true
+    try {
+      proc.kill()
+    } catch {
+      // Process may already have exited
+    }
+    await proc.exited
+  }
+
+  const playlistPath = `${outputDir}/playlist.m3u8`
+
+  const waitForPlaylist = async (timeoutMs: number): Promise<void> => {
+    const deadline = Date.now() + timeoutMs
+    while (Date.now() < deadline) {
+      if (await Bun.file(playlistPath).exists()) return
+      await sleep(100)
+    }
+    throw new Error('playlist_timeout')
+  }
+
+  return {
+    abort,
+    exited: proc.exited,
+    waitForPlaylist,
+    getStats: () => ({
+      frame: 0,
+      fps: 0,
+      bitrateKbps: 0,
+      droppedFrames: 0,
+      updatedAt: Date.now()
+    })
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function pipeStderrToLogger(
+  stderr: ReadableStream<Uint8Array>,
+  childLogger: { debug: (msg: string | object, ...args: unknown[]) => void }
+): Promise<void> {
+  const decoder = new TextDecoder()
+  const reader = stderr.getReader()
+  let buffer = ''
+  try {
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        if (line.trim()) childLogger.debug(line)
+      }
+    }
+    if (buffer.trim()) childLogger.debug(buffer)
+  } catch {
+    // Stream closed abruptly; nothing to do
+  }
 }
