@@ -175,7 +175,7 @@ const encodeProfilesRoute = new Hono()
     return c.json({ items: rows.map(serializeBenchmarkLog) } satisfies BenchmarkHistoryResponse)
   })
 
-  .delete('/benchmark/history', async (c) => {
+  .delete('/benchmark/history', async (_c) => {
     await prisma.benchmarkLog.deleteMany()
     return new Response(null, { status: 204 })
   })
