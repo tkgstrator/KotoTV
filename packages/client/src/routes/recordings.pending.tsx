@@ -1,10 +1,12 @@
 import type { RecordingSchedule } from '@kototv/server/src/schemas/Recording.dto'
 import { createFileRoute } from '@tanstack/react-router'
+import { TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { RecordingRow, ScheduleRow } from '@/components/recording/recording-list-items'
 import { RecordingsReserveAction } from '@/components/recording/recordings-reserve-action'
 import { SegmentedFilter } from '@/components/shared/segmented-filter'
 import { PageHeader } from '@/components/shell/PageHeader'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRecordingRules } from '@/hooks/useRecordingRules'
 import { useRecordingEvents, useRecordings } from '@/hooks/useRecordings'
@@ -80,10 +82,12 @@ function PendingPage() {
     return (
       <>
         {header}
-        <div className='px-4 py-12'>
-          <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 text-footnote text-destructive'>
-            録画データの取得に失敗しました
-          </div>
+        <div className='p-4'>
+          <Alert variant='destructive'>
+            <TriangleAlert />
+            <AlertTitle>データの取得に失敗しました</AlertTitle>
+            <AlertDescription>録画データを読み込めませんでした。再度お試しください。</AlertDescription>
+          </Alert>
         </div>
       </>
     )

@@ -1,12 +1,12 @@
 import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { addDays, addHours, startOfMinute } from 'date-fns'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react'
 import { useMemo } from 'react'
 import { EPGGrid } from '@/components/epg/EPGGrid'
 import { SegmentedFilter } from '@/components/shared/segmented-filter'
-import { StatusChip } from '@/components/shared/status-chip'
 import { PageHeader } from '@/components/shell/PageHeader'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
@@ -135,9 +135,12 @@ function EpgPage() {
           onNextDay={goToNextDay}
           onNow={goToNow}
         />
-        <div className='flex flex-col items-center justify-center gap-2 py-16'>
-          <StatusChip variant='err'>サーバーに接続できません</StatusChip>
-          <p className='text-footnote text-muted-foreground'>mirakc が起動しているか確認してください</p>
+        <div className='p-4'>
+          <Alert variant='destructive'>
+            <TriangleAlert />
+            <AlertTitle>サーバーに接続できません</AlertTitle>
+            <AlertDescription>mirakc が起動しているか確認してください</AlertDescription>
+          </Alert>
         </div>
       </>
     )

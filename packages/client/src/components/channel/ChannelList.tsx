@@ -1,4 +1,6 @@
 import type { Channel, ChannelType } from '@kototv/server/src/schemas/Channel.dto'
+import { TriangleAlert } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import { ChannelRow } from './ChannelRow'
@@ -64,9 +66,12 @@ export function ChannelList({ type }: ChannelListProps) {
 
   if (isError) {
     return (
-      <div className='flex flex-col items-center justify-center gap-2 py-16 text-center'>
-        <p className='text-sm font-medium text-destructive'>サーバーに接続できません</p>
-        <p className='text-xs text-muted-foreground'>mirakc が起動しているか確認してください</p>
+      <div className='p-4'>
+        <Alert variant='destructive'>
+          <TriangleAlert />
+          <AlertTitle>サーバーに接続できません</AlertTitle>
+          <AlertDescription>mirakc が起動しているか確認してください</AlertDescription>
+        </Alert>
       </div>
     )
   }

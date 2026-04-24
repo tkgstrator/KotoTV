@@ -1,10 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { format, subMinutes } from 'date-fns'
 import { ja } from 'date-fns/locale'
+import { TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { RecordingsReserveAction } from '@/components/recording/recordings-reserve-action'
 import { SegmentedFilter } from '@/components/shared/segmented-filter'
 import { PageHeader } from '@/components/shell/PageHeader'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
@@ -222,10 +224,12 @@ function EncodePage() {
     return (
       <>
         {header}
-        <div className='px-4 py-12'>
-          <div className='inline-block rounded-sm border border-destructive/30 bg-destructive/8 px-3.5 py-2.5 text-footnote text-destructive'>
-            エンコードキューの取得に失敗しました
-          </div>
+        <div className='p-4'>
+          <Alert variant='destructive'>
+            <TriangleAlert />
+            <AlertTitle>データの取得に失敗しました</AlertTitle>
+            <AlertDescription>エンコードキューを読み込めませんでした。再度お試しください。</AlertDescription>
+          </Alert>
         </div>
       </>
     )
