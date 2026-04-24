@@ -13,16 +13,16 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Install commitlint
-        run: |
-          bun install conventional-changelog-conventionalcommits
-          bun install commitlint@latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
         run: bunx commitlint --last --verbose
       - name: Validate PR commits with commitlint
         if: github.event_name == 'pull_request'
-        run: bunx commitlint --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} --to ${{ github.event.pull_request.head.sha }} --verbose
+        run: bunx commitlint --from ${{ github.event.pull_request.head.sha }}~${{
+          github.event.pull_request.commits }} --to ${{
+          github.event.pull_request.head.sha }} --verbose
   check:
     name: Code Check
     runs-on: ubuntu-latest
@@ -41,6 +41,18 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     if: github.event.action != 'closed' || github.event.pull_request.merged != true
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: koto
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d koto" --health-interval 5s
+          --health-timeout 5s --health-retries 20
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -50,5 +62,23 @@ jobs:
           bun-version: latest
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
+      - name: Generate Prisma client
+        run: cd packages/server && bunx prisma generate
+      - name: Apply Prisma migrations
+        run: cd packages/server &&
+          DATABASE_URL="postgresql://postgres:password@127.0.0.1:5432/koto" bunx
+          prisma migrate deploy
       - name: Run tests
-        run: bunx bun test
+        run: DATABASE_URL="postgresql://postgres:password@127.0.0.1:5432/koto"
+          NODE_ENV=test bunx bun test
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed' || github.event.pull_request.merged != true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Docker image (none)
+        run: docker buildx build --target runtime --build-arg HW_ACCEL=none --load -t kototv:ci .

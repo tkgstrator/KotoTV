@@ -16,8 +16,7 @@ FROM oven/bun:1-alpine AS deps
 WORKDIR /app
 
 # Copy workspace manifests first for layer caching.
-COPY package.json bun.lockb ./
-COPY packages/shared/package.json packages/shared/
+COPY package.json bun.lock ./
 COPY packages/server/package.json packages/server/
 COPY packages/client/package.json packages/client/
 
@@ -26,7 +25,6 @@ RUN bun install --frozen-lockfile
 # ─── Stage 2: Build the Vite client ───────────────────────────────────────────
 FROM deps AS client-build
 
-COPY packages/shared packages/shared
 COPY packages/client packages/client
 
 RUN bun run --cwd packages/client build
@@ -105,9 +103,12 @@ COPY --from=deps /app/packages/server/node_modules packages/server/node_modules
 # Copy the compiled client assets.
 COPY --from=client-build /app/packages/client/dist packages/client/dist
 
-# Copy shared types and server source (Bun runs TS directly).
-COPY packages/shared packages/shared
+# Copy server source (Bun runs TS directly).
 COPY packages/server packages/server
+
+# Generate the Prisma client for the target platform.
+# Must run after both node_modules and the schema are present.
+RUN bunx prisma generate --schema=packages/server/prisma/schema.prisma
 
 # Ensure HLS and recordings directories exist (tmpfs is mounted over hls at runtime).
 RUN mkdir -p /app/data/hls /app/data/recordings
