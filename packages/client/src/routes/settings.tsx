@@ -1281,7 +1281,7 @@ function SettingsPage() {
           ~160px cell width used elsewhere. `variant="line"` swaps the
           pill-style active state for an underline via the trigger's
           ::after, which is what the channel/EPG filter uses visually. */}
-      <div className='sticky top-0 z-10 flex h-page-header w-[600px] max-w-full shrink-0 bg-background'>
+      <div className='sticky top-0 z-10 flex h-page-header w-[600px] max-w-full shrink-0 overflow-x-auto bg-background'>
         <TabsList variant='line' className='h-full! w-full gap-0 p-0'>
           <TabsTrigger
             value='status'
