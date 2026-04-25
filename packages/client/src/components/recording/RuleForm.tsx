@@ -1,6 +1,6 @@
 import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import { useNavigate } from '@tanstack/react-router'
-import { ChevronDown, Trash2 } from 'lucide-react'
+import { ChevronDown, Info, Trash2 } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useEncodeProfiles } from '@/hooks/useEncodeProfiles'
 import {
   useCreateRecordingRule,
@@ -692,24 +693,31 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='minDurationMinutes'
                     render={({ field }) => (
-                      <FormItem className='space-y-0'>
-                        <div className='flex min-h-9 items-center justify-between gap-3'>
+                      <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
+                        <div className='flex items-center gap-1'>
                           <FormLabel className='text-body text-foreground'>最小番組長</FormLabel>
-                          <div className='flex items-center gap-1.5'>
-                            <FormControl>
-                              <Input
-                                type='number'
-                                min={0}
-                                max={1440}
-                                value={field.value}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                                className='h-9 w-20 tabular-nums text-body'
-                              />
-                            </FormControl>
-                            <span className='w-6 text-footnote text-muted-foreground'>分</span>
-                          </div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className='size-3.5 text-muted-foreground' />
+                              </TooltipTrigger>
+                              <TooltipContent>0 で無効</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
-                        <p className='text-caption text-muted-foreground'>0 で無効</p>
+                        <div className='flex items-center gap-1.5'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              min={0}
+                              max={1440}
+                              value={field.value}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              className='h-9 w-20 tabular-nums text-body'
+                            />
+                          </FormControl>
+                          <span className='w-6 text-footnote text-muted-foreground'>分</span>
+                        </div>
                       </FormItem>
                     )}
                   />
@@ -717,24 +725,31 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='keepLatestN'
                     render={({ field }) => (
-                      <FormItem className='space-y-0'>
-                        <div className='flex min-h-9 items-center justify-between gap-3'>
+                      <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
+                        <div className='flex items-center gap-1'>
                           <FormLabel className='text-body text-foreground'>保存世代数</FormLabel>
-                          <div className='flex items-center gap-1.5'>
-                            <FormControl>
-                              <Input
-                                type='number'
-                                min={0}
-                                max={999}
-                                value={field.value}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                                className='h-9 w-20 tabular-nums text-body'
-                              />
-                            </FormControl>
-                            <span className='w-6 text-footnote text-muted-foreground'>本</span>
-                          </div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className='size-3.5 text-muted-foreground' />
+                              </TooltipTrigger>
+                              <TooltipContent>0 で無制限</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
-                        <p className='text-caption text-muted-foreground'>0 で無制限</p>
+                        <div className='flex items-center gap-1.5'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              min={0}
+                              max={999}
+                              value={field.value}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              className='h-9 w-20 tabular-nums text-body'
+                            />
+                          </FormControl>
+                          <span className='w-6 text-footnote text-muted-foreground'>本</span>
+                        </div>
                       </FormItem>
                     )}
                   />
