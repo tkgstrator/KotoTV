@@ -56,7 +56,7 @@ const SEED_RULE = {
   keywordMode: 'literal' as const,
   keywordTarget: 'title' as const,
   excludeKeyword: null,
-  channelIds: ['cs-333'],
+  channelIds: ['cs-700333'],
   genres: ['アニメ/特撮'],
   dayOfWeek: [] as number[],
   timeStartMinutes: null,
@@ -74,7 +74,7 @@ async function seedSchedulesAndRecordings(
 ): Promise<{ schedules: number; recordings: number }> {
   const now = new Date()
   const programs = await prisma.program.findMany({
-    where: { channelId: 'cs-333' },
+    where: { channelId: 'cs-700333' },
     orderBy: { startAt: 'desc' },
     take: 50
   })
