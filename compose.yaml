@@ -43,7 +43,9 @@ services:
     tmpfs:
       - /app/data/hls:size=512M,mode=0755,exec
     volumes:
+      - ./config/kototv.yaml:/app/config/kototv.yaml:ro
       - recordings:/app/data/recordings
+      - encoded:/app/data/encoded
     ports:
       - "${PORT:-11575}:${PORT:-11575}"
     restart: unless-stopped
@@ -59,3 +61,4 @@ volumes:
   epg-data:
   postgres-data:
   recordings:
+  encoded:
