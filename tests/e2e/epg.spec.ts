@@ -3,40 +3,24 @@ import { expect, test } from '@playwright/test'
 const DESKTOP = { width: 1440, height: 900 }
 const MOBILE = { width: 390, height: 844 }
 
-test.describe('EPG desktop — virtualised future grid', () => {
+test.describe('EPG desktop — vertical time-axis grid', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize(DESKTOP)
     await page.goto('/epg')
     await page.waitForLoadState('networkidle')
   })
 
-  test('grid renders and visible row count is bounded by virtualizer', async ({ page }) => {
-    const rowCount = await page.locator('[data-row]').count()
-    // Virtualizer renders roughly viewport-height / ROW_H (56px) + overscan (5*2).
-    // With 900px viewport and ~28px header, usable height ~870px → ~16 rows + 10 overscan = ~26.
-    // All 40 channels should NOT be in the DOM simultaneously.
-    // We allow up to 35 as a safe upper bound (overscan + measurement variance).
-    expect(rowCount).toBeGreaterThan(0)
-    expect(rowCount).toBeLessThan(35)
+  test('grid renders channel columns', async ({ page }) => {
+    const colCount = await page.locator('[data-channel-id]').count()
+    expect(colCount).toBeGreaterThan(0)
   })
 
-  test('grid rows carry sequential data-index (virtualizer wiring in place)', async ({ page }) => {
-    // Don't depend on scroll actually happening (mock data ~18 channels fits
-    // mostly in viewport, scroll headroom is small). Instead assert the
-    // virtualizer's index contract: rows render with consecutive data-index
-    // starting from 0 (or higher after scroll), never duplicated or missing.
-    const indices = await page
-      .locator('[data-row]')
-      .evaluateAll((els) => els.map((el) => Number(el.getAttribute('data-index'))))
-    expect(indices.length).toBeGreaterThan(0)
-    // Indices should be strictly increasing (virtualizer contract)
-    for (let i = 1; i < indices.length; i++) {
-      const prev = indices[i - 1]
-      const curr = indices[i]
-      expect(prev, 'virtualizer indices must be defined').toBeDefined()
-      expect(curr, 'virtualizer indices must be defined').toBeDefined()
-      expect(curr as number).toBeGreaterThan(prev as number)
-    }
+  test('channel header links are visible in sticky top row', async ({ page }) => {
+    const grid = page.getByLabel('これからの番組グリッド（縦時刻軸）')
+    await expect(grid).toBeVisible()
+    const headers = grid.locator('a[aria-label$="を視聴"]')
+    const count = await headers.count()
+    expect(count).toBeGreaterThan(0)
   })
 })
 
