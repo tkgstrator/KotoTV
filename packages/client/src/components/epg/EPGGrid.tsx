@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useClock } from '@/hooks/useClock'
-import { formatTimeRange, genreToColor } from '@/lib/program'
+import { formatTimeRange, genreToColor, programMatchesGenre } from '@/lib/program'
 import { cn } from '@/lib/utils'
 import { ProgramCell } from './ProgramCell'
 import { ProgramDetailDialog } from './ProgramDetailDialog'
@@ -49,6 +49,8 @@ interface EPGGridProps {
   gridStartAt: Date
   /** ISO string for the highlighted channel (from ?channel= search param). */
   highlightChannelId?: string | undefined
+  /** Active genre filter label (e.g. "アニメ/特撮"). Null = show all. */
+  genreFilter?: string | null
 }
 
 // ─── Future grid helpers ───────────────────────────────────────────────────────
@@ -85,6 +87,7 @@ interface FutureGridProps {
   gridStart: Date
   gridEnd: Date
   now: Date
+  genreFilter: string | null
   onProgramSelect: (program: Program) => void
 }
 
@@ -95,6 +98,7 @@ function FutureGrid({
   gridStart,
   gridEnd,
   now,
+  genreFilter,
   onProgramSelect
 }: FutureGridProps) {
   const totalHeight = GRID_HOURS * 60 * PX_PER_MIN
@@ -248,10 +252,11 @@ function FutureGrid({
                 programs.map((p) => {
                   const top = dateToOffset(new Date(p.startAt), gridStart)
                   const height = programHeight(p, gridStart, gridEnd)
+                  const dimmed = genreFilter ? !programMatchesGenre(p.genres, genreFilter) : false
                   return (
                     <div
                       key={p.id}
-                      className='absolute inset-x-[1px] px-0'
+                      className={cn('absolute inset-x-[1px] px-0 transition-opacity', dimmed && 'opacity-10')}
                       style={{ top: top + 1, height: height - 1 }}
                     >
                       <ProgramCell
@@ -359,6 +364,7 @@ interface AgendaViewProps {
   loadingChannelIds: Set<string>
   now: Date
   windowEnd: Date
+  genreFilter: string | null
   /** Ref forwarded from the scrollable parent to wire the virtualizer. */
   scrollRef: React.RefObject<HTMLDivElement | null>
   onActiveSectionChange: (channelId: string | null) => void
@@ -371,6 +377,7 @@ function AgendaView({
   loadingChannelIds,
   now,
   windowEnd,
+  genreFilter,
   scrollRef,
   onActiveSectionChange,
   onProgramSelect
@@ -493,8 +500,9 @@ function AgendaView({
                   {programs.map((p) => {
                     const isNow = new Date(p.startAt) <= now && new Date(p.endAt) > now
                     const accentColor = genreToColor(p.genres[0] ?? '')
+                    const dimmed = genreFilter ? !programMatchesGenre(p.genres, genreFilter) : false
                     return (
-                      <li key={p.id}>
+                      <li key={p.id} className={cn('transition-opacity', dimmed && 'opacity-10')}>
                         <button
                           type='button'
                           onClick={() => onProgramSelect(p)}
@@ -558,7 +566,8 @@ export function EPGGrid({
   programsByChannel,
   loadingChannelIds,
   gridStartAt,
-  highlightChannelId
+  highlightChannelId,
+  genreFilter = null
 }: EPGGridProps) {
   const now = useClock()
   const gridEnd = useMemo(() => addHours(gridStartAt, GRID_HOURS), [gridStartAt])
@@ -610,6 +619,7 @@ export function EPGGrid({
             gridStart={gridStartAt}
             gridEnd={gridEnd}
             now={now}
+            genreFilter={genreFilter}
             onProgramSelect={setSelectedProgram}
           />
         </div>
@@ -623,6 +633,7 @@ export function EPGGrid({
           loadingChannelIds={loadingChannelIds}
           now={now}
           windowEnd={gridEnd}
+          genreFilter={genreFilter}
           scrollRef={agendaScrollRef}
           onActiveSectionChange={setActiveChannelId}
           onProgramSelect={setSelectedProgram}

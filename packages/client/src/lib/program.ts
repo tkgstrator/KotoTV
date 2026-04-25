@@ -27,6 +27,31 @@ const GENRE_COLOR_MAP: Record<string, string> = {
 
 const GENRE_COLOR_FALLBACK = 'oklch(0.55 0.04 247)'
 
+export interface GenreCategory {
+  label: string
+  color: string
+}
+
+export const GENRE_CATEGORIES: GenreCategory[] = [
+  { label: 'ニュース/報道', color: 'oklch(0.6 0.15 247)' },
+  { label: 'スポーツ', color: 'oklch(0.6 0.18 145)' },
+  { label: '情報/ワイドショー', color: 'oklch(0.6 0.15 60)' },
+  { label: 'ドラマ', color: 'oklch(0.6 0.18 295)' },
+  { label: '音楽', color: 'oklch(0.65 0.18 320)' },
+  { label: 'バラエティ', color: 'oklch(0.65 0.18 65)' },
+  { label: '映画', color: 'oklch(0.6 0.18 30)' },
+  { label: 'アニメ/特撮', color: 'oklch(0.65 0.18 340)' },
+  { label: 'ドキュメンタリー/教養', color: 'oklch(0.6 0.16 190)' },
+  { label: '劇場/公演', color: 'oklch(0.6 0.16 20)' },
+  { label: '趣味/教育', color: 'oklch(0.6 0.16 120)' },
+  { label: '福祉', color: 'oklch(0.6 0.14 160)' }
+]
+
+export function programMatchesGenre(genres: string[], filter: string): boolean {
+  const prefix = filter.split('/')[0] ?? filter
+  return genres.some((g) => g.includes(prefix))
+}
+
 export function genreToColor(genre: string): string {
   for (const [key, color] of Object.entries(GENRE_COLOR_MAP)) {
     if (genre.includes(key)) return color
