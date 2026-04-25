@@ -190,7 +190,10 @@ export function RecordingScheduleForm({ open, onOpenChange }: RecordingScheduleF
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className='flex max-h-[calc(100vh-80px)] w-full max-w-[640px] flex-col gap-0 overflow-hidden p-0'>
+      <DialogContent
+        className='flex max-h-[calc(100vh-80px)] w-full max-w-[640px] flex-col gap-0 overflow-hidden p-0'
+        aria-describedby={undefined}
+      >
         <DialogHeader className='flex-row items-center gap-2 border-b border-border px-3.5 py-3'>
           <Search className='size-4 shrink-0 text-muted-foreground' />
           <Input
