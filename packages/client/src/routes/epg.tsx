@@ -1,8 +1,8 @@
 import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { addDays, addHours, startOfMinute } from 'date-fns'
-import { ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react'
-import { useMemo } from 'react'
+import { ChevronLeft, ChevronRight, Filter, TriangleAlert } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { EPGGrid } from '@/components/epg/EPGGrid'
 import { SegmentedFilter } from '@/components/shared/segmented-filter'
 import { PageHeader } from '@/components/shell/PageHeader'
@@ -13,6 +13,8 @@ import { useChannels } from '@/hooks/useChannels'
 import type { Program } from '@/hooks/usePrograms'
 import { usePrograms } from '@/hooks/usePrograms'
 import { CHANNEL_TYPE_TABS, CHANNEL_TYPE_VALUES, type ChannelType } from '@/lib/channel-type'
+import { GENRE_CATEGORIES, genreToColor } from '@/lib/program'
+import { cn } from '@/lib/utils'
 
 interface EpgSearch {
   at?: string | undefined
@@ -39,6 +41,7 @@ function EpgPage() {
   const { at, channel: highlightChannelId, type: typeParam } = Route.useSearch()
   const navigate = useNavigate({ from: '/epg' })
   const type: ChannelType = typeParam ?? 'GR'
+  const [genreFilter, setGenreFilter] = useState<string | null>(null)
 
   // Rolling window: starts at the current 30-min boundary (or `at` when
   // navigating other days) and extends 12 h forward. Past programs are not
@@ -172,13 +175,59 @@ function EpgPage() {
         onNextDay={goToNextDay}
         onNow={goToNow}
       />
+      <GenreFilterBar value={genreFilter} onChange={setGenreFilter} />
       <EPGGrid
         channels={channels}
         programsByChannel={programsByChannel}
         loadingChannelIds={loadingChannelIds}
         gridStartAt={windowStart}
         highlightChannelId={highlightChannelId}
+        genreFilter={genreFilter}
       />
+    </div>
+  )
+}
+
+// ─── Genre filter bar ─────────────────────────────────────────────────────────
+
+interface GenreFilterBarProps {
+  value: string | null
+  onChange: (genre: string | null) => void
+}
+
+function GenreFilterBar({ value, onChange }: GenreFilterBarProps) {
+  return (
+    <div className='flex shrink-0 items-center gap-1.5 border-b border-border bg-card/80 px-3 py-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+      <Filter className='size-3.5 shrink-0 text-muted-foreground' />
+      {GENRE_CATEGORIES.map((cat) => {
+        const isActive = value === cat.label
+        return (
+          <button
+            key={cat.label}
+            type='button'
+            onClick={() => onChange(isActive ? null : cat.label)}
+            aria-pressed={isActive}
+            className={cn(
+              'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[0.625rem] font-bold transition-colors',
+              'cursor-pointer',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+              isActive
+                ? 'border-transparent text-primary-foreground'
+                : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+            )}
+            style={
+              isActive ? { backgroundColor: genreToColor(cat.label), borderColor: genreToColor(cat.label) } : undefined
+            }
+          >
+            <span
+              aria-hidden
+              className={cn('size-1.5 rounded-full', isActive && 'hidden')}
+              style={{ backgroundColor: cat.color }}
+            />
+            {cat.label}
+          </button>
+        )
+      })}
     </div>
   )
 }
