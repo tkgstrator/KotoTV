@@ -120,8 +120,8 @@ const recordingsRoute = new Hono()
   .post('/', zValidator('json', CreateRecordingScheduleSchema), async (c) => {
     const data = c.req.valid('json')
 
-    if (new Date(data.startAt) < new Date()) {
-      throw new HTTPException(400, { message: 'startAt must be in the future' })
+    if (new Date(data.endAt) < new Date()) {
+      throw new HTTPException(400, { message: 'program has already ended' })
     }
 
     // TODO(mirakc): verify program exists via mirakcClient.getProgram(data.programId) once Mirakc is online
