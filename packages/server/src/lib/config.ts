@@ -23,7 +23,8 @@ const EnvSchema = z.object({
   /* VAAPI render-node device path. Override when the kernel assigns a node
    * number other than renderD128 (e.g. renderD129 on multi-GPU hosts). */
   VAAPI_DEVICE: z.string().startsWith('/dev/dri/').default('/dev/dri/renderD128'),
-  RECORDINGS_DIR: z.string().default('./data/recordings')
+  RECORDINGS_DIR: z.string().default('./data/recordings'),
+  BUILD_VERSION: z.string().optional()
 })
 
 const result = EnvSchema.safeParse(Bun.env)

@@ -193,6 +193,10 @@ const statusRoute = new Hono().get('/', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
+const versionRoute = new Hono().get('/', (c) => {
+  return c.json({ version: env.BUILD_VERSION ?? 'dev' })
+})
+
 const healthRoute = new Hono()
   .get('/', async (c) => {
     const [mirakc, postgres, ffmpeg, tuners, disk] = await Promise.all([
@@ -215,4 +219,4 @@ const healthRoute = new Hono()
     return c.json({ lines } satisfies HealthLogsResponse)
   })
 
-export { healthRoute, statusRoute }
+export { healthRoute, statusRoute, versionRoute }

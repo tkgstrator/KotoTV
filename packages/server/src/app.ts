@@ -7,7 +7,7 @@ import encodeProfilesRoute from './routes/encode-profiles'
 import programsRoute from './routes/programs'
 import recordingRulesRoute from './routes/recording-rules'
 import recordingsRoute from './routes/recordings'
-import { healthRoute, statusRoute } from './routes/status'
+import { healthRoute, statusRoute, versionRoute } from './routes/status'
 import streamsRoute from './routes/streams'
 
 const app = new Hono()
@@ -33,6 +33,7 @@ const app = new Hono()
   })
   .route('/api/status', statusRoute)
   .route('/api/health', healthRoute)
+  .route('/api/version', versionRoute)
   .route('/api/channels', channelsRoute)
   .route('/api/programs', programsRoute)
   .route('/api/streams', streamsRoute)
