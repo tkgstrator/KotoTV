@@ -88,7 +88,7 @@ export async function stopRecordingManager(): Promise<void> {
 // Schedule loading
 // ---------------------------------------------------------------------------
 
-async function loadAndScheduleAll(): Promise<void> {
+export async function loadAndScheduleAll(): Promise<void> {
   let schedules: Array<{
     id: string
     channelId: string
