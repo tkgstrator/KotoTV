@@ -85,6 +85,39 @@ describe('/api/programs', () => {
     }
   })
 
+  test('currently-airing programs have isRecordable=true', async () => {
+    const now = new Date()
+    const startAt = subHours(now, 1).toISOString()
+    const endAt = addHours(now, 1).toISOString()
+
+    const res = await app.request(`/api/programs?startAt=${startAt}&endAt=${endAt}`)
+    const { programs } = await res.json()
+
+    const airing = programs.filter(
+      (p: { startAt: string; endAt: string }) =>
+        parseISO(p.startAt).getTime() <= now.getTime() && parseISO(p.endAt).getTime() > now.getTime()
+    )
+
+    for (const p of airing) {
+      expect(p.isRecordable).toBe(true)
+    }
+  })
+
+  test('past programs have isRecordable=false', async () => {
+    const now = new Date()
+    const startAt = subHours(now, 6).toISOString()
+    const endAt = subHours(now, 1).toISOString()
+
+    const res = await app.request(`/api/programs?startAt=${startAt}&endAt=${endAt}`)
+    const { programs } = await res.json()
+
+    const past = programs.filter((p: { endAt: string }) => parseISO(p.endAt).getTime() <= now.getTime())
+
+    for (const p of past) {
+      expect(p.isRecordable).toBe(false)
+    }
+  })
+
   test('GET / without required params returns 400', async () => {
     const res = await app.request('/api/programs')
     expect(res.status).toBe(400)

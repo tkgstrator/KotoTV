@@ -25,7 +25,7 @@ function toProgram(p: MirakcProgram, channelId: string, now: number): Program {
     startAt: new Date(p.startAt).toISOString(),
     endAt: new Date(endMs).toISOString(),
     genres: uniqueGenres,
-    isRecordable: p.startAt > now
+    isRecordable: endMs > now
   }
 }
 
@@ -113,7 +113,7 @@ const programsRoute = new Hono().get('/', zValidator('query', ProgramListQuerySc
       startAt: row.startAt.toISOString(),
       endAt: row.endAt.toISOString(),
       genres: row.genres,
-      isRecordable: row.startAt > new Date()
+      isRecordable: row.endAt > new Date()
     }))
 
     const body = ProgramListResponseSchema.parse({ programs }) satisfies typeof ProgramListResponseSchema._type

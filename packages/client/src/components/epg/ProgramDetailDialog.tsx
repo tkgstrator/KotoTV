@@ -1,5 +1,6 @@
 import type { Program } from '@kototv/server/src/schemas/Program.dto'
 import { useNavigate } from '@tanstack/react-router'
+import { isPast, parseISO } from 'date-fns'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Button } from '@/components/ui/button'
 import {
@@ -61,11 +62,16 @@ export function ProgramDetailDialog({ program, open, onOpenChange }: ProgramDeta
                     {genre}
                   </StatusChip>
                 ))}
-                {program.isRecordable && (
-                  <StatusChip variant='sched' size='sm'>
-                    予約可
-                  </StatusChip>
-                )}
+                {program.isRecordable &&
+                  (isPast(parseISO(program.startAt)) ? (
+                    <StatusChip variant='live' size='sm'>
+                      放送中
+                    </StatusChip>
+                  ) : (
+                    <StatusChip variant='sched' size='sm'>
+                      予約可
+                    </StatusChip>
+                  ))}
               </div>
             )}
           </DialogHeader>
@@ -77,17 +83,23 @@ export function ProgramDetailDialog({ program, open, onOpenChange }: ProgramDeta
           </DialogDescription>
 
           <DialogFooter>
-            {program?.isRecordable && (
-              <Button
-                variant='outline'
-                type='button'
-                disabled={createRecording.isPending}
-                onClick={handleRecord}
-                aria-label={`${program.title} を録画予約`}
-              >
-                {createRecording.isPending ? '予約中…' : '録画予約'}
-              </Button>
-            )}
+            {program?.isRecordable &&
+              (() => {
+                const isAiring = isPast(parseISO(program.startAt))
+                const label = isAiring ? '録画開始' : '録画予約'
+                const pendingLabel = isAiring ? '開始中…' : '予約中…'
+                return (
+                  <Button
+                    variant='outline'
+                    type='button'
+                    disabled={createRecording.isPending}
+                    onClick={handleRecord}
+                    aria-label={`${program.title} を${label}`}
+                  >
+                    {createRecording.isPending ? pendingLabel : label}
+                  </Button>
+                )
+              })()}
             <Button
               type='button'
               onClick={handleWatch}
