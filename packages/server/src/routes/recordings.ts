@@ -1,4 +1,5 @@
 import { zValidator } from '@hono/zod-validator'
+import { parseISO } from 'date-fns'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
@@ -94,76 +95,6 @@ const RecordingParamSchema = z.object({
 })
 
 const recordingsRoute = new Hono()
-  .get('/:id', zValidator('param', RecordingParamSchema), async (c) => {
-    const { id } = c.req.valid('param')
-
-    const row = await prisma.recording.findUnique({ where: { id } })
-    if (!row) {
-      throw new HTTPException(404, { message: 'recording not found' })
-    }
-
-    return c.json(RecordingSchema.parse(serializeRecording(row)))
-  })
-  .get('/', async (c) => {
-    const [schedules, recordings] = await Promise.all([
-      prisma.recordingSchedule.findMany({ orderBy: { startAt: 'asc' } }),
-      prisma.recording.findMany({ orderBy: { startedAt: 'desc' } })
-    ])
-
-    const body = RecordingListResponseSchema.parse({
-      schedules: schedules.map(serializeSchedule),
-      recordings: recordings.map(serializeRecording)
-    })
-
-    return c.json(body)
-  })
-  .post('/', zValidator('json', CreateRecordingScheduleSchema), async (c) => {
-    const data = c.req.valid('json')
-
-    if (new Date(data.endAt) < new Date()) {
-      throw new HTTPException(400, { message: 'program has already ended' })
-    }
-
-    // TODO(mirakc): verify program exists via mirakcClient.getProgram(data.programId) once Mirakc is online
-
-    let schedule: RecordingSchedule
-    try {
-      const row = await prisma.recordingSchedule.create({
-        data: {
-          channelId: data.channelId,
-          programId: data.programId,
-          title: data.title,
-          startAt: new Date(data.startAt),
-          endAt: new Date(data.endAt),
-          ...(data.encodeProfileId !== undefined ? { encodeProfileId: data.encodeProfileId } : {})
-        }
-      })
-      schedule = serializeSchedule(row)
-    } catch (err) {
-      const e = err as { code?: string }
-      if (e.code === 'P2002') {
-        throw new HTTPException(409, { message: 'schedule already exists' })
-      }
-      throw err
-    }
-
-    return c.json(schedule, 201)
-  })
-  .delete('/:scheduleId', zValidator('param', ScheduleParamSchema), async (c) => {
-    const { scheduleId } = c.req.valid('param')
-
-    const existing = await prisma.recordingSchedule.findUnique({ where: { id: scheduleId } })
-    if (!existing) {
-      throw new HTTPException(404, { message: 'schedule not found' })
-    }
-    if (existing.status !== 'pending') {
-      throw new HTTPException(409, { message: `cannot delete schedule in status '${existing.status}'` })
-    }
-
-    await prisma.recordingSchedule.delete({ where: { id: scheduleId } })
-
-    return new Response(null, { status: 204 })
-  })
   .get('/events', (c) => {
     const stream = new ReadableStream({
       start(controller) {
@@ -201,6 +132,76 @@ const recordingsRoute = new Hono()
         Connection: 'keep-alive'
       }
     })
+  })
+  .get('/:id', zValidator('param', RecordingParamSchema), async (c) => {
+    const { id } = c.req.valid('param')
+
+    const row = await prisma.recording.findUnique({ where: { id } })
+    if (!row) {
+      throw new HTTPException(404, { message: 'recording not found' })
+    }
+
+    return c.json(RecordingSchema.parse(serializeRecording(row)))
+  })
+  .get('/', async (c) => {
+    const [schedules, recordings] = await Promise.all([
+      prisma.recordingSchedule.findMany({ orderBy: { startAt: 'asc' } }),
+      prisma.recording.findMany({ orderBy: { startedAt: 'desc' } })
+    ])
+
+    const body = RecordingListResponseSchema.parse({
+      schedules: schedules.map(serializeSchedule),
+      recordings: recordings.map(serializeRecording)
+    })
+
+    return c.json(body)
+  })
+  .post('/', zValidator('json', CreateRecordingScheduleSchema), async (c) => {
+    const data = c.req.valid('json')
+
+    if (parseISO(data.endAt) < new Date()) {
+      throw new HTTPException(400, { message: 'program has already ended' })
+    }
+
+    // TODO(mirakc): verify program exists via mirakcClient.getProgram(data.programId) once Mirakc is online
+
+    let schedule: RecordingSchedule
+    try {
+      const row = await prisma.recordingSchedule.create({
+        data: {
+          channelId: data.channelId,
+          programId: data.programId,
+          title: data.title,
+          startAt: parseISO(data.startAt),
+          endAt: parseISO(data.endAt),
+          ...(data.encodeProfileId !== undefined ? { encodeProfileId: data.encodeProfileId } : {})
+        }
+      })
+      schedule = serializeSchedule(row)
+    } catch (err) {
+      const e = err as { code?: string }
+      if (e.code === 'P2002') {
+        throw new HTTPException(409, { message: 'schedule already exists' })
+      }
+      throw err
+    }
+
+    return c.json(schedule, 201)
+  })
+  .delete('/:scheduleId', zValidator('param', ScheduleParamSchema), async (c) => {
+    const { scheduleId } = c.req.valid('param')
+
+    const existing = await prisma.recordingSchedule.findUnique({ where: { id: scheduleId } })
+    if (!existing) {
+      throw new HTTPException(404, { message: 'schedule not found' })
+    }
+    if (existing.status !== 'pending') {
+      throw new HTTPException(409, { message: `cannot delete schedule in status '${existing.status}'` })
+    }
+
+    await prisma.recordingSchedule.delete({ where: { id: scheduleId } })
+
+    return new Response(null, { status: 204 })
   })
 
 export default recordingsRoute
