@@ -27,11 +27,9 @@ export function ChannelRow({ channel }: ChannelRowProps) {
       params={{ channelId: channel.id }}
       aria-label={`${channel.name} を視聴`}
       className={cn(
-        'group relative flex items-stretch border-b border-border text-foreground no-underline',
+        'group relative block border-b border-border text-foreground no-underline',
         'transition-colors hover:bg-muted/50',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-        /* mobile: 60px row / desktop: 52px row */
-        'h-[60px] md:h-[52px]'
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
       )}
     >
       {/* Left type accent stripe */}
@@ -41,64 +39,77 @@ export function ChannelRow({ channel }: ChannelRowProps) {
         aria-hidden
       />
 
-      {/* Channel panel — wide enough for typical Japanese channel names
-          (e.g. "NHK総合1・東京") without truncating at the second character. */}
-      <div
-        className={cn(
-          'flex flex-shrink-0 flex-col justify-center border-r border-border pl-4 pr-1.5',
-          'w-[104px] md:w-[120px]'
-        )}
-      >
-        <span className='text-caption2 font-bold leading-none' style={{ color: typeColor }}>
-          {channel.channelNumber || channel.serviceId}
-        </span>
-        <span className='mt-0.5 text-caption2 leading-[1.2] text-muted-foreground line-clamp-2'>{channel.name}</span>
-      </div>
+      {/* Narrow: single stacked column / sm+: horizontal row */}
+      <div className='flex flex-col pl-4 pr-2 py-1.5 lg:flex-row lg:items-stretch lg:h-[52px] lg:py-0'>
+        {/* Channel panel */}
+        <div
+          className={cn(
+            'flex flex-shrink-0 items-baseline gap-1.5 lg:flex-col lg:items-start lg:justify-center lg:gap-0',
+            'lg:w-[120px] lg:border-r lg:border-border lg:pr-1.5'
+          )}
+        >
+          <span className='text-caption2 font-bold leading-none' style={{ color: typeColor }}>
+            {channel.channelNumber || channel.serviceId}
+          </span>
+          <span className='text-caption2 leading-[1.2] text-muted-foreground line-clamp-1 lg:mt-0.5 lg:line-clamp-2'>
+            {channel.name}
+          </span>
+        </div>
 
-      {/* Current program — takes flex-1 on mobile, fixed 1fr on desktop */}
-      <div className='relative flex min-w-0 flex-1 flex-col justify-center overflow-hidden px-2 py-1 pb-1.5 md:border-r md:border-border'>
-        {cur ? (
-          <>
-            <span className='truncate text-footnote font-bold leading-[1.2]'>{cur.title}</span>
-            <div className='mt-0.5 flex items-baseline gap-1.5'>
-              <span className='text-caption2 leading-none text-muted-foreground'>
-                {formatTimeRange(cur.startAt, cur.endAt)}
-              </span>
-              {urgent && (
-                <span className='text-caption2 font-semibold leading-none text-destructive'>まもなく終了</span>
+        {/* Current program */}
+        <div className='relative flex min-w-0 flex-1 flex-col justify-center overflow-hidden lg:px-2 lg:py-1 lg:pb-1.5 lg:border-r lg:border-border'>
+          {cur ? (
+            <>
+              <span className='truncate text-footnote font-bold leading-[1.2]'>{cur.title}</span>
+              <div className='mt-0.5 flex items-baseline gap-1.5'>
+                <span className='text-caption2 leading-none text-muted-foreground'>
+                  {formatTimeRange(cur.startAt, cur.endAt)}
+                </span>
+                {urgent && (
+                  <span className='text-caption2 font-semibold leading-none text-destructive'>まもなく終了</span>
+                )}
+              </div>
+              {nextLabel && (
+                <span className='mt-0.5 block truncate text-caption2 leading-none text-muted-foreground lg:hidden'>
+                  {nextLabel}
+                </span>
               )}
+            </>
+          ) : (
+            <span className='text-caption text-muted-foreground'>番組情報なし</span>
+          )}
+
+          {/* Progress track — desktop: inside this cell */}
+          {cur && (
+            <div className='absolute bottom-0 left-0 right-0 hidden h-[2px] bg-muted lg:block'>
+              <div
+                className={cn('h-full rounded-r-[1px]', urgent ? 'bg-destructive' : 'bg-primary')}
+                style={{ width: `${Math.round(progress * 100)}%` }}
+              />
             </div>
-            {/* Mobile-only next label — inline on its own row so it doesn't collide with time */}
-            {nextLabel && (
-              <span className='mt-0.5 block truncate text-caption2 leading-none text-muted-foreground md:hidden'>
-                {nextLabel}
-              </span>
-            )}
-          </>
-        ) : (
-          <span className='text-caption text-muted-foreground'>番組情報なし</span>
-        )}
+          )}
+        </div>
 
-        {/* Progress track at bottom */}
-        {cur && (
-          <div className='absolute bottom-0 left-0 right-0 h-[2px] bg-muted'>
-            <div
-              className={cn('h-full rounded-r-[1px]', urgent ? 'bg-destructive' : 'bg-primary')}
-              style={{ width: `${Math.round(progress * 100)}%` }}
-            />
-          </div>
-        )}
+        {/* Next program — hidden on narrow/mobile, shown on lg+ */}
+        <div className='hidden min-w-0 flex-1 flex-col justify-center overflow-hidden px-2 py-1 lg:flex'>
+          {next ? (
+            <>
+              <span className='truncate text-caption text-muted-foreground'>{next.title}</span>
+              <span className='text-caption2 text-muted-foreground'>{formatTimeRange(next.startAt, next.endAt)}</span>
+            </>
+          ) : null}
+        </div>
       </div>
 
-      {/* Next program — hidden on mobile, shown on md+ */}
-      <div className='hidden min-w-0 flex-1 flex-col justify-center overflow-hidden px-2 py-1 md:flex'>
-        {next ? (
-          <>
-            <span className='truncate text-caption text-muted-foreground'>{next.title}</span>
-            <span className='text-caption2 text-muted-foreground'>{formatTimeRange(next.startAt, next.endAt)}</span>
-          </>
-        ) : null}
-      </div>
+      {/* Progress track — mobile: full-width at the bottom of the link */}
+      {cur && (
+        <div className='h-[2px] bg-muted lg:hidden'>
+          <div
+            className={cn('h-full rounded-r-[1px]', urgent ? 'bg-destructive' : 'bg-primary')}
+            style={{ width: `${Math.round(progress * 100)}%` }}
+          />
+        </div>
+      )}
     </Link>
   )
 }
