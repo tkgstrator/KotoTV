@@ -574,9 +574,19 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='avoidDuplicates'
                     render={({ field }) => (
                       <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='cursor-pointer text-body text-foreground'>
-                          タイトル重複は録画しない
-                        </FormLabel>
+                        <div className='flex items-center gap-1'>
+                          <FormLabel className='cursor-pointer text-body text-foreground'>
+                            タイトル重複は録画しない
+                          </FormLabel>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className='size-3.5 text-muted-foreground' />
+                              </TooltipTrigger>
+                              <TooltipContent>同じタイトルが録画済みの場合スキップ</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
@@ -588,7 +598,17 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='excludeReruns'
                     render={({ field }) => (
                       <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='cursor-pointer text-body text-foreground'>再放送を録画しない</FormLabel>
+                        <div className='flex items-center gap-1'>
+                          <FormLabel className='cursor-pointer text-body text-foreground'>再放送を録画しない</FormLabel>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className='size-3.5 text-muted-foreground' />
+                              </TooltipTrigger>
+                              <TooltipContent>番組情報で再放送と判定された番組をスキップ</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
@@ -600,7 +620,17 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='newOnly'
                     render={({ field }) => (
                       <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='cursor-pointer text-body text-foreground'>新番組のみ</FormLabel>
+                        <div className='flex items-center gap-1'>
+                          <FormLabel className='cursor-pointer text-body text-foreground'>新番組のみ</FormLabel>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className='size-3.5 text-muted-foreground' />
+                              </TooltipTrigger>
+                              <TooltipContent>番組情報で新番組と判定された番組のみ録画</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
@@ -612,7 +642,17 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     name='encodeProfileId'
                     render={({ field }) => (
                       <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='text-body text-foreground'>録画後にエンコード</FormLabel>
+                        <div className='flex items-center gap-1'>
+                          <FormLabel className='text-body text-foreground'>録画後にエンコード</FormLabel>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className='size-3.5 text-muted-foreground' />
+                              </TooltipTrigger>
+                              <TooltipContent>録画完了後に自動でエンコードを実行</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                         <FormControl>
                           <Select
                             value={field.value ?? 'none'}
@@ -645,22 +685,30 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='marginStartMinutes'
                     render={({ field }) => (
-                      <FormItem className='space-y-0'>
-                        <div className='flex min-h-9 items-center justify-between gap-3'>
+                      <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
+                        <div className='flex items-center gap-1'>
                           <FormLabel className='text-body text-foreground'>開始マージン</FormLabel>
-                          <div className='flex items-center gap-1.5'>
-                            <FormControl>
-                              <Input
-                                type='number'
-                                min={0}
-                                max={60}
-                                value={field.value}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                                className='h-9 w-20 tabular-nums text-body'
-                              />
-                            </FormControl>
-                            <span className='w-6 text-footnote text-muted-foreground'>分</span>
-                          </div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className='size-3.5 text-muted-foreground' />
+                              </TooltipTrigger>
+                              <TooltipContent>番組開始時刻より前に録画を開始</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className='flex items-center gap-1.5'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              min={0}
+                              max={60}
+                              value={field.value}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              className='h-9 w-20 tabular-nums text-body'
+                            />
+                          </FormControl>
+                          <span className='w-6 text-footnote text-muted-foreground'>分</span>
                         </div>
                       </FormItem>
                     )}
@@ -669,22 +717,30 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='marginEndMinutes'
                     render={({ field }) => (
-                      <FormItem className='space-y-0'>
-                        <div className='flex min-h-9 items-center justify-between gap-3'>
+                      <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
+                        <div className='flex items-center gap-1'>
                           <FormLabel className='text-body text-foreground'>終了マージン</FormLabel>
-                          <div className='flex items-center gap-1.5'>
-                            <FormControl>
-                              <Input
-                                type='number'
-                                min={0}
-                                max={60}
-                                value={field.value}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                                className='h-9 w-20 tabular-nums text-body'
-                              />
-                            </FormControl>
-                            <span className='w-6 text-footnote text-muted-foreground'>分</span>
-                          </div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className='size-3.5 text-muted-foreground' />
+                              </TooltipTrigger>
+                              <TooltipContent>番組終了時刻より後まで録画を延長</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className='flex items-center gap-1.5'>
+                          <FormControl>
+                            <Input
+                              type='number'
+                              min={0}
+                              max={60}
+                              value={field.value}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              className='h-9 w-20 tabular-nums text-body'
+                            />
+                          </FormControl>
+                          <span className='w-6 text-footnote text-muted-foreground'>分</span>
                         </div>
                       </FormItem>
                     )}
