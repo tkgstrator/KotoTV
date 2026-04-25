@@ -1,5 +1,4 @@
 import type { Program } from '@kototv/server/src/schemas/Program.dto'
-import { Link } from '@tanstack/react-router'
 import { StatusChip } from '@/components/shared/status-chip'
 import { formatTimeRange, genreToColor } from '@/lib/program'
 import { cn } from '@/lib/utils'
@@ -12,9 +11,10 @@ interface ProgramCellProps {
    * taller blocks (30min+) have room for more text.
    */
   heightPx?: number
+  onClick?: () => void
 }
 
-export function ProgramCell({ program, className, heightPx }: ProgramCellProps) {
+export function ProgramCell({ program, className, heightPx, onClick }: ProgramCellProps) {
   const primaryGenre = program.genres[0] ?? 'その他'
   const accentColor = genreToColor(primaryGenre)
 
@@ -24,12 +24,12 @@ export function ProgramCell({ program, className, heightPx }: ProgramCellProps) 
   const showBadges = heightPx === undefined || heightPx >= 60
 
   return (
-    <Link
-      to='/live/$channelId'
-      params={{ channelId: program.channelId }}
+    <button
+      type='button'
+      onClick={onClick}
       aria-label={`${program.title} ${formatTimeRange(program.startAt, program.endAt)}`}
       className={cn(
-        'group flex h-full w-full flex-col overflow-hidden rounded-[2px] border-l-[3px] bg-[var(--genre-color)]/10 p-[3px_5px] outline-none',
+        'group flex h-full w-full flex-col overflow-hidden rounded-[2px] border-l-[3px] bg-[var(--genre-color)]/10 p-[3px_5px] text-left outline-none',
         'hover:bg-[var(--genre-color)]/18',
         'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
         className
@@ -54,6 +54,6 @@ export function ProgramCell({ program, className, heightPx }: ProgramCellProps) 
           )}
         </div>
       )}
-    </Link>
+    </button>
   )
 }
