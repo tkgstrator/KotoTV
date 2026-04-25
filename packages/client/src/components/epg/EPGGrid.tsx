@@ -49,8 +49,8 @@ interface EPGGridProps {
   gridStartAt: Date
   /** ISO string for the highlighted channel (from ?channel= search param). */
   highlightChannelId?: string | undefined
-  /** Active genre filter label (e.g. "アニメ/特撮"). Null = show all. */
-  genreFilter?: string | null
+  /** Active genre filter labels (e.g. ["アニメ/特撮"]). Empty = show all. */
+  genreFilter?: string[]
 }
 
 // ─── Future grid helpers ───────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ interface FutureGridProps {
   gridStart: Date
   gridEnd: Date
   now: Date
-  genreFilter: string | null
+  genreFilter: string[]
   onProgramSelect: (program: Program) => void
 }
 
@@ -252,7 +252,7 @@ function FutureGrid({
                 programs.map((p) => {
                   const top = dateToOffset(new Date(p.startAt), gridStart)
                   const height = programHeight(p, gridStart, gridEnd)
-                  const dimmed = genreFilter ? !programMatchesGenre(p.genres, genreFilter) : false
+                  const dimmed = genreFilter.length > 0 && !genreFilter.some((f) => programMatchesGenre(p.genres, f))
                   return (
                     <div
                       key={p.id}
@@ -364,7 +364,7 @@ interface AgendaViewProps {
   loadingChannelIds: Set<string>
   now: Date
   windowEnd: Date
-  genreFilter: string | null
+  genreFilter: string[]
   /** Ref forwarded from the scrollable parent to wire the virtualizer. */
   scrollRef: React.RefObject<HTMLDivElement | null>
   onActiveSectionChange: (channelId: string | null) => void
@@ -500,7 +500,7 @@ function AgendaView({
                   {programs.map((p) => {
                     const isNow = new Date(p.startAt) <= now && new Date(p.endAt) > now
                     const accentColor = genreToColor(p.genres[0] ?? '')
-                    const dimmed = genreFilter ? !programMatchesGenre(p.genres, genreFilter) : false
+                    const dimmed = genreFilter.length > 0 && !genreFilter.some((f) => programMatchesGenre(p.genres, f))
                     return (
                       <li key={p.id} className={cn('transition-opacity', dimmed && 'opacity-10')}>
                         <button
@@ -567,7 +567,7 @@ export function EPGGrid({
   loadingChannelIds,
   gridStartAt,
   highlightChannelId,
-  genreFilter = null
+  genreFilter = []
 }: EPGGridProps) {
   const now = useClock()
   const gridEnd = useMemo(() => addHours(gridStartAt, GRID_HOURS), [gridStartAt])
