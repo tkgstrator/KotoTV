@@ -183,11 +183,11 @@ function DaySection({
   const dayLabel = format(parseISO(day), 'M月d日(E)', { locale: ja })
   return (
     <section className='flex flex-col'>
-      <header className='mb-2 flex items-baseline gap-2'>
+      <header className='sticky top-0 z-10 flex items-baseline gap-2 bg-background px-4 py-2 md:static md:mb-2 md:bg-transparent md:px-0 md:py-0'>
         <h2 className='text-subheadline font-bold text-foreground'>{dayLabel}</h2>
         <span className='text-footnote text-muted-foreground'>· {items.length} 件</span>
       </header>
-      <div className='overflow-hidden rounded-[4px] border border-border'>
+      <div className='md:overflow-hidden md:rounded-[4px] md:border md:border-border'>
         {items.map((s) => (
           <ReservationRow
             key={s.id}
@@ -259,7 +259,7 @@ function ReservationsPage() {
         {groups.length === 0 ? (
           <EmptyMessage filter={filter} />
         ) : (
-          <div className='flex flex-col gap-6 px-4 pt-4 pb-4'>
+          <div className='flex flex-col gap-0 md:gap-6 md:px-4 md:pt-4 md:pb-4'>
             {groups.map(({ day, items }) => (
               <DaySection key={day} day={day} items={items} channelNameMap={channelNameMap} ruleNameMap={ruleNameMap} />
             ))}
