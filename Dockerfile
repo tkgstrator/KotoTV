@@ -161,7 +161,10 @@ COPY --from=client-build /app/packages/client/dist packages/client/dist
 # Server source (Bun runs TS directly)
 COPY packages/server packages/server
 
-RUN mkdir -p /app/data/hls /app/data/recordings
+# Config file (sensible defaults; override via compose volume mount)
+COPY config/kototv.yaml /app/config/kototv.yaml
+
+RUN mkdir -p /app/data/hls /app/data/recordings /app/data/encoded
 
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh

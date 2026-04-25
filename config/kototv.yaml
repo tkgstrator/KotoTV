@@ -1,0 +1,33 @@
+# KonomiTV-clone configuration
+# Mount this file into the container at /app/config/kototv.yaml
+# Environment variables override values set here.
+
+server:
+  port: 11575
+
+mirakc:
+  url: http://mirakc:40772
+
+storage:
+  # Raw recordings (MPEG-TS stream-copy from Mirakc)
+  recordings: /app/data/recordings
+  # Encoded output (post-recording transcode)
+  encoded: /app/data/encoded
+  # HLS segments (tmpfs in production — ephemeral)
+  hls: /app/data/hls
+
+streaming:
+  # Hardware acceleration: none | nvenc | qsv | vaapi
+  hw_accel: none
+  # Default output codec: avc | hevc
+  codec: avc
+  # VA-API render node path
+  vaapi_device: /dev/dri/renderD128
+
+hls:
+  # Kill FFmpeg after this many ms with zero viewers
+  idle_kill_ms: 15000
+  # Absolute watchdog: kill session if no GET within this window
+  access_timeout_ms: 30000
+  # Watchdog scan interval
+  watchdog_interval_ms: 10000
