@@ -572,7 +572,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='avoidDuplicates'
                     render={({ field }) => (
-                      <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
+                      <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
                         <FormLabel className='cursor-pointer text-body text-foreground'>
                           タイトル重複は録画しない
                         </FormLabel>
@@ -586,7 +586,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='excludeReruns'
                     render={({ field }) => (
-                      <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
+                      <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
                         <FormLabel className='cursor-pointer text-body text-foreground'>再放送を録画しない</FormLabel>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -598,7 +598,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='newOnly'
                     render={({ field }) => (
-                      <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
+                      <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
                         <FormLabel className='cursor-pointer text-body text-foreground'>新番組のみ</FormLabel>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -610,7 +610,7 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='encodeProfileId'
                     render={({ field }) => (
-                      <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
+                      <FormItem className='flex! min-h-9 items-center justify-between gap-3 space-y-0'>
                         <FormLabel className='text-body text-foreground'>録画後にエンコード</FormLabel>
                         <FormControl>
                           <Select
@@ -644,20 +644,22 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='marginStartMinutes'
                     render={({ field }) => (
-                      <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='text-body text-foreground'>開始マージン</FormLabel>
-                        <div className='flex items-center gap-1.5'>
-                          <FormControl>
-                            <Input
-                              type='number'
-                              min={0}
-                              max={60}
-                              value={field.value}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                              className='h-9 w-20 tabular-nums text-body'
-                            />
-                          </FormControl>
-                          <span className='text-footnote text-muted-foreground'>分</span>
+                      <FormItem className='space-y-0'>
+                        <div className='flex min-h-9 items-center justify-between gap-3'>
+                          <FormLabel className='text-body text-foreground'>開始マージン</FormLabel>
+                          <div className='flex items-center gap-1.5'>
+                            <FormControl>
+                              <Input
+                                type='number'
+                                min={0}
+                                max={60}
+                                value={field.value}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                className='h-9 w-20 tabular-nums text-body'
+                              />
+                            </FormControl>
+                            <span className='w-6 text-footnote text-muted-foreground'>分</span>
+                          </div>
                         </div>
                       </FormItem>
                     )}
@@ -666,20 +668,22 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='marginEndMinutes'
                     render={({ field }) => (
-                      <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='text-body text-foreground'>終了マージン</FormLabel>
-                        <div className='flex items-center gap-1.5'>
-                          <FormControl>
-                            <Input
-                              type='number'
-                              min={0}
-                              max={60}
-                              value={field.value}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                              className='h-9 w-20 tabular-nums text-body'
-                            />
-                          </FormControl>
-                          <span className='text-footnote text-muted-foreground'>分</span>
+                      <FormItem className='space-y-0'>
+                        <div className='flex min-h-9 items-center justify-between gap-3'>
+                          <FormLabel className='text-body text-foreground'>終了マージン</FormLabel>
+                          <div className='flex items-center gap-1.5'>
+                            <FormControl>
+                              <Input
+                                type='number'
+                                min={0}
+                                max={60}
+                                value={field.value}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                className='h-9 w-20 tabular-nums text-body'
+                              />
+                            </FormControl>
+                            <span className='w-6 text-footnote text-muted-foreground'>分</span>
+                          </div>
                         </div>
                       </FormItem>
                     )}
@@ -688,21 +692,24 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='minDurationMinutes'
                     render={({ field }) => (
-                      <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='text-body text-foreground'>最小番組長</FormLabel>
-                        <div className='flex items-center gap-1.5'>
-                          <FormControl>
-                            <Input
-                              type='number'
-                              min={0}
-                              max={1440}
-                              value={field.value}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                              className='h-9 w-20 tabular-nums text-body'
-                            />
-                          </FormControl>
-                          <span className='text-footnote text-muted-foreground'>分 (0 で無効)</span>
+                      <FormItem className='space-y-0'>
+                        <div className='flex min-h-9 items-center justify-between gap-3'>
+                          <FormLabel className='text-body text-foreground'>最小番組長</FormLabel>
+                          <div className='flex items-center gap-1.5'>
+                            <FormControl>
+                              <Input
+                                type='number'
+                                min={0}
+                                max={1440}
+                                value={field.value}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                className='h-9 w-20 tabular-nums text-body'
+                              />
+                            </FormControl>
+                            <span className='w-6 text-footnote text-muted-foreground'>分</span>
+                          </div>
                         </div>
+                        <p className='text-caption text-muted-foreground'>0 で無効</p>
                       </FormItem>
                     )}
                   />
@@ -710,21 +717,24 @@ export function RuleForm({ channels, existing }: RuleFormProps) {
                     control={form.control}
                     name='keepLatestN'
                     render={({ field }) => (
-                      <FormItem className='flex! items-center justify-between gap-3 space-y-0'>
-                        <FormLabel className='text-body text-foreground'>保存世代数</FormLabel>
-                        <div className='flex items-center gap-1.5'>
-                          <FormControl>
-                            <Input
-                              type='number'
-                              min={0}
-                              max={999}
-                              value={field.value}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                              className='h-9 w-20 tabular-nums text-body'
-                            />
-                          </FormControl>
-                          <span className='text-footnote text-muted-foreground'>本 (0 で無制限)</span>
+                      <FormItem className='space-y-0'>
+                        <div className='flex min-h-9 items-center justify-between gap-3'>
+                          <FormLabel className='text-body text-foreground'>保存世代数</FormLabel>
+                          <div className='flex items-center gap-1.5'>
+                            <FormControl>
+                              <Input
+                                type='number'
+                                min={0}
+                                max={999}
+                                value={field.value}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                className='h-9 w-20 tabular-nums text-body'
+                              />
+                            </FormControl>
+                            <span className='w-6 text-footnote text-muted-foreground'>本</span>
+                          </div>
                         </div>
+                        <p className='text-caption text-muted-foreground'>0 で無制限</p>
                       </FormItem>
                     )}
                   />
