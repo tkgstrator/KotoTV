@@ -50,6 +50,9 @@ type Session = {
   /** Last time a client fetched playlist.m3u8 or a segment. Updated by
    * getSessionDir(); consulted by the access watchdog. */
   lastAccessAt: number
+  /** True once a recording-playback FFmpeg finishes transcoding (exit 0).
+   *  The segments are still valid on disk — don't treat as a zombie. */
+  transcodeComplete: boolean
 }
 
 /** (channelId|codec|quality) → Session */
@@ -432,7 +435,7 @@ async function watchdogScan(): Promise<void> {
     // Promise.race with an already-resolved false lets us check without blocking.
     const isExited = await Promise.race([session.handle.exited.then(() => true), Promise.resolve(false)])
 
-    if (isExited) {
+    if (isExited && !session.transcodeComplete) {
       managerLogger.warn(
         { sessionId: session.sessionId, channelId: session.channelId, codec: session.codec, quality: session.quality },
         'watchdog: FFmpeg process already exited but session still tracked — cleaning up zombie'
@@ -568,7 +571,8 @@ async function bootSession(channelId: string, codec: Codec, quality: Quality): P
     viewerCount: 1,
     idleTimer: null,
     createdAt: now,
-    lastAccessAt: now
+    lastAccessAt: now,
+    transcodeComplete: false
   }
 
   byKey.set(key, session)
@@ -641,7 +645,8 @@ async function bootRecordingSession(recordingId: string, filePath: string): Prom
     viewerCount: 1,
     idleTimer: null,
     createdAt: now,
-    lastAccessAt: now
+    lastAccessAt: now,
+    transcodeComplete: false
   }
 
   byKey.set(key, session)
@@ -651,13 +656,17 @@ async function bootRecordingSession(recordingId: string, filePath: string): Prom
   managerLogger.info({ sessionId, recordingId }, 'recording playback session ready')
 
   handle.exited.then((code) => {
-    // VOD transcode finishing normally (exit 0) is expected — don't log as error
     if (code === 0) {
+      // VOD transcode finished — segments are valid on disk.
+      // Keep the session in the maps so clients can still fetch segments.
+      // Normal idle/watchdog cleanup will remove it once nobody is watching.
+      session.transcodeComplete = true
       managerLogger.info({ sessionId, recordingId }, 'recording transcode completed')
     } else {
-      managerLogger.warn({ sessionId, recordingId, code }, 'recording ffmpeg exited — removing session')
+      managerLogger.warn({ sessionId, recordingId, code }, 'recording ffmpeg exited abnormally — removing session')
+      void rmDir(outputDir)
+      teardownEntry(sessionId)
     }
-    teardownEntry(sessionId)
   })
 
   return session
