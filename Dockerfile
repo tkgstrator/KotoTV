@@ -113,7 +113,9 @@ RUN bunx prisma generate --schema=packages/server/prisma/schema.prisma
 # Ensure HLS and recordings directories exist (tmpfs is mounted over hls at runtime).
 RUN mkdir -p /app/data/hls /app/data/recordings
 
+ARG BUILD_VERSION=dev
 ENV NODE_ENV=production
+ENV BUILD_VERSION=${BUILD_VERSION}
 EXPOSE 11575
 
 CMD ["bun", "run", "--cwd", "packages/server", "start"]
