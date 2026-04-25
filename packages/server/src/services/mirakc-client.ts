@@ -37,7 +37,8 @@ const MOCK_SERVICES: MirakcService[] = [
   { id: 6040, serviceId: 6040, networkId: 6, type: 1, name: 'CNNj', channel: { type: 'CS', channel: 'CS8' } },
   { id: 6020, serviceId: 6020, networkId: 6, type: 1, name: 'アニマックス', channel: { type: 'CS', channel: 'CS6' } },
   { id: 6030, serviceId: 6030, networkId: 6, type: 1, name: 'カートゥーンNW', channel: { type: 'CS', channel: 'CS7' } },
-  { id: 6090, serviceId: 6090, networkId: 6, type: 1, name: 'GAORA SPORTS', channel: { type: 'CS', channel: 'CS9' } }
+  { id: 6090, serviceId: 6090, networkId: 6, type: 1, name: 'GAORA SPORTS', channel: { type: 'CS', channel: 'CS9' } },
+  { id: 700333, serviceId: 333, networkId: 7, type: 1, name: 'AT-X', channel: { type: 'CS', channel: 'CS7/0' } }
 ]
 
 // Programs per service — 3 consecutive slots: now-1h, now, now+1h (each 1h long)
@@ -59,7 +60,8 @@ const MOCK_PROGRAM_TITLES: Record<number, [string, string, string]> = {
   6040: ['CNN NEWSROOM', 'WORLD SPORT', 'CNN INTERNATIONAL'],
   6020: ['アニメ　鬼滅の刃', 'アニマックス映画劇場', 'アニメ　進撃の巨人'],
   6030: ['トムとジェリー', 'カートゥーン特集', 'スターウォーズ アニメ'],
-  6090: ['プロ野球ダイジェスト', 'サッカー　Jリーグ', 'スポーツニュース']
+  6090: ['プロ野球ダイジェスト', 'サッカー　Jリーグ', 'スポーツニュース'],
+  700333: ['アニメ　ソードアート・オンライン', 'アニメ　Re:ゼロから始める異世界生活', 'アニメ　無職転生']
 }
 
 function buildMockPrograms(serviceId: number): MirakcProgram[] {
