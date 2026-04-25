@@ -1,20 +1,15 @@
 /**
- * EPGGrid — virtualised implementation.
+ * EPGGrid — vertical time-axis desktop grid + mobile agenda view.
  *
- * Desktop (md+): pinned NOW-strip + 2-axis future grid with row-virtualisation
- *   via @tanstack/react-virtual. Horizontal axis is NOT virtualised because each
- *   row holds at most 48 absolutely-positioned cells (24 h / 30 min) — cheap.
+ * Desktop (md+): channels-as-columns, time flows downward.
+ *   - Sticky top: channel header row
+ *   - Sticky left: time labels
+ *   - Programs are absolutely positioned within their column by top+height
+ *   - No row virtualiser needed (~100-200 nodes for 8h × 15ch)
  *
  * Mobile (<md):
- *   - Channel quick-jump strip (horizontally scrollable chips) below NOW-strip.
- *     IntersectionObserver tracks the topmost visible section to highlight the
- *     active chip.
- *   - Agenda view with per-section virtualisation.
- *     Sections are variable-height groups (header + N program rows). We use a
- *     single virtualizer whose item count == channels.length and whose
- *     estimateSize accounts for the header + typical program list height.
- *     The actual DOM height is always set via getTotalSize() so the scrollbar
- *     is accurate, and each item is positioned with translateY.
+ *   - Channel quick-jump strip (horizontally scrollable chips)
+ *   - Agenda view with per-section virtualisation via @tanstack/react-virtual
  */
 
 import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
@@ -30,17 +25,17 @@ import { formatTimeRange, genreToColor } from '@/lib/program'
 import { cn } from '@/lib/utils'
 import { ProgramCell } from './ProgramCell'
 
-/** Pixels per minute in the future grid. 3px/min = 180px/hour, 90px per 30-min slot. */
+/** Pixels per minute on the vertical axis. 3px/min = 180px/hour. */
 const PX_PER_MIN = 3
 
-/** Channel label column width in px (sticky left). */
-const CH_COL_W = 80
+/** Width of the sticky left time-label column in px. */
+const TIME_COL_W = 52
+
+/** Height of the sticky top channel header row in px. */
+const CH_HEADER_H = 48
 
 /** Number of hours shown in the future grid. */
 const GRID_HOURS = 8
-
-/** Row height for the future grid (px). Fixed — no measureElement needed. */
-const ROW_H = 80
 
 /** Estimated height for one agenda section: header (32) + ~4 programs × 72px. */
 const AGENDA_SECTION_ESTIMATE = 32 + 4 * 72
@@ -49,13 +44,11 @@ interface EPGGridProps {
   channels: Channel[]
   programsByChannel: Map<string, Program[]>
   loadingChannelIds: Set<string>
-  /** ISO string marking the left edge of the future grid (typically next half-hour boundary). */
+  /** ISO string marking the top edge of the future grid (typically next half-hour boundary). */
   gridStartAt: Date
   /** ISO string for the highlighted channel (from ?channel= search param). */
   highlightChannelId?: string | undefined
 }
-
-// ─── NOW-strip ────────────────────────────────────────────────────────────────
 
 // ─── Future grid helpers ───────────────────────────────────────────────────────
 
@@ -63,17 +56,26 @@ function clipPrograms(programs: Program[], gridStart: Date, gridEnd: Date): Prog
   return programs.filter((p) => new Date(p.endAt) > gridStart && new Date(p.startAt) < gridEnd)
 }
 
+/** Returns vertical offset in px from the grid top for a given date. */
 function dateToOffset(date: Date, gridStart: Date): number {
   return Math.max(0, (date.getTime() - gridStart.getTime()) / (60_000 / PX_PER_MIN))
 }
 
-function programWidth(program: Program, gridStart: Date, gridEnd: Date): number {
+/** Returns the pixel height of a program block within the grid. */
+function programHeight(program: Program, gridStart: Date, gridEnd: Date): number {
   const start = Math.max(new Date(program.startAt).getTime(), gridStart.getTime())
   const end = Math.min(new Date(program.endAt).getTime(), gridEnd.getTime())
   return Math.max(4, (end - start) / (60_000 / PX_PER_MIN))
 }
 
-// ─── Desktop future grid (virtualised rows) ────────────────────────────────────
+/** Type badge colour: GR=blue, BS=green, CS/SKY=muted */
+function channelTypeBadgeClass(type: Channel['type']): string {
+  if (type === 'GR') return 'bg-primary/12 border-primary/35 text-primary'
+  if (type === 'BS') return 'bg-success/12 border-success/35 text-success'
+  return 'bg-muted border-border text-muted-foreground'
+}
+
+// ─── Desktop future grid (vertical time axis) ─────────────────────────────────
 
 interface FutureGridProps {
   channels: Channel[]
@@ -85,7 +87,7 @@ interface FutureGridProps {
 }
 
 function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart, gridEnd, now }: FutureGridProps) {
-  const totalWidth = GRID_HOURS * 60 * PX_PER_MIN
+  const totalHeight = GRID_HOURS * 60 * PX_PER_MIN
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const hourTicks = useMemo(() => {
@@ -99,134 +101,174 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
   }, [gridStart, gridEnd])
 
   const nowOffset = useMemo(() => dateToOffset(now, gridStart), [now, gridStart])
-  const showIndicator = nowOffset > 0 && nowOffset < totalWidth
-
-  const rowVirtualizer = useVirtualizer({
-    count: channels.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_H,
-    overscan: 5
-  })
-
-  const virtualRows = rowVirtualizer.getVirtualItems()
-  const totalRowHeight = rowVirtualizer.getTotalSize()
+  const showIndicator = nowOffset > 0 && nowOffset < totalHeight
 
   return (
     <section
       ref={scrollRef}
-      aria-label='これからの番組グリッド'
+      aria-label='これからの番組グリッド（縦時刻軸）'
       className='relative overflow-auto [scrollbar-width:thin]'
       style={{ height: '100%' }}
     >
-      {/* Sticky time-header row */}
-      <div className='sticky top-0 z-20 flex bg-card' style={{ paddingLeft: CH_COL_W }}>
-        {/* Corner cell */}
+      {/*
+       * epg-table is a CSS Grid:
+       *   column 0: TIME_COL_W px (sticky left, time labels)
+       *   columns 1-N: minmax(120px, 1fr) per channel
+       *
+       * Row structure inside the grid:
+       *   row 0: CH_HEADER_H sticky top — channel header cells
+       *   row 1: totalHeight relative — the time body (holds time labels + program columns)
+       *
+       * The channel program columns are positioned absolutely within their column track
+       * using a `position:relative` wrapper of totalHeight. This avoids a per-hour row
+       * approach (which breaks absolute positioning across hour boundaries for multi-hour
+       * programs spanning grid rows).
+       */}
+      <div
+        className='relative min-w-max'
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `${TIME_COL_W}px repeat(${channels.length}, minmax(120px, 1fr))`
+        }}
+      >
+        {/* ── Header row (sticky top) ── */}
+
+        {/* Corner cell — sticky top + left */}
         <div
-          className='absolute left-0 top-0 z-30 flex items-center justify-center border-b border-r-2 border-border bg-card'
-          style={{ width: CH_COL_W, height: 28 }}
+          aria-hidden
+          className='sticky left-0 top-0 z-30 flex items-center justify-center border-b-2 border-r-2 border-border bg-card'
+          style={{ height: CH_HEADER_H }}
         >
-          <span className='font-mono text-[0.6875rem] font-bold text-muted-foreground'>CH</span>
+          <span className='font-mono text-[0.65rem] font-bold text-muted-foreground'>時刻</span>
         </div>
 
-        {/* Time ticks */}
-        <div className='relative border-b border-border' style={{ width: totalWidth, height: 28, flexShrink: 0 }}>
+        {/* Channel header cells — sticky top */}
+        {channels.map((ch) => (
+          <Link
+            key={ch.id}
+            to='/live/$channelId'
+            params={{ channelId: ch.id }}
+            aria-label={`${ch.name} を視聴`}
+            className={cn(
+              'sticky top-0 z-20 flex flex-col items-center justify-center gap-[2px] border-b-2 border-r border-border bg-card px-1 py-1 text-center',
+              'cursor-pointer transition-colors hover:bg-muted/40',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
+            )}
+            style={{ height: CH_HEADER_H }}
+          >
+            <span
+              className={cn(
+                'inline-flex items-center rounded-[3px] border px-[4px] py-[1px] font-mono text-[0.5625rem] font-bold leading-none tracking-[0.06em] uppercase',
+                channelTypeBadgeClass(ch.type)
+              )}
+            >
+              {ch.type}
+            </span>
+            <span className='font-mono text-[0.65rem] font-extrabold leading-none'>{ch.channelNumber}</span>
+            <span className='max-w-full truncate text-[0.5625rem] leading-[1.2] text-muted-foreground'>
+              {ch.name.length > 8 ? `${ch.name.slice(0, 8)}…` : ch.name}
+            </span>
+          </Link>
+        ))}
+
+        {/* ── Time labels column (sticky left) ── */}
+        <div
+          aria-hidden
+          className='sticky left-0 z-15 border-r-2 border-border bg-card'
+          style={{ height: totalHeight, position: 'relative' }}
+        >
           {hourTicks.map((tick) => {
-            const left = dateToOffset(tick, gridStart)
+            const top = dateToOffset(tick, gridStart)
+            const isCurrentHour = now >= tick && now < addHours(tick, 1)
             return (
               <div
                 key={tick.toISOString()}
-                className='absolute top-0 flex h-full items-center border-l border-border/50 pl-1'
-                style={{ left }}
+                className={cn(
+                  'absolute left-0 right-0 flex items-start border-b border-border/40 px-[4px] pt-[3px]',
+                  isCurrentHour && 'bg-destructive/6'
+                )}
+                style={{ top, height: 60 * PX_PER_MIN }}
               >
-                <span className='font-mono text-[0.75rem] font-bold text-muted-foreground'>
+                <span
+                  className={cn(
+                    'font-mono text-[0.6875rem] font-bold tabular-nums',
+                    isCurrentHour ? 'text-destructive' : 'text-muted-foreground'
+                  )}
+                >
                   {format(tick, 'HH:mm')}
                 </span>
               </div>
             )
           })}
         </div>
-      </div>
 
-      {/* Virtualised channel rows — relative wrapper holds total height */}
-      <div data-testid='future-grid-rows' style={{ height: totalRowHeight, position: 'relative' }}>
-        {virtualRows.map((virtualRow) => {
-          const ch = channels[virtualRow.index]
-          if (!ch) return null
+        {/* ── Channel program columns ── */}
+        {channels.map((ch) => {
           const programs = clipPrograms(programsByChannel.get(ch.id) ?? [], gridStart, gridEnd)
           const isLoading = loadingChannelIds.has(ch.id)
 
           return (
             <div
               key={ch.id}
-              data-row
               data-channel-id={ch.id}
-              data-index={virtualRow.index}
-              className='absolute flex w-full border-b border-border'
-              style={{
-                top: 0,
-                transform: `translateY(${virtualRow.start}px)`,
-                height: ROW_H
-              }}
+              className='relative border-r border-border bg-background'
+              style={{ height: totalHeight }}
             >
-              {/* Channel label — sticky left */}
-              <button
-                type='button'
-                aria-label={ch.name}
-                className={cn(
-                  'sticky left-0 z-10 flex flex-shrink-0 flex-col items-center justify-center border-r-2 border-border bg-card px-1 py-1',
-                  'cursor-pointer hover:bg-muted/50 transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
-                )}
-                style={{ width: CH_COL_W, height: ROW_H }}
-              >
-                <span className='font-mono text-[0.8125rem] font-bold' style={{ color: genreToColor('') }}>
-                  {ch.channelNumber}
-                </span>
-                <span className='mt-[3px] text-center text-[0.625rem] leading-[1.2] text-muted-foreground'>
-                  {ch.name.length > 6 ? `${ch.name.slice(0, 6)}…` : ch.name}
-                </span>
-              </button>
+              {/* Hour boundary lines — drawn as thin horizontal rules across the column */}
+              {hourTicks.map((tick) => (
+                <div
+                  key={tick.toISOString()}
+                  aria-hidden
+                  className='pointer-events-none absolute left-0 right-0 border-b border-border/40'
+                  style={{ top: dateToOffset(tick, gridStart) + 60 * PX_PER_MIN - 1 }}
+                />
+              ))}
 
-              {/* Programs row — absolutely positioned within relative container */}
-              <div
-                className='relative flex-1 bg-background'
-                style={{ height: ROW_H, flexShrink: 0, minWidth: totalWidth }}
-              >
-                {isLoading ? (
-                  <div className='absolute inset-0 flex items-center gap-2 px-2'>
-                    <Skeleton className='h-8 w-full rounded' />
-                  </div>
-                ) : programs.length === 0 ? (
-                  <div className='absolute inset-0 flex items-center px-2'>
-                    <span className='text-[0.6rem] text-muted-foreground'>番組情報なし</span>
-                  </div>
-                ) : (
-                  programs.map((p) => {
-                    const left = dateToOffset(new Date(p.startAt), gridStart)
-                    const width = programWidth(p, gridStart, gridEnd)
-                    return (
-                      <div key={p.id} className='absolute top-[4px] bottom-[4px] px-[2px]' style={{ left, width }}>
-                        <ProgramCell program={p} className='h-full' />
-                      </div>
-                    )
-                  })
-                )}
-              </div>
+              {isLoading ? (
+                <div className='absolute inset-x-[2px] top-1 flex flex-col gap-1'>
+                  <Skeleton className='h-[54px] w-full rounded' />
+                  <Skeleton className='h-[90px] w-full rounded' />
+                  <Skeleton className='h-[54px] w-full rounded' />
+                </div>
+              ) : programs.length === 0 ? (
+                <div className='absolute inset-0 flex items-start justify-center pt-3'>
+                  <span className='text-[0.6rem] text-muted-foreground'>番組情報なし</span>
+                </div>
+              ) : (
+                programs.map((p) => {
+                  const top = dateToOffset(new Date(p.startAt), gridStart)
+                  const height = programHeight(p, gridStart, gridEnd)
+                  return (
+                    <div
+                      key={p.id}
+                      className='absolute inset-x-[1px] px-0'
+                      style={{ top: top + 1, height: height - 1 }}
+                    >
+                      <ProgramCell program={p} heightPx={height} className='h-full w-full' />
+                    </div>
+                  )
+                })
+              )}
             </div>
           )
         })}
       </div>
 
-      {/* Now indicator — destructive 2px vertical line.
-          Positioned relative to the scroll container (not the virtualised rows)
-          by using the 28px time-header offset + scrolled top.
-          We let it span the full virtual height so it stays visible at all scroll positions. */}
+      {/* NOW indicator — horizontal 2px line + left circle dot.
+          Uses position:sticky top so it stays visible even after scrolling past it,
+          but we position it absolutely within the scroll container using the grid's
+          internal coordinate: CH_HEADER_H + nowOffset. */}
       {showIndicator && (
         <div
           aria-hidden
-          className='pointer-events-none absolute top-[28px] z-25 w-[2px] bg-destructive'
-          style={{ left: CH_COL_W + nowOffset, height: totalRowHeight }}
-        />
+          className='pointer-events-none absolute left-0 right-0 z-25 h-[2px] bg-destructive'
+          style={{ top: CH_HEADER_H + nowOffset }}
+        >
+          <span
+            className='absolute left-0 top-1/2 size-2 -translate-y-1/2 rounded-full bg-destructive'
+            style={{ marginLeft: TIME_COL_W - 4 }}
+          />
+        </div>
       )}
     </section>
   )
