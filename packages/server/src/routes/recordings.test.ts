@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
+import { addHours, subHours, subMinutes } from 'date-fns'
 import { app } from '../app'
 import { prisma } from '../lib/prisma'
 
@@ -39,8 +40,8 @@ describe('/api/recordings', () => {
     expect(channels.length).toBeGreaterThan(0)
 
     const channelId = channels[0].id
-    const startAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
-    const endAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+    const startAt = addHours(new Date(), 1).toISOString()
+    const endAt = addHours(new Date(), 2).toISOString()
 
     const payload = {
       channelId,
@@ -70,8 +71,8 @@ describe('/api/recordings', () => {
       channelId: '12345',
       programId: 'test-past',
       title: `${TEST_PREFIX}past`,
-      startAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      endAt: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+      startAt: subHours(new Date(), 1).toISOString(),
+      endAt: subMinutes(new Date(), 30).toISOString()
     }
 
     const res = await app.request('/api/recordings', {
@@ -84,8 +85,8 @@ describe('/api/recordings', () => {
   })
 
   test('DELETE /:scheduleId removes a pending schedule', async () => {
-    const startAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
-    const endAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+    const startAt = addHours(new Date(), 1).toISOString()
+    const endAt = addHours(new Date(), 2).toISOString()
 
     const createRes = await app.request('/api/recordings', {
       method: 'POST',
@@ -129,8 +130,8 @@ describe('/api/recordings', () => {
   })
 
   test('created schedule appears in GET / list', async () => {
-    const startAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
-    const endAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+    const startAt = addHours(new Date(), 1).toISOString()
+    const endAt = addHours(new Date(), 2).toISOString()
 
     await app.request('/api/recordings', {
       method: 'POST',

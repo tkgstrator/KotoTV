@@ -1,7 +1,7 @@
 import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import type { Program } from '@kototv/server/src/schemas/Program.dto'
 import { CreateRecordingScheduleSchema } from '@kototv/server/src/schemas/Recording.dto'
-import { addDays } from 'date-fns'
+import { addDays, parseISO } from 'date-fns'
 import { Search } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -42,13 +42,13 @@ const EMPTY: FormState = {
 }
 
 function toDatetimeLocal(iso: string): string {
-  const d = new Date(iso)
+  const d = parseISO(iso)
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function fromDatetimeLocal(local: string): string {
-  return new Date(local).toISOString()
+  return parseISO(local).toISOString()
 }
 
 interface EpgResultsProps {
@@ -83,8 +83,8 @@ function EpgResults({ channels, programs, query, onSelect }: EpgResultsProps) {
     <div>
       {filtered.map((p) => {
         const chName = channelMap.get(p.channelId) ?? p.channelId
-        const start = new Date(p.startAt)
-        const end = new Date(p.endAt)
+        const start = parseISO(p.startAt)
+        const end = parseISO(p.endAt)
         const durationMin = Math.round((end.getTime() - start.getTime()) / 60_000)
         const label = `${start.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })} ${start.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}〜${end.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })} · ${durationMin}min`
 

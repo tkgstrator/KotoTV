@@ -1,6 +1,6 @@
 import type { Recording, RecordingSchedule } from '@kototv/server/src/schemas/Recording.dto'
 import { Link } from '@tanstack/react-router'
-import { format, intervalToDuration } from 'date-fns'
+import { format, intervalToDuration, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -72,9 +72,9 @@ interface ScheduleRowProps {
 }
 
 export function ScheduleRow({ schedule, ruleNameMap }: ScheduleRowProps) {
-  const startLabel = format(new Date(schedule.startAt), 'yyyy-MM-dd HH:mm', { locale: ja })
-  const endLabel = format(new Date(schedule.endAt), 'HH:mm', { locale: ja })
-  const durationMs = new Date(schedule.endAt).getTime() - new Date(schedule.startAt).getTime()
+  const startLabel = format(parseISO(schedule.startAt), 'yyyy-MM-dd HH:mm', { locale: ja })
+  const endLabel = format(parseISO(schedule.endAt), 'HH:mm', { locale: ja })
+  const durationMs = parseISO(schedule.endAt).getTime() - parseISO(schedule.startAt).getTime()
   const durationMin = Math.round(durationMs / 60_000)
   const h = Math.floor(durationMin / 60)
   const m = durationMin % 60
@@ -140,11 +140,11 @@ export function ScheduleRow({ schedule, ruleNameMap }: ScheduleRowProps) {
 
 export function RecordingRow({ rec }: { rec: Recording }) {
   const elapsed = rec.startedAt
-    ? `${Math.round((Date.now() - new Date(rec.startedAt).getTime()) / 60_000)} 分経過`
+    ? `${Math.round((Date.now() - parseISO(rec.startedAt).getTime()) / 60_000)} 分経過`
     : null
   const pct =
     rec.durationSec && rec.startedAt
-      ? Math.min(100, ((Date.now() - new Date(rec.startedAt).getTime()) / (rec.durationSec * 1000)) * 100)
+      ? Math.min(100, ((Date.now() - parseISO(rec.startedAt).getTime()) / (rec.durationSec * 1000)) * 100)
       : null
 
   return (
@@ -176,7 +176,7 @@ interface DoneCardProps {
 }
 
 export function DoneCard({ rec, channelName }: DoneCardProps) {
-  const dateLabel = rec.endedAt ? format(new Date(rec.endedAt), 'yyyy/M/d', { locale: ja }) : '—'
+  const dateLabel = rec.endedAt ? format(parseISO(rec.endedAt), 'yyyy/M/d', { locale: ja }) : '—'
   const durationLabel = rec.durationSec ? formatDuration(rec.durationSec) : null
   const sizeLabel = rec.sizeBytes ? formatBytes(rec.sizeBytes) : null
 
@@ -213,7 +213,7 @@ export function DoneCard({ rec, channelName }: DoneCardProps) {
 
 export function FailedRecordingRow({ rec }: { rec: Recording }) {
   const [open, setOpen] = useState(false)
-  const dateLabel = rec.startedAt ? format(new Date(rec.startedAt), 'yyyy-MM-dd HH:mm', { locale: ja }) : '—'
+  const dateLabel = rec.startedAt ? format(parseISO(rec.startedAt), 'yyyy-MM-dd HH:mm', { locale: ja }) : '—'
 
   return (
     <div className='border-b border-border bg-card'>

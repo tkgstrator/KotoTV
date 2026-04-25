@@ -1,3 +1,4 @@
+import { addDays, subDays } from 'date-fns'
 import { logger } from '../lib/logger'
 import { prisma } from '../lib/prisma'
 import { getJstDayOfWeek, getJstMinutes } from '../lib/timezone'
@@ -192,8 +193,8 @@ export async function runRuleMatcher(options?: {
       // avoidDuplicates: fetch candidates for this rule within a ±60-day window,
       // then compare normalized titles to catch rerun variants (e.g. "[リピート]" suffix).
       if (rule.avoidDuplicates) {
-        const windowStart = new Date(Date.now() - 60 * 86_400_000)
-        const windowEnd = new Date(Date.now() + 60 * 86_400_000)
+        const windowStart = subDays(new Date(), 60)
+        const windowEnd = addDays(new Date(), 60)
         const dedupCandidates = await prisma.recordingSchedule.findMany({
           where: {
             ruleId: rule.id,

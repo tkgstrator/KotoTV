@@ -70,6 +70,7 @@
       "devDependencies": {
         "@types/bun": "^1.2.12",
         "@types/pg": "^8.11.10",
+        "date-fns": "^4.1.0",
       },
     },
   },

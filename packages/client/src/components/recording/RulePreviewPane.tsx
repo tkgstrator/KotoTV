@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { StatusChip } from '@/components/shared/status-chip'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -81,8 +81,8 @@ export function RulePreviewPane({ rule }: RulePreviewPaneProps) {
         <ScrollArea className='flex-1'>
           <div className='flex flex-col'>
             {data.programs.map((p) => {
-              const start = new Date(p.startAt)
-              const end = new Date(p.endAt)
+              const start = parseISO(p.startAt)
+              const end = parseISO(p.endAt)
               const timeLabel = `${format(start, 'M/d(EEE) HH:mm', { locale: ja })}〜${format(end, 'HH:mm', { locale: ja })}`
 
               return (

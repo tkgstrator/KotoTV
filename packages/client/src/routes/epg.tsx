@@ -1,6 +1,6 @@
 import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { addDays, addHours, startOfMinute } from 'date-fns'
+import { addDays, addHours, parseISO, startOfMinute } from 'date-fns'
 import { ChevronLeft, ChevronRight, Filter, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { EPGGrid } from '@/components/epg/EPGGrid'
@@ -49,7 +49,7 @@ function EpgPage() {
   // navigating other days) and extends 12 h forward. Past programs are not
   // shown — the window always begins at "now" on the default view.
   const windowStart = useMemo(() => {
-    const base = at ? new Date(at) : new Date()
+    const base = at ? parseISO(at) : new Date()
     const ms = base.getTime()
     const snapped = Math.floor(ms / (30 * 60_000)) * (30 * 60_000)
     return startOfMinute(new Date(snapped))

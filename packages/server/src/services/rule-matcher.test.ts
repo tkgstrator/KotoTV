@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
+import { addHours, addMinutes, parseISO } from 'date-fns'
 import { prisma } from '../lib/prisma'
 import { matches, runRuleMatcher } from './rule-matcher'
 
@@ -41,8 +42,8 @@ const BASE_PROGRAM: ProgramRow = {
   channelId: 'ch-1',
   title: 'NHKニュース7',
   description: 'その日の主なニュースをお伝えします',
-  startAt: new Date('2026-04-18T10:00:00Z'), // 19:00 JST Saturday
-  endAt: new Date('2026-04-18T10:30:00Z'),
+  startAt: parseISO('2026-04-18T10:00:00Z'), // 19:00 JST Saturday
+  endAt: parseISO('2026-04-18T10:30:00Z'),
   genres: ['news']
 }
 
@@ -232,21 +233,21 @@ describe('matches(): time window filter', () => {
   test('day-crossing window 22:00-02:00: 23:00 matches', () => {
     // 22:00 = 1320, 02:00 = 120
     // program at 23:00 JST: 2026-04-18T14:00:00Z = 23:00 JST = 1380 min
-    const prog = { ...BASE_PROGRAM, startAt: new Date('2026-04-18T14:00:00Z') }
+    const prog = { ...BASE_PROGRAM, startAt: parseISO('2026-04-18T14:00:00Z') }
     const rule = { ...BASE_RULE, timeStartMinutes: 1320, timeEndMinutes: 120 }
     expect(matches(prog, rule)).toBe(true)
   })
 
   test('day-crossing window 22:00-02:00: 01:00 matches', () => {
     // 01:00 JST = 2026-04-18T16:00:00Z = 60 min
-    const prog = { ...BASE_PROGRAM, startAt: new Date('2026-04-18T16:00:00Z') }
+    const prog = { ...BASE_PROGRAM, startAt: parseISO('2026-04-18T16:00:00Z') }
     const rule = { ...BASE_RULE, timeStartMinutes: 1320, timeEndMinutes: 120 }
     expect(matches(prog, rule)).toBe(true)
   })
 
   test('day-crossing window 22:00-02:00: 12:00 does not match', () => {
     // 12:00 JST = 2026-04-18T03:00:00Z = 720 min
-    const prog = { ...BASE_PROGRAM, startAt: new Date('2026-04-18T03:00:00Z') }
+    const prog = { ...BASE_PROGRAM, startAt: parseISO('2026-04-18T03:00:00Z') }
     const rule = { ...BASE_RULE, timeStartMinutes: 1320, timeEndMinutes: 120 }
     expect(matches(prog, rule)).toBe(false)
   })
@@ -270,8 +271,8 @@ describe('matches(): non-matching fields do not affect result', () => {
 // B: Integration tests — runRuleMatcher() (requires real DB)
 // ---------------------------------------------------------------------------
 
-const FUTURE_START = new Date(Date.now() + 60 * 60 * 1000) // 1h from now
-const FUTURE_END = new Date(Date.now() + 90 * 60 * 1000) // 1.5h from now
+const FUTURE_START = addHours(new Date(), 1) // 1h from now
+const FUTURE_END = addMinutes(new Date(), 90) // 1.5h from now
 
 // Use an isolated channelId so real mirakc programs never pollute results
 const TEST_CHANNEL_ID = 'test-isolated-ch-__rule-matcher__'
@@ -291,8 +292,8 @@ const SEED_PROGRAMS = [
     channelId: TEST_CHANNEL_ID,
     title: 'テスト映画上映',
     description: null,
-    startAt: new Date(FUTURE_START.getTime() + 3600000),
-    endAt: new Date(FUTURE_END.getTime() + 3600000),
+    startAt: addHours(FUTURE_START, 1),
+    endAt: addHours(FUTURE_END, 1),
     genres: ['movie']
   }
 ]
@@ -388,10 +389,10 @@ describe('runRuleMatcher() integration', () => {
   })
 
   test('avoidDuplicates=true: rerun variant is skipped, only 1 schedule created', async () => {
-    const origStart = new Date(FUTURE_START.getTime() + 7200000)
-    const origEnd = new Date(FUTURE_END.getTime() + 7200000)
-    const rerunStart = new Date(FUTURE_START.getTime() + 10800000)
-    const rerunEnd = new Date(FUTURE_END.getTime() + 10800000)
+    const origStart = addHours(FUTURE_START, 2)
+    const origEnd = addHours(FUTURE_END, 2)
+    const rerunStart = addHours(FUTURE_START, 3)
+    const rerunEnd = addHours(FUTURE_END, 3)
 
     await prisma.program.upsert({
       where: { id: 'test-prog-rerun-orig' },
@@ -464,10 +465,10 @@ describe('runRuleMatcher() integration', () => {
   })
 
   test('avoidDuplicates=false: rerun variant is scheduled, 2 schedules created', async () => {
-    const origStart = new Date(FUTURE_START.getTime() + 7200000)
-    const origEnd = new Date(FUTURE_END.getTime() + 7200000)
-    const rerunStart = new Date(FUTURE_START.getTime() + 10800000)
-    const rerunEnd = new Date(FUTURE_END.getTime() + 10800000)
+    const origStart = addHours(FUTURE_START, 2)
+    const origEnd = addHours(FUTURE_END, 2)
+    const rerunStart = addHours(FUTURE_START, 3)
+    const rerunEnd = addHours(FUTURE_END, 3)
 
     await prisma.program.upsert({
       where: { id: 'test-prog-rerun-orig' },

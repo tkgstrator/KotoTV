@@ -16,7 +16,7 @@ import type { Channel } from '@kototv/server/src/schemas/Channel.dto'
 import type { Program } from '@kototv/server/src/schemas/Program.dto'
 import { Link } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { addHours, format, startOfHour } from 'date-fns'
+import { addHours, format, parseISO, startOfHour } from 'date-fns'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StatusChip } from '@/components/shared/status-chip'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -56,7 +56,7 @@ interface EPGGridProps {
 // ─── Future grid helpers ───────────────────────────────────────────────────────
 
 function clipPrograms(programs: Program[], gridStart: Date, gridEnd: Date): Program[] {
-  return programs.filter((p) => new Date(p.endAt) > gridStart && new Date(p.startAt) < gridEnd)
+  return programs.filter((p) => parseISO(p.endAt) > gridStart && parseISO(p.startAt) < gridEnd)
 }
 
 /** Returns vertical offset in px from the grid top for a given date. */
@@ -66,8 +66,8 @@ function dateToOffset(date: Date, gridStart: Date): number {
 
 /** Returns the pixel height of a program block within the grid. */
 function programHeight(program: Program, gridStart: Date, gridEnd: Date): number {
-  const start = Math.max(new Date(program.startAt).getTime(), gridStart.getTime())
-  const end = Math.min(new Date(program.endAt).getTime(), gridEnd.getTime())
+  const start = Math.max(parseISO(program.startAt).getTime(), gridStart.getTime())
+  const end = Math.min(parseISO(program.endAt).getTime(), gridEnd.getTime())
   return Math.max(4, (end - start) / (60_000 / PX_PER_MIN))
 }
 
@@ -250,7 +250,7 @@ function FutureGrid({
                 </div>
               ) : (
                 programs.map((p) => {
-                  const top = dateToOffset(new Date(p.startAt), gridStart)
+                  const top = dateToOffset(parseISO(p.startAt), gridStart)
                   const height = programHeight(p, gridStart, gridEnd)
                   const dimmed = genreFilter.length > 0 && !genreFilter.some((f) => programMatchesGenre(p.genres, f))
                   return (
@@ -391,7 +391,7 @@ function AgendaView({
       const ch = channels[index]
       if (!ch) return AGENDA_SECTION_ESTIMATE
       const programs = programsByChannel.get(ch.id) ?? []
-      const visible = programs.filter((p) => new Date(p.endAt) > now && new Date(p.startAt) < windowEnd)
+      const visible = programs.filter((p) => parseISO(p.endAt) > now && parseISO(p.startAt) < windowEnd)
       const programRows = visible.length === 0 ? 1 : visible.length
       return 32 + programRows * 64
     },
@@ -451,7 +451,7 @@ function AgendaView({
         const ch = channels[virtualRow.index]
         if (!ch) return null
         const rawPrograms = programsByChannel.get(ch.id) ?? []
-        const programs = rawPrograms.filter((p) => new Date(p.endAt) > now && new Date(p.startAt) < windowEnd)
+        const programs = rawPrograms.filter((p) => parseISO(p.endAt) > now && parseISO(p.startAt) < windowEnd)
         const isLoading = loadingChannelIds.has(ch.id)
 
         return (
@@ -498,7 +498,7 @@ function AgendaView({
               ) : (
                 <ul>
                   {programs.map((p) => {
-                    const isNow = new Date(p.startAt) <= now && new Date(p.endAt) > now
+                    const isNow = parseISO(p.startAt) <= now && parseISO(p.endAt) > now
                     const accentColor = genreToColor(p.genres[0] ?? '')
                     const dimmed = genreFilter.length > 0 && !genreFilter.some((f) => programMatchesGenre(p.genres, f))
                     return (

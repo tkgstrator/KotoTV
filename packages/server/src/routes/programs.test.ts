@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test'
+import { addHours, parseISO, subHours } from 'date-fns'
 import { app } from '../app'
 
 describe('/api/programs', () => {
   test('GET / returns 200 with programs array', async () => {
     const now = new Date()
-    const startAt = new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString()
-    const endAt = new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString()
+    const startAt = subHours(now, 3).toISOString()
+    const endAt = addHours(now, 3).toISOString()
 
     const res = await app.request(`/api/programs?startAt=${startAt}&endAt=${endAt}`)
     expect(res.status).toBe(200)
@@ -18,8 +19,8 @@ describe('/api/programs', () => {
 
   test('programs have expected shape', async () => {
     const now = new Date()
-    const startAt = new Date(now.getTime() - 1 * 60 * 60 * 1000).toISOString()
-    const endAt = new Date(now.getTime() + 1 * 60 * 60 * 1000).toISOString()
+    const startAt = subHours(now, 1).toISOString()
+    const endAt = addHours(now, 1).toISOString()
 
     const res = await app.request(`/api/programs?startAt=${startAt}&endAt=${endAt}`)
     const { programs } = await res.json()
@@ -36,15 +37,15 @@ describe('/api/programs', () => {
 
   test('programs fall within requested time range', async () => {
     const now = new Date()
-    const startAt = new Date(now.getTime() - 1 * 60 * 60 * 1000)
-    const endAt = new Date(now.getTime() + 1 * 60 * 60 * 1000)
+    const startAt = subHours(now, 1)
+    const endAt = addHours(now, 1)
 
     const res = await app.request(`/api/programs?startAt=${startAt.toISOString()}&endAt=${endAt.toISOString()}`)
     const { programs } = await res.json()
 
     for (const p of programs) {
-      const pStart = new Date(p.startAt).getTime()
-      const pEnd = new Date(p.endAt).getTime()
+      const pStart = parseISO(p.startAt).getTime()
+      const pEnd = parseISO(p.endAt).getTime()
       expect(pStart).toBeLessThan(endAt.getTime())
       expect(pEnd).toBeGreaterThan(startAt.getTime())
     }
@@ -57,8 +58,8 @@ describe('/api/programs', () => {
 
     const channelId = channels[0].id
     const now = new Date()
-    const startAt = new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString()
-    const endAt = new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString()
+    const startAt = subHours(now, 6).toISOString()
+    const endAt = addHours(now, 6).toISOString()
 
     const res = await app.request(`/api/programs?channelId=${channelId}&startAt=${startAt}&endAt=${endAt}`)
     expect(res.status).toBe(200)
@@ -71,13 +72,13 @@ describe('/api/programs', () => {
 
   test('future programs have isRecordable=true', async () => {
     const now = new Date()
-    const startAt = new Date(now.getTime() + 1 * 60 * 60 * 1000).toISOString()
-    const endAt = new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString()
+    const startAt = addHours(now, 1).toISOString()
+    const endAt = addHours(now, 6).toISOString()
 
     const res = await app.request(`/api/programs?startAt=${startAt}&endAt=${endAt}`)
     const { programs } = await res.json()
 
-    const future = programs.filter((p: { startAt: string }) => new Date(p.startAt).getTime() > now.getTime())
+    const future = programs.filter((p: { startAt: string }) => parseISO(p.startAt).getTime() > now.getTime())
 
     for (const p of future) {
       expect(p.isRecordable).toBe(true)
