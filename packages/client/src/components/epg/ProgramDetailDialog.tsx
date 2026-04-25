@@ -10,7 +10,8 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { formatTimeRange, genreToColor } from '@/lib/program'
+import { useCreateRecording } from '@/hooks/useRecordings'
+import { formatTimeRange } from '@/lib/program'
 
 interface ProgramDetailDialogProps {
   program: Program | null
@@ -20,9 +21,7 @@ interface ProgramDetailDialogProps {
 
 export function ProgramDetailDialog({ program, open, onOpenChange }: ProgramDetailDialogProps) {
   const navigate = useNavigate()
-
-  const primaryGenre = program?.genres[0] ?? 'その他'
-  const accentColor = program ? genreToColor(primaryGenre) : undefined
+  const createRecording = useCreateRecording()
 
   function handleWatch() {
     if (!program) return
@@ -30,13 +29,24 @@ export function ProgramDetailDialog({ program, open, onOpenChange }: ProgramDeta
     navigate({ to: '/live/$channelId', params: { channelId: program.channelId } })
   }
 
+  function handleRecord() {
+    if (!program) return
+    createRecording.mutate(
+      {
+        channelId: program.channelId,
+        programId: program.id,
+        title: program.title,
+        startAt: program.startAt,
+        endAt: program.endAt
+      },
+      { onSuccess: () => onOpenChange(false) }
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-w-lg overflow-hidden p-0' aria-describedby='program-detail-desc'>
-        {/* Genre accent bar across the top of the dialog */}
-        {accentColor && <div aria-hidden className='h-[3px] w-full' style={{ background: accentColor }} />}
-
-        <div className='flex flex-col gap-4 p-6 pt-4'>
+        <div className='flex flex-col gap-4 p-6'>
           <DialogHeader>
             <DialogTitle className='pr-6 leading-[1.4] text-foreground'>{program?.title ?? ''}</DialogTitle>
             {program && (
@@ -69,8 +79,14 @@ export function ProgramDetailDialog({ program, open, onOpenChange }: ProgramDeta
 
           <DialogFooter>
             {program?.isRecordable && (
-              <Button variant='outline' type='button' disabled aria-label={`${program.title} を録画予約`}>
-                録画予約
+              <Button
+                variant='outline'
+                type='button'
+                disabled={createRecording.isPending}
+                onClick={handleRecord}
+                aria-label={`${program.title} を録画予約`}
+              >
+                {createRecording.isPending ? '予約中…' : '録画予約'}
               </Button>
             )}
             <Button
