@@ -37,7 +37,7 @@ function SkeletonRows({ count = 8 }: { count?: number }) {
     <>
       {Array.from({ length: count }).map((_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton list
-        <div key={i} className='flex h-[60px] items-center gap-3 border-b border-border px-3 md:h-[52px]'>
+        <div key={i} className='flex h-auto items-center gap-3 border-b border-border px-3 py-2 lg:h-[52px] lg:py-0'>
           <Skeleton className='h-8 w-[56px] flex-shrink-0 rounded' />
           <div className='flex flex-1 flex-col gap-1.5'>
             <Skeleton className='h-3 w-3/4 rounded' />
@@ -89,7 +89,7 @@ export function ChannelList({ type }: ChannelListProps) {
   if (type) {
     // Single-type view — no section headers, just the rows in a 2-col grid on desktop
     return (
-      <ul className='grid grid-cols-1 md:grid-cols-2'>
+      <ul className='grid grid-cols-1 lg:grid-cols-2'>
         {channels.map((ch) => (
           <li key={ch.id}>
             <ChannelRow channel={ch} />
@@ -111,7 +111,7 @@ export function ChannelList({ type }: ChannelListProps) {
       {(Object.entries(grouped) as [Channel['type'], Channel[]][]).map(([t, list]) => (
         <section key={t} aria-label={TYPE_LABELS[t]}>
           <SectionHeader type={t} />
-          <ul className='grid grid-cols-1 md:grid-cols-2'>
+          <ul className='grid grid-cols-1 lg:grid-cols-2'>
             {list.map((ch) => (
               <li key={ch.id}>
                 <ChannelRow channel={ch} />
