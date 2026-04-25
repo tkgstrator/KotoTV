@@ -24,12 +24,12 @@ export default defineConfig({
     {
       name: 'desktop-chromium',
       testDir: './tests/e2e',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } }
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 }
     },
     {
       name: 'mobile-chromium',
       testDir: './tests/e2e',
-      use: { ...devices['Pixel 7'] }
+      use: { ...devices['Pixel 7'], deviceScaleFactor: 2 }
     },
     {
       /* Visual-regression baselines — pin 1x DPR so committed snapshots are
