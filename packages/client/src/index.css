@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
 /* Tailwind utility aliases — theme-invariant. Each `--color-*` reads whatever
  * the active theme has set on the underlying custom property, so utilities
