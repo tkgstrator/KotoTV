@@ -1,6 +1,6 @@
 import type { RecordingSchedule } from '@kototv/server/src/schemas/Recording.dto'
 import { createFileRoute } from '@tanstack/react-router'
-import { format } from 'date-fns'
+import { compareAsc, differenceInMinutes, format, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -18,9 +18,12 @@ export const Route = createFileRoute('/recordings/reservations')({
   component: ReservationsPage
 })
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type ChannelBand = 'GR' | 'BS' | 'CS'
+type ReservationFilter = 'all' | 'rule' | 'manual'
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function deriveChannelType(channelId: string): ChannelBand {
   const prefix = channelId.split('-')[0]?.toLowerCase()
@@ -30,7 +33,7 @@ function deriveChannelType(channelId: string): ChannelBand {
 }
 
 function durationLabel(startAt: string, endAt: string): string {
-  const min = Math.max(0, Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60_000))
+  const min = Math.max(0, differenceInMinutes(parseISO(endAt), parseISO(startAt)))
   if (min < 60) return `${min}分`
   const h = Math.floor(min / 60)
   const m = min % 60
@@ -46,7 +49,7 @@ const TYPE_COLORS: Record<ChannelBand, string> = {
 function groupByDay(items: RecordingSchedule[]): { day: string; items: RecordingSchedule[] }[] {
   const groups = new Map<string, RecordingSchedule[]>()
   for (const r of items) {
-    const key = format(new Date(r.startAt), 'yyyy-MM-dd')
+    const key = format(parseISO(r.startAt), 'yyyy-MM-dd')
     const bucket = groups.get(key)
     if (bucket) bucket.push(r)
     else groups.set(key, [r])
@@ -55,8 +58,47 @@ function groupByDay(items: RecordingSchedule[]): { day: string; items: Recording
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([day, list]) => ({
       day,
-      items: list.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+      items: list.sort((a, b) => compareAsc(parseISO(a.startAt), parseISO(b.startAt)))
     }))
+}
+
+// ─── Hook ────────────────────────────────────────────────────────────────────
+
+function useReservationsData(filter: ReservationFilter) {
+  const { data, isPending, isError } = useRecordings()
+  const { data: rulesData } = useRecordingRules()
+  const { data: channelsData } = useChannels()
+
+  useRecordingEvents()
+
+  const ruleNameMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const rule of rulesData?.rules ?? []) m.set(rule.id, rule.name)
+    return m
+  }, [rulesData])
+
+  const channelNameMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const ch of channelsData?.channels ?? []) m.set(ch.id, ch.name)
+    return m
+  }, [channelsData])
+
+  const pendingSchedules = useMemo(() => (data?.schedules ?? []).filter((s) => s.status === 'pending'), [data])
+
+  const totalCount = pendingSchedules.length
+  const ruleCount = pendingSchedules.filter((s) => s.ruleId != null).length
+  const manualCount = totalCount - ruleCount
+
+  const groups = useMemo(() => {
+    const visible = pendingSchedules.filter((s) => {
+      if (filter === 'rule') return s.ruleId != null
+      if (filter === 'manual') return s.ruleId == null
+      return true
+    })
+    return groupByDay(visible)
+  }, [pendingSchedules, filter])
+
+  return { isPending, isError, ruleNameMap, channelNameMap, totalCount, ruleCount, manualCount, groups }
 }
 
 // ─── Row ────────────────────────────────────────────────────────────────────
@@ -72,12 +114,12 @@ function ReservationRow({
 }) {
   const channelType = deriveChannelType(schedule.channelId)
   const accent = TYPE_COLORS[channelType]
-  const start = new Date(schedule.startAt)
-  const end = new Date(schedule.endAt)
+  const start = parseISO(schedule.startAt)
+  const end = parseISO(schedule.endAt)
 
   return (
     <div className='flex items-stretch border-b border-border bg-card last:border-b-0 transition-colors hover:bg-muted/40'>
-      <div className='w-[3px] shrink-0' style={{ background: accent }} aria-hidden />
+      <div className='w-[3px] shrink-0' style={{ background: accent }} aria-hidden='true' />
       <div className='flex min-w-0 flex-1 flex-col gap-1 px-3.5 py-3'>
         <div className='flex items-baseline gap-2'>
           <span className='shrink-0 text-footnote font-semibold tabular-nums text-foreground'>
@@ -109,45 +151,63 @@ function ReservationRow({
   )
 }
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+// ─── Empty state ─────────────────────────────────────────────────────────────
 
-type ReservationFilter = 'all' | 'rule' | 'manual'
+function EmptyMessage({ filter }: { filter: ReservationFilter }) {
+  const text =
+    filter === 'rule'
+      ? 'ルール由来の予約はありません'
+      : filter === 'manual'
+        ? '手動の予約はありません'
+        : '予約はまだありません — 番組表かルールから追加できます'
+  return (
+    <div className='px-4 py-12'>
+      <p className='text-footnote text-muted-foreground'>{text}</p>
+    </div>
+  )
+}
+
+// ─── Day section ─────────────────────────────────────────────────────────────
+
+function DaySection({
+  day,
+  items,
+  channelNameMap,
+  ruleNameMap
+}: {
+  day: string
+  items: RecordingSchedule[]
+  channelNameMap: Map<string, string>
+  ruleNameMap: Map<string, string>
+}) {
+  const dayLabel = format(parseISO(day), 'M月d日(E)', { locale: ja })
+  return (
+    <section className='flex flex-col'>
+      <header className='mb-2 flex items-baseline gap-2'>
+        <h2 className='text-subheadline font-bold text-foreground'>{dayLabel}</h2>
+        <span className='text-footnote text-muted-foreground'>· {items.length} 件</span>
+      </header>
+      <div className='overflow-hidden rounded-[4px] border border-border'>
+        {items.map((s) => (
+          <ReservationRow
+            key={s.id}
+            schedule={s}
+            channelName={channelNameMap.get(s.channelId) ?? s.channelId}
+            ruleName={s.ruleId ? (ruleNameMap.get(s.ruleId) ?? null) : null}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+// ─── Page ───────────────────────────────────────────────────────────────────
 
 function ReservationsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [filter, setFilter] = useState<ReservationFilter>('all')
-  const { data, isPending, isError } = useRecordings()
-  const { data: rulesData } = useRecordingRules()
-  const { data: channelsData } = useChannels()
-
-  useRecordingEvents()
-
-  const ruleNameMap = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const rule of rulesData?.rules ?? []) m.set(rule.id, rule.name)
-    return m
-  }, [rulesData])
-
-  const channelNameMap = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const ch of channelsData?.channels ?? []) m.set(ch.id, ch.name)
-    return m
-  }, [channelsData])
-
-  const pendingSchedules = useMemo(() => {
-    return (data?.schedules ?? []).filter((s) => s.status === 'pending')
-  }, [data])
-
-  const totalCount = pendingSchedules.length
-  const ruleCount = pendingSchedules.filter((s) => s.ruleId != null).length
-  const manualCount = totalCount - ruleCount
-
-  const visibleSchedules = pendingSchedules.filter((s) => {
-    if (filter === 'rule') return s.ruleId != null
-    if (filter === 'manual') return s.ruleId == null
-    return true
-  })
-  const groups = groupByDay(visibleSchedules)
+  const { isPending, isError, ruleNameMap, channelNameMap, totalCount, ruleCount, manualCount, groups } =
+    useReservationsData(filter)
 
   const tabs = [
     { value: 'all' as const, label: `全て ${totalCount}` },
@@ -197,38 +257,12 @@ function ReservationsPage() {
       {header}
       <div className='flex-1 overflow-y-auto pb-16'>
         {groups.length === 0 ? (
-          <div className='px-4 py-12'>
-            <p className='text-footnote text-muted-foreground'>
-              {filter === 'rule'
-                ? 'ルール由来の予約はありません'
-                : filter === 'manual'
-                  ? '手動の予約はありません'
-                  : '予約はまだありません — 番組表かルールから追加できます'}
-            </p>
-          </div>
+          <EmptyMessage filter={filter} />
         ) : (
           <div className='flex flex-col gap-6 px-4 pt-4 pb-4'>
-            {groups.map(({ day, items }) => {
-              const dayLabel = format(new Date(day), 'M月d日(E)', { locale: ja })
-              return (
-                <section key={day} className='flex flex-col'>
-                  <header className='mb-2 flex items-baseline gap-2'>
-                    <h2 className='text-subheadline font-bold text-foreground'>{dayLabel}</h2>
-                    <span className='text-footnote text-muted-foreground'>· {items.length} 件</span>
-                  </header>
-                  <div className='overflow-hidden rounded-[4px] border border-border'>
-                    {items.map((s) => (
-                      <ReservationRow
-                        key={s.id}
-                        schedule={s}
-                        channelName={channelNameMap.get(s.channelId) ?? s.channelId}
-                        ruleName={s.ruleId ? (ruleNameMap.get(s.ruleId) ?? null) : null}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )
-            })}
+            {groups.map(({ day, items }) => (
+              <DaySection key={day} day={day} items={items} channelNameMap={channelNameMap} ruleNameMap={ruleNameMap} />
+            ))}
           </div>
         )}
       </div>
