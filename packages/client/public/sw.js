@@ -19,6 +19,9 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
+  // Only handle http(s) — Cache API rejects chrome-extension:// etc.
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return
+
   // Cloudflare Access / CDN internals — never intercept
   if (url.pathname.startsWith('/cdn-cgi/')) return
 
