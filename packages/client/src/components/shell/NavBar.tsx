@@ -58,8 +58,16 @@ const RECORDING_ITEMS: readonly NavItem[] = [
 
 const SETTINGS_ITEM: NavItem = { to: '/settings', label: '設定', Icon: SettingsIcon }
 
-// Flat list used both for the mobile tab bar (no grouping) and for
-// longest-prefix active-route detection.
+// Mobile bottom tabs — recording sub-pages are consolidated under a
+// single "録画" entry; sub-navigation lives in the recordings layout.
+const MOBILE_ITEMS: readonly NavItem[] = [
+  ...MAIN_ITEMS,
+  { to: '/recordings', label: '録画', Icon: Radio },
+  SETTINGS_ITEM
+]
+
+// Full list for longest-prefix active-route detection (used by both
+// sidebar and mobile tabs).
 const ALL_ITEMS: readonly NavItem[] = [...MAIN_ITEMS, ...RECORDING_ITEMS, SETTINGS_ITEM]
 
 function useIsActive() {
@@ -138,15 +146,21 @@ export function AppSidebar() {
 }
 
 export function MobileTabs() {
-  const isActive = useIsActive()
+  const { location } = useRouterState()
+  const path = location.pathname
 
   return (
     <nav
       aria-label='モバイルナビゲーション'
       className='fixed bottom-0 left-0 right-0 z-[60] flex h-[var(--mobile-nav-h)] shrink-0 border-t border-border bg-card sm:hidden'
     >
-      {ALL_ITEMS.map((item) => {
-        const active = isActive(item)
+      {MOBILE_ITEMS.map((item) => {
+        const active =
+          item.to === '/'
+            ? path === '/'
+            : item.to === '/recordings'
+              ? path.startsWith('/recordings')
+              : path === item.to || path.startsWith(`${item.to}/`)
         return (
           <Link
             key={item.to}
