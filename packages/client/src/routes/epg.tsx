@@ -8,6 +8,7 @@ import { SegmentedFilter } from '@/components/shared/segmented-filter'
 import { PageHeader } from '@/components/shell/PageHeader'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChannels } from '@/hooks/useChannels'
 import type { Program } from '@/hooks/usePrograms'
@@ -41,7 +42,8 @@ function EpgPage() {
   const { at, channel: highlightChannelId, type: typeParam } = Route.useSearch()
   const navigate = useNavigate({ from: '/epg' })
   const type: ChannelType = typeParam ?? 'GR'
-  const [genreFilter, setGenreFilter] = useState<string | null>(null)
+  const [genreFilters, setGenreFilters] = useState<string[]>([])
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false)
 
   // Rolling window: starts at the current 30-min boundary (or `at` when
   // navigating other days) and extends 12 h forward. Past programs are not
@@ -106,17 +108,21 @@ function EpgPage() {
     navigate({ search: (prev) => ({ ...prev, type: value === 'GR' ? undefined : value }) })
   }
 
+  const headerProps = {
+    type,
+    onChangeType: setType,
+    windowStart,
+    onPrevDay: goToPrevDay,
+    onNextDay: goToNextDay,
+    onNow: goToNow,
+    genreFilterCount: genreFilters.length,
+    onOpenFilter: () => setFilterDialogOpen(true)
+  } as const
+
   if (channelsPending) {
     return (
       <>
-        <EpgHeader
-          type={type}
-          onChangeType={setType}
-          windowStart={windowStart}
-          onPrevDay={goToPrevDay}
-          onNextDay={goToNextDay}
-          onNow={goToNow}
-        />
+        <EpgHeader {...headerProps} />
         <div className='flex flex-col gap-2 p-4'>
           {Array.from({ length: 8 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: stable skeleton
@@ -130,14 +136,7 @@ function EpgPage() {
   if (channelsError) {
     return (
       <>
-        <EpgHeader
-          type={type}
-          onChangeType={setType}
-          windowStart={windowStart}
-          onPrevDay={goToPrevDay}
-          onNextDay={goToNextDay}
-          onNow={goToNow}
-        />
+        <EpgHeader {...headerProps} />
         <div className='p-4'>
           <Alert variant='destructive'>
             <TriangleAlert />
@@ -152,14 +151,7 @@ function EpgPage() {
   if (channels.length === 0) {
     return (
       <>
-        <EpgHeader
-          type={type}
-          onChangeType={setType}
-          windowStart={windowStart}
-          onPrevDay={goToPrevDay}
-          onNextDay={goToNextDay}
-          onNow={goToNow}
-        />
+        <EpgHeader {...headerProps} />
         <p className='px-4 py-8 text-body text-muted-foreground'>チャンネルが見つかりません</p>
       </>
     )
@@ -167,68 +159,93 @@ function EpgPage() {
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <EpgHeader
-        type={type}
-        onChangeType={setType}
-        windowStart={windowStart}
-        onPrevDay={goToPrevDay}
-        onNextDay={goToNextDay}
-        onNow={goToNow}
-      />
-      <GenreFilterBar value={genreFilter} onChange={setGenreFilter} />
+      <EpgHeader {...headerProps} />
       <EPGGrid
         channels={channels}
         programsByChannel={programsByChannel}
         loadingChannelIds={loadingChannelIds}
         gridStartAt={windowStart}
         highlightChannelId={highlightChannelId}
-        genreFilter={genreFilter}
+        genreFilter={genreFilters}
+      />
+      <GenreFilterDialog
+        open={filterDialogOpen}
+        onOpenChange={setFilterDialogOpen}
+        selected={genreFilters}
+        onSelectedChange={setGenreFilters}
       />
     </div>
   )
 }
 
-// ─── Genre filter bar ─────────────────────────────────────────────────────────
+// ─── Genre filter dialog ──────────────────────────────────────────────────────
 
-interface GenreFilterBarProps {
-  value: string | null
-  onChange: (genre: string | null) => void
+interface GenreFilterDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  selected: string[]
+  onSelectedChange: (genres: string[]) => void
 }
 
-function GenreFilterBar({ value, onChange }: GenreFilterBarProps) {
+function GenreFilterDialog({ open, onOpenChange, selected, onSelectedChange }: GenreFilterDialogProps) {
+  function toggle(label: string) {
+    onSelectedChange(selected.includes(label) ? selected.filter((g) => g !== label) : [...selected, label])
+  }
+
   return (
-    <div className='flex shrink-0 items-center gap-1.5 border-b border-border bg-card/80 px-3 py-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-      <Filter className='size-3.5 shrink-0 text-muted-foreground' />
-      {GENRE_CATEGORIES.map((cat) => {
-        const isActive = value === cat.label
-        return (
-          <button
-            key={cat.label}
-            type='button'
-            onClick={() => onChange(isActive ? null : cat.label)}
-            aria-pressed={isActive}
-            className={cn(
-              'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[0.625rem] font-bold transition-colors',
-              'cursor-pointer',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-              isActive
-                ? 'border-transparent text-primary-foreground'
-                : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
-            style={
-              isActive ? { backgroundColor: genreToColor(cat.label), borderColor: genreToColor(cat.label) } : undefined
-            }
-          >
-            <span
-              aria-hidden
-              className={cn('size-1.5 rounded-full', isActive && 'hidden')}
-              style={{ backgroundColor: cat.color }}
-            />
-            {cat.label}
-          </button>
-        )
-      })}
-    </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className='max-w-[360px] gap-0 p-0' aria-describedby={undefined}>
+        <DialogHeader className='flex-row items-center justify-between border-b border-border px-4 py-3'>
+          <DialogTitle className='text-body font-bold'>ジャンルフィルター</DialogTitle>
+          {selected.length > 0 && (
+            <Button
+              variant='ghost'
+              size='sm'
+              className='h-6 px-2 text-caption2 text-muted-foreground'
+              onClick={() => onSelectedChange([])}
+            >
+              すべて解除
+            </Button>
+          )}
+        </DialogHeader>
+
+        <div className='grid grid-cols-2 gap-1.5 p-4'>
+          {GENRE_CATEGORIES.map((cat) => {
+            const isActive = selected.includes(cat.label)
+            return (
+              <button
+                key={cat.label}
+                type='button'
+                onClick={() => toggle(cat.label)}
+                aria-pressed={isActive}
+                className={cn(
+                  'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-footnote font-medium transition-colors',
+                  'cursor-pointer',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  isActive
+                    ? 'border-transparent text-primary-foreground'
+                    : 'border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                )}
+                style={isActive ? { backgroundColor: cat.color, borderColor: cat.color } : undefined}
+              >
+                <span
+                  aria-hidden
+                  className={cn('size-2 shrink-0 rounded-full', isActive && 'bg-primary-foreground/60')}
+                  style={isActive ? undefined : { backgroundColor: cat.color }}
+                />
+                {cat.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className='border-t border-border px-4 py-3'>
+          <Button size='sm' className='w-full text-footnote font-bold' onClick={() => onOpenChange(false)}>
+            {selected.length > 0 ? `${selected.length} 件のジャンルで絞り込み` : '閉じる'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -241,9 +258,20 @@ interface EpgHeaderProps {
   onPrevDay: () => void
   onNextDay: () => void
   onNow: () => void
+  genreFilterCount: number
+  onOpenFilter: () => void
 }
 
-function EpgHeader({ type, onChangeType, windowStart, onPrevDay, onNextDay, onNow }: EpgHeaderProps) {
+function EpgHeader({
+  type,
+  onChangeType,
+  windowStart,
+  onPrevDay,
+  onNextDay,
+  onNow,
+  genreFilterCount,
+  onOpenFilter
+}: EpgHeaderProps) {
   const dateLabel = windowStart.toLocaleDateString('ja-JP', {
     month: 'numeric',
     day: 'numeric',
@@ -262,7 +290,18 @@ function EpgHeader({ type, onChangeType, windowStart, onPrevDay, onNextDay, onNo
       </div>
       <div className='flex-1' />
 
-      {/* Right half: date navigation + 今すぐ jump */}
+      {/* Right half: filter + date navigation + 今すぐ jump */}
+      <Button
+        variant={genreFilterCount > 0 ? 'default' : 'outline'}
+        size='sm'
+        className='h-7 shrink-0 gap-1 px-2 text-footnote'
+        onClick={onOpenFilter}
+        aria-label='ジャンルフィルター'
+      >
+        <Filter className='size-3' />
+        {genreFilterCount > 0 ? genreFilterCount : 'フィルター'}
+      </Button>
+
       <div className='flex shrink-0 items-center gap-1'>
         <Button
           variant='outline'
