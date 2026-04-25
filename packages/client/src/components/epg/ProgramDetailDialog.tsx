@@ -45,7 +45,7 @@ export function ProgramDetailDialog({ program, open, onOpenChange }: ProgramDeta
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-lg overflow-hidden p-0' aria-describedby='program-detail-desc'>
+      <DialogContent className='max-w-lg overflow-hidden p-0'>
         <div className='flex flex-col gap-4 p-6'>
           <DialogHeader>
             <DialogTitle className='pr-6 leading-[1.4] text-foreground'>{program?.title ?? ''}</DialogTitle>
@@ -70,8 +70,7 @@ export function ProgramDetailDialog({ program, open, onOpenChange }: ProgramDeta
             )}
           </DialogHeader>
 
-          {/* Screen-reader-accessible description element required by DialogContent */}
-          <DialogDescription id='program-detail-desc' asChild>
+          <DialogDescription asChild>
             <div className='max-h-40 overflow-y-auto text-[0.8125rem] leading-relaxed text-muted-foreground [scrollbar-width:thin]'>
               {program?.description ? program.description : <span className='italic'>番組概要はありません</span>}
             </div>
