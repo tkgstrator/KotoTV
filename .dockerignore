@@ -1,4 +1,5 @@
 **/node_modules
+**/dist
 .git
 data/
 *.md
@@ -10,3 +11,11 @@ tests/
 .env
 .env.*
 !.env.example
+*.log
+.vscode/
+playwright-report/
+playwright.config.*
+biome.json
+.commitlintrc.yaml
+.mcp.json
+.gitignore
