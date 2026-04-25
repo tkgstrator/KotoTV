@@ -1,6 +1,6 @@
 import type { Recording } from '@kototv/server/src/schemas/Recording.dto'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { ChevronLeft, Play } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -45,7 +45,7 @@ function formatTimestamp(seconds: number): string {
 }
 
 function InlineIdentityStrip({ rec }: { rec: Recording }) {
-  const dateLabel = rec.startedAt ? format(new Date(rec.startedAt), 'yyyy-MM-dd HH:mm') : '—'
+  const dateLabel = rec.startedAt ? format(parseISO(rec.startedAt), 'yyyy-MM-dd HH:mm') : '—'
   const durationLabel = rec.durationSec ? formatDuration(rec.durationSec) : null
 
   return (
@@ -326,7 +326,7 @@ function RecordingPlayerPage() {
     return () => v.removeEventListener('durationchange', onDuration)
   }, [])
 
-  const dateLabel = rec?.startedAt ? format(new Date(rec.startedAt), 'yyyy-MM-dd') : null
+  const dateLabel = rec?.startedAt ? format(parseISO(rec.startedAt), 'yyyy-MM-dd') : null
 
   const streamStatusVariant = stream.status === 'ready' ? 'ok' : stream.status === 'error' ? 'fatal' : 'info'
   const streamStatusLabel = stream.status === 'ready' ? 'OK' : stream.status === 'error' ? 'FATAL' : 'INIT'

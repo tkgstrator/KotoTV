@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
+import { addHours, addMinutes } from 'date-fns'
 import { app } from '../app'
 import { prisma } from '../lib/prisma'
 
@@ -239,8 +240,8 @@ describe('/api/recording-rules', () => {
         channelId: 'test-preview-isolated-ch',
         programId: 'test-prog-setnull-1',
         title: 'テスト番組 SetNull',
-        startAt: new Date(Date.now() + 3600000),
-        endAt: new Date(Date.now() + 7200000),
+        startAt: addHours(new Date(), 1),
+        endAt: addHours(new Date(), 2),
         ruleId: rule.id
       }
     })
@@ -259,15 +260,15 @@ describe('/api/recording-rules', () => {
   // ---------------------------------------------------------------------------
 
   test('POST /preview returns matching programs', async () => {
-    const now = Date.now()
+    const now = new Date()
     const programs = [
       {
         id: 'test-preview-prog-1',
         channelId: 'test-preview-isolated-ch',
         title: 'NHKニュース7',
         description: null,
-        startAt: new Date(now + 600000),
-        endAt: new Date(now + 3000000),
+        startAt: addMinutes(now, 10),
+        endAt: addMinutes(now, 50),
         genres: ['news']
       },
       {
@@ -275,8 +276,8 @@ describe('/api/recording-rules', () => {
         channelId: 'test-preview-isolated-ch',
         title: '朝のニュースワイド',
         description: null,
-        startAt: new Date(now + 7200000),
-        endAt: new Date(now + 10800000),
+        startAt: addHours(now, 2),
+        endAt: addHours(now, 3),
         genres: ['news']
       },
       {
@@ -284,8 +285,8 @@ describe('/api/recording-rules', () => {
         channelId: 'test-preview-isolated-ch',
         title: 'ドラマスペシャル',
         description: null,
-        startAt: new Date(now + 3600000),
-        endAt: new Date(now + 7200000),
+        startAt: addHours(now, 1),
+        endAt: addHours(now, 2),
         genres: ['drama']
       }
     ]

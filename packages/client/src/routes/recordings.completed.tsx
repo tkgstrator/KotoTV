@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { parseISO } from 'date-fns'
 import { TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DoneCard } from '@/components/recording/recording-list-items'
@@ -31,7 +32,7 @@ function CompletedPage() {
   const items = useMemo(() => {
     return (data?.recordings ?? [])
       .filter((r) => r.status === 'completed')
-      .sort((a, b) => new Date(b.endedAt ?? 0).getTime() - new Date(a.endedAt ?? 0).getTime())
+      .sort((a, b) => (b.endedAt ? parseISO(b.endedAt).getTime() : 0) - (a.endedAt ? parseISO(a.endedAt).getTime() : 0))
   }, [data])
 
   if (isPending) {

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { parseISO, subSeconds } from 'date-fns'
 import { app } from '../app'
 import { prisma } from '../lib/prisma'
 import { BenchmarkResponseSchema } from '../schemas/EncodeProfile.dto'
@@ -349,10 +350,10 @@ describe('GET /api/encode-profiles/benchmark/history', () => {
   })
 
   test('returns items ordered by createdAt DESC (newest first)', async () => {
-    const now = Date.now()
-    await seedBenchmarkLog({ createdAt: new Date(now - 2000) })
-    await seedBenchmarkLog({ createdAt: new Date(now - 1000) })
-    await seedBenchmarkLog({ createdAt: new Date(now) })
+    const now = new Date()
+    await seedBenchmarkLog({ createdAt: subSeconds(now, 2) })
+    await seedBenchmarkLog({ createdAt: subSeconds(now, 1) })
+    await seedBenchmarkLog({ createdAt: now })
 
     const res = await app.request('/api/encode-profiles/benchmark/history')
 
@@ -360,7 +361,7 @@ describe('GET /api/encode-profiles/benchmark/history', () => {
     const body = await res.json()
     expect(body.items).toHaveLength(3)
 
-    const timestamps = body.items.map((item: { createdAt: string }) => new Date(item.createdAt).getTime())
+    const timestamps = body.items.map((item: { createdAt: string }) => parseISO(item.createdAt).getTime())
     expect(timestamps[0]).toBeGreaterThan(timestamps[1])
     expect(timestamps[1]).toBeGreaterThan(timestamps[2])
   })

@@ -1,3 +1,4 @@
+import { isAfter, parseISO } from 'date-fns'
 import { z } from 'zod'
 
 export const ScheduleStatusSchema = z.enum(['pending', 'recording', 'completed', 'failed', 'cancelled'])
@@ -43,7 +44,7 @@ export const CreateRecordingScheduleSchema = z
     endAt: z.string().datetime(),
     encodeProfileId: z.string().uuid().nullable().optional()
   })
-  .refine((v) => new Date(v.endAt) > new Date(v.startAt), { message: 'endAt must be after startAt' })
+  .refine((v) => isAfter(parseISO(v.endAt), parseISO(v.startAt)), { message: 'endAt must be after startAt' })
 
 export const RecordingListResponseSchema = z.object({
   schedules: z.array(RecordingScheduleSchema),

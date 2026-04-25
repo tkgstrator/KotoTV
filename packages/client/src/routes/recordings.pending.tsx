@@ -1,5 +1,6 @@
 import type { RecordingSchedule } from '@kototv/server/src/schemas/Recording.dto'
 import { createFileRoute } from '@tanstack/react-router'
+import { parseISO } from 'date-fns'
 import { TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { RecordingRow, ScheduleRow } from '@/components/recording/recording-list-items'
@@ -40,7 +41,7 @@ function PendingPage() {
     ].sort((a, b) => {
       const aTime = 'startAt' in a ? a.startAt : a.startedAt
       const bTime = 'startAt' in b ? b.startAt : b.startedAt
-      return new Date(aTime).getTime() - new Date(bTime).getTime()
+      return parseISO(aTime).getTime() - parseISO(bTime).getTime()
     })
   }, [data])
 

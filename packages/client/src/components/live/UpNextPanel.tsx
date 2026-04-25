@@ -1,4 +1,4 @@
-import { addHours, format, toDate } from 'date-fns'
+import { addHours, format, parseISO, toDate } from 'date-fns'
 import { useMemo } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePrograms } from '@/hooks/usePrograms'
@@ -75,9 +75,9 @@ function ProgramRow({
   return (
     <li className={cn('flex flex-col gap-1 px-3 py-2.5', isLive && 'bg-muted/40')}>
       <div className='flex items-center gap-1.5 font-mono text-[0.6875rem] tabular-nums text-muted-foreground'>
-        <span>{format(new Date(program.startAt), 'HH:mm')}</span>
+        <span>{format(parseISO(program.startAt), 'HH:mm')}</span>
         <span aria-hidden='true'>–</span>
-        <span>{format(new Date(program.endAt), 'HH:mm')}</span>
+        <span>{format(parseISO(program.endAt), 'HH:mm')}</span>
         {isLive && (
           <span
             role='status'

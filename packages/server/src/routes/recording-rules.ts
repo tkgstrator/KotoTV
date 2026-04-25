@@ -1,4 +1,5 @@
 import { zValidator } from '@hono/zod-validator'
+import { addMilliseconds } from 'date-fns'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
@@ -93,7 +94,7 @@ const recordingRulesRoute = new Hono()
 
     const windowMs = (body.windowHours ?? 24) * 60 * 60 * 1000
     const since = new Date()
-    const until = new Date(Date.now() + windowMs)
+    const until = addMilliseconds(new Date(), windowMs)
     const limit = body.limit ?? 50
 
     const ruleForMatch = {

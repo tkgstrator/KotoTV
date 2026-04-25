@@ -1,4 +1,5 @@
 import { zValidator } from '@hono/zod-validator'
+import { parseISO } from 'date-fns'
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { aribGenreToString } from '../lib/arib-genre'
@@ -73,7 +74,7 @@ async function fetchFromMirakc(params: {
 
   // Sort ascending by startAt, then channelId for deterministic order
   programs.sort((a, b) => {
-    const tDiff = new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+    const tDiff = parseISO(a.startAt).getTime() - parseISO(b.startAt).getTime()
     if (tDiff !== 0) return tDiff
     return a.channelId < b.channelId ? -1 : a.channelId > b.channelId ? 1 : 0
   })
@@ -84,8 +85,8 @@ async function fetchFromMirakc(params: {
 const programsRoute = new Hono().get('/', zValidator('query', ProgramListQuerySchema), async (c) => {
   const { channelId, startAt: startAtStr, endAt: endAtStr } = c.req.valid('query')
 
-  const startAt = new Date(startAtStr)
-  const endAt = new Date(endAtStr)
+  const startAt = parseISO(startAtStr)
+  const endAt = parseISO(endAtStr)
 
   if (endAt <= startAt) {
     throw new HTTPException(400, { message: 'endAt must be after startAt' })

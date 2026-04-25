@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { addHours, subHours } from 'date-fns'
 import { mirakcClient } from './mirakc-client'
 
 describe('mirakcClient (integration)', () => {
@@ -80,8 +81,8 @@ describe('mirakcClient (integration)', () => {
     expect(tvService).toBeDefined()
 
     const now = new Date()
-    const startAt = new Date(now.getTime() - 2 * 60 * 60 * 1000)
-    const endAt = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+    const startAt = subHours(now, 2)
+    const endAt = addHours(now, 2)
 
     const programs = await mirakcClient.listProgramsInRange({
       channelId: String(tvService!.id),

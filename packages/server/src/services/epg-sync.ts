@@ -1,3 +1,4 @@
+import { subDays } from 'date-fns'
 import { aribGenreToString } from '../lib/arib-genre'
 import { logger } from '../lib/logger'
 import { prisma } from '../lib/prisma'
@@ -80,7 +81,7 @@ export async function syncAllPrograms(): Promise<{
   })
 
   // Remove programs that ended more than 24 hours ago
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const cutoff = subDays(new Date(), 1)
   const { count: deleted } = await prisma.program.deleteMany({
     where: { endAt: { lt: cutoff } }
   })
