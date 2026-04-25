@@ -24,6 +24,7 @@ import { useClock } from '@/hooks/useClock'
 import { formatTimeRange, genreToColor } from '@/lib/program'
 import { cn } from '@/lib/utils'
 import { ProgramCell } from './ProgramCell'
+import { ProgramDetailDialog } from './ProgramDetailDialog'
 
 /** Pixels per minute on the vertical axis. 3px/min = 180px/hour. */
 const PX_PER_MIN = 3
@@ -84,9 +85,18 @@ interface FutureGridProps {
   gridStart: Date
   gridEnd: Date
   now: Date
+  onProgramSelect: (program: Program) => void
 }
 
-function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart, gridEnd, now }: FutureGridProps) {
+function FutureGrid({
+  channels,
+  programsByChannel,
+  loadingChannelIds,
+  gridStart,
+  gridEnd,
+  now,
+  onProgramSelect
+}: FutureGridProps) {
   const totalHeight = GRID_HOURS * 60 * PX_PER_MIN
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -244,7 +254,12 @@ function FutureGrid({ channels, programsByChannel, loadingChannelIds, gridStart,
                       className='absolute inset-x-[1px] px-0'
                       style={{ top: top + 1, height: height - 1 }}
                     >
-                      <ProgramCell program={p} heightPx={height} className='h-full w-full' />
+                      <ProgramCell
+                        program={p}
+                        heightPx={height}
+                        className='h-full w-full'
+                        onClick={() => onProgramSelect(p)}
+                      />
                     </div>
                   )
                 })
@@ -347,6 +362,7 @@ interface AgendaViewProps {
   /** Ref forwarded from the scrollable parent to wire the virtualizer. */
   scrollRef: React.RefObject<HTMLDivElement | null>
   onActiveSectionChange: (channelId: string | null) => void
+  onProgramSelect: (program: Program) => void
 }
 
 function AgendaView({
@@ -356,7 +372,8 @@ function AgendaView({
   now,
   windowEnd,
   scrollRef,
-  onActiveSectionChange
+  onActiveSectionChange,
+  onProgramSelect
 }: AgendaViewProps) {
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -478,19 +495,19 @@ function AgendaView({
                     const accentColor = genreToColor(p.genres[0] ?? '')
                     return (
                       <li key={p.id}>
-                        <Link
-                          to='/live/$channelId'
-                          params={{ channelId: ch.id }}
+                        <button
+                          type='button'
+                          onClick={() => onProgramSelect(p)}
                           aria-label={`${p.title} ${formatTimeRange(p.startAt, p.endAt)}`}
                           className={cn(
-                            'flex items-start gap-2 border-b border-border px-3 py-2',
-                            'hover:bg-muted/30 transition-colors',
+                            'flex w-full items-start gap-2 border-b border-border px-3 py-2 text-left',
+                            'transition-colors hover:bg-muted/30',
                             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                             isNow && 'bg-muted/20'
                           )}
                         >
                           <div
-                            className='mt-[3px] w-[3px] self-stretch flex-shrink-0 rounded-full'
+                            className='mt-[3px] w-[3px] flex-shrink-0 self-stretch rounded-full'
                             style={{ background: accentColor }}
                             aria-hidden
                           />
@@ -520,7 +537,7 @@ function AgendaView({
                               )}
                             </div>
                           </div>
-                        </Link>
+                        </button>
                       </li>
                     )
                   })}
@@ -548,6 +565,7 @@ export function EPGGrid({
   const agendaScrollRef = useRef<HTMLDivElement>(null)
 
   const [activeChannelId, setActiveChannelId] = useState<string | null>(highlightChannelId ?? channels[0]?.id ?? null)
+  const [selectedProgram, setSelectedProgram] = useState<Program | null>(null)
 
   // Jump to the section whose id matches channelId
   const handleChipClick = useCallback(
@@ -592,6 +610,7 @@ export function EPGGrid({
             gridStart={gridStartAt}
             gridEnd={gridEnd}
             now={now}
+            onProgramSelect={setSelectedProgram}
           />
         </div>
       </div>
@@ -606,8 +625,17 @@ export function EPGGrid({
           windowEnd={gridEnd}
           scrollRef={agendaScrollRef}
           onActiveSectionChange={setActiveChannelId}
+          onProgramSelect={setSelectedProgram}
         />
       </div>
+
+      <ProgramDetailDialog
+        program={selectedProgram}
+        open={selectedProgram !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProgram(null)
+        }}
+      />
     </div>
   )
 }
