@@ -48,29 +48,12 @@ services:
       - "${PORT:-11575}:${PORT:-11575}"
     restart: unless-stopped
 
-    # ── NVIDIA NVENC ──────────────────────────────────────────────────────────
-    # Uncomment and set HW_ACCEL_TYPE=nvenc to enable GPU transcoding.
-    # Requires nvidia-container-toolkit installed on the Docker host.
-    #
-    # runtime: nvidia
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu, video]
-
-    # ── Intel QSV / VA-API ────────────────────────────────────────────────────
-    # VA-API render node is passed through by default. Set HW_ACCEL_TYPE=vaapi
-    # (or qsv) in the environment above to actually exercise it in FFmpeg.
-    # The typical render node is /dev/dri/renderD128, but some hosts expose
-    # renderD129 or higher. Set VAAPI_DEVICE=/dev/dri/renderDNNN in the
-    # environment above to override the node path the transcoder opens.
-    # On hosts without /dev/dri, drop the device line or set HW_ACCEL_TYPE=none
-    # to fall back to CPU.
-    devices:
-      - /dev/dri:/dev/dri
+    # ── HW acceleration ─────────────────────────────────────────────────────
+    # The image ships with nvenc + vaapi + qsv compiled in.
+    # Set HW_ACCEL_TYPE above and use the matching overlay:
+    #   NVENC:  docker compose -f compose.yaml -f compose.nvenc.yaml up
+    #   VA-API: docker compose -f compose.yaml -f compose.vaapi.yaml up
+    #   QSV:    docker compose -f compose.yaml -f compose.qsv.yaml up
 
 volumes:
   epg-data:
