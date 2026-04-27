@@ -1,8 +1,8 @@
 import type { Recording, RecordingSchedule } from '@kototv/server/src/schemas/Recording.dto'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { format, intervalToDuration, parseISO } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { Trash2 } from 'lucide-react'
+import { Film, Play, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { StatusChip } from '@/components/shared/status-chip'
 import {
@@ -17,6 +17,15 @@ import {
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useDeleteRecording } from '@/hooks/useRecordings'
 
 export function formatDuration(sec: number): string {
@@ -84,9 +93,11 @@ export function ScheduleRow({ schedule, ruleNameMap }: ScheduleRowProps) {
   const isFailed = schedule.status === 'failed'
 
   return (
-    <div className='flex items-stretch border-b border-border bg-card transition-colors hover:bg-muted/50'>
-      <div className={`w-[3px] shrink-0 ${isFailed ? 'bg-destructive/50' : 'bg-amber-500'}`} />
-      <div className='flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5'>
+    <div className='flex items-start gap-2 border-b border-border px-3 py-2 transition-colors hover:bg-muted/30'>
+      <div
+        className={`mt-[3px] w-[3px] flex-shrink-0 self-stretch rounded-full ${isFailed ? 'bg-destructive/50' : 'bg-amber-500'}`}
+      />
+      <div className='flex min-w-0 flex-1 flex-col gap-[2px]'>
         <span className='truncate text-subheadline font-semibold text-foreground'>{schedule.title}</span>
         <div className='flex flex-wrap items-center gap-2'>
           {isFailed ? (
@@ -130,7 +141,7 @@ export function ScheduleRow({ schedule, ruleNameMap }: ScheduleRowProps) {
         </div>
       </div>
       {!isFailed && (
-        <div className='flex shrink-0 items-center gap-1 px-2'>
+        <div className='flex shrink-0 items-center gap-1'>
           <DeleteScheduleButton scheduleId={schedule.id} />
         </div>
       )}
@@ -148,9 +159,9 @@ export function RecordingRow({ rec }: { rec: Recording }) {
       : null
 
   return (
-    <div className='flex items-stretch border-b border-border bg-card transition-colors hover:bg-muted/50'>
-      <div className='w-[3px] shrink-0 bg-destructive' />
-      <div className='flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5'>
+    <div className='flex items-start gap-2 border-b border-border px-3 py-2 transition-colors hover:bg-muted/30'>
+      <div className='mt-[3px] w-[3px] flex-shrink-0 self-stretch rounded-full bg-destructive' />
+      <div className='flex min-w-0 flex-1 flex-col gap-[2px]'>
         <span className='truncate text-subheadline font-semibold text-foreground'>{rec.title}</span>
         <div className='flex flex-wrap items-center gap-2'>
           <StatusChip variant='rec' dot size='sm'>
@@ -171,43 +182,117 @@ export function RecordingRow({ rec }: { rec: Recording }) {
 
 interface DoneCardProps {
   rec: Recording
-  /** Friendly channel name to show under the title (e.g. "NHK総合"). */
   channelName?: string | undefined
 }
 
 export function DoneCard({ rec, channelName }: DoneCardProps) {
+  const [open, setOpen] = useState(false)
   const dateLabel = rec.endedAt ? format(parseISO(rec.endedAt), 'yyyy/M/d', { locale: ja }) : '—'
+  const startLabel = rec.startedAt ? format(parseISO(rec.startedAt), 'yyyy/M/d HH:mm', { locale: ja }) : '—'
+  const endLabel = rec.endedAt ? format(parseISO(rec.endedAt), 'HH:mm', { locale: ja }) : '—'
   const durationLabel = rec.durationSec ? formatDuration(rec.durationSec) : null
   const sizeLabel = rec.sizeBytes ? formatBytes(rec.sizeBytes) : null
+  const navigate = useNavigate()
 
   return (
-    <Link to='/recordings/$id' params={{ id: rec.id }} className='group flex flex-col gap-2 focus-visible:outline-none'>
-      {/* 16:9 thumbnail with YouTube-style rounding. Flat muted fill
-          when no image is available. */}
-      <div className='relative aspect-video w-full overflow-hidden rounded-xl bg-muted transition-[border-radius] group-hover:rounded-lg group-focus-visible:rounded-lg group-focus-visible:ring-2 group-focus-visible:ring-ring'>
-        {rec.thumbnailUrl && (
-          <img src={rec.thumbnailUrl} alt='' className='absolute inset-0 h-full w-full object-cover' />
-        )}
-        {durationLabel && (
-          <span className='absolute right-2 bottom-2 rounded-md bg-foreground/85 px-1.5 py-0.5 text-caption font-semibold tabular-nums text-background'>
-            {durationLabel}
-          </span>
-        )}
-      </div>
+    <>
+      <button
+        type='button'
+        onClick={() => setOpen(true)}
+        className='group flex flex-col gap-2 text-left focus-visible:outline-none'
+      >
+        <div className='relative aspect-video w-full overflow-hidden rounded-xl bg-muted transition-[border-radius] group-hover:rounded-lg group-focus-visible:rounded-lg group-focus-visible:ring-2 group-focus-visible:ring-ring'>
+          {rec.thumbnailUrl && (
+            <img src={rec.thumbnailUrl} alt='' className='absolute inset-0 h-full w-full object-cover' />
+          )}
+          {durationLabel && (
+            <span className='absolute right-2 bottom-2 rounded-md bg-foreground/85 px-1.5 py-0.5 text-caption font-semibold tabular-nums text-background'>
+              {durationLabel}
+            </span>
+          )}
+        </div>
+        <div className='flex flex-col gap-0.5 px-0.5'>
+          <h3 className='line-clamp-2 text-subheadline font-semibold leading-[1.3] text-foreground group-hover:text-foreground'>
+            {rec.title}
+          </h3>
+          {channelName && <p className='truncate text-footnote text-muted-foreground'>{channelName}</p>}
+          <p className='truncate text-footnote text-muted-foreground'>
+            {dateLabel}
+            {sizeLabel && ` · ${sizeLabel}`}
+          </p>
+        </div>
+      </button>
 
-      {/* Meta rows — title, channel, date + size. Matches YouTube's
-          two-line title + muted metadata below. */}
-      <div className='flex flex-col gap-0.5 px-0.5'>
-        <h3 className='line-clamp-2 text-subheadline font-semibold leading-[1.3] text-foreground group-hover:text-foreground'>
-          {rec.title}
-        </h3>
-        {channelName && <p className='truncate text-footnote text-muted-foreground'>{channelName}</p>}
-        <p className='truncate text-footnote text-muted-foreground'>
-          {dateLabel}
-          {sizeLabel && ` · ${sizeLabel}`}
-        </p>
-      </div>
-    </Link>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className='max-w-md gap-5'>
+          <DialogHeader>
+            <DialogTitle className='text-base leading-snug'>{rec.title}</DialogTitle>
+            <DialogDescription asChild>
+              <dl className='mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-footnote'>
+                <dt className='text-muted-foreground'>チャンネル</dt>
+                <dd>{channelName ?? rec.channelId}</dd>
+                <dt className='text-muted-foreground'>放送日時</dt>
+                <dd>
+                  {startLabel}〜{endLabel}
+                </dd>
+                {durationLabel && (
+                  <>
+                    <dt className='text-muted-foreground'>録画時間</dt>
+                    <dd className='tabular-nums'>{durationLabel}</dd>
+                  </>
+                )}
+                {sizeLabel && (
+                  <>
+                    <dt className='text-muted-foreground'>ファイルサイズ</dt>
+                    <dd className='tabular-nums'>{sizeLabel}</dd>
+                  </>
+                )}
+              </dl>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className='flex-col gap-2 sm:flex-col'>
+            <Button
+              className='w-full gap-2'
+              onClick={() => {
+                setOpen(false)
+                navigate({ to: '/recordings/$id', params: { id: rec.id } })
+              }}
+            >
+              <Play className='size-4' />
+              再生
+            </Button>
+            <div className='flex gap-2'>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className='flex-1'>
+                      <Button variant='outline' className='w-full gap-2' disabled>
+                        <Film className='size-4' />
+                        エンコード
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>今後のアップデートで対応予定</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className='flex-1'>
+                      <Button variant='destructive' className='w-full gap-2' disabled>
+                        <Trash2 className='size-4' />
+                        削除
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>今後のアップデートで対応予定</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -216,15 +301,15 @@ export function FailedRecordingRow({ rec }: { rec: Recording }) {
   const dateLabel = rec.startedAt ? format(parseISO(rec.startedAt), 'yyyy-MM-dd HH:mm', { locale: ja }) : '—'
 
   return (
-    <div className='border-b border-border bg-card'>
+    <div className='border-b border-border'>
       <button
         type='button'
-        className='flex w-full items-stretch text-left transition-colors hover:bg-muted/50'
+        className='flex w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/30'
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        <div className='w-[3px] shrink-0 bg-destructive/50' />
-        <div className='flex min-w-0 flex-1 flex-col gap-1 px-3 py-2.5'>
+        <div className='mt-[3px] w-[3px] flex-shrink-0 self-stretch rounded-full bg-destructive/50' />
+        <div className='flex min-w-0 flex-1 flex-col gap-[2px]'>
           <span className='truncate text-subheadline font-semibold text-foreground'>{rec.title}</span>
           <div className='flex flex-wrap items-center gap-2'>
             <StatusChip variant='err' size='sm'>
