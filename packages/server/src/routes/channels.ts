@@ -10,6 +10,11 @@ import {
 } from '../schemas/Channel.dto'
 import { mirakcClient } from '../services/mirakc-client'
 
+function deriveChannelNumber(svc: MirakcService): string {
+  if (svc.remoteControlKeyId) return String(svc.remoteControlKeyId)
+  return String(svc.serviceId)
+}
+
 function msToIso(ms: number): string {
   return new Date(ms).toISOString()
 }
@@ -55,7 +60,17 @@ const channelsRoute = new Hono().get('/', zValidator('query', ChannelListQuerySc
   // Single bulk fetch — one round-trip for all services instead of N+1
   const programMap = await mirakcClient.listAllProgramsByServiceId()
 
-  const channels: Channel[] = filtered.map((svc) => {
+  // Deduplicate services sharing the same channel number (e.g. multiple
+  // sub-services on the same frequency broadcasting identical content).
+  const seen = new Set<string>()
+  const unique = filtered.filter((svc) => {
+    const key = `${svc.channel?.type ?? ''}:${deriveChannelNumber(svc)}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  const channels: Channel[] = unique.map((svc) => {
     const programs: MirakcProgram[] = programMap.get(svc.id) ?? []
     const { current, next } = pickCurrentAndNext(programs, now)
 
@@ -65,7 +80,7 @@ const channelsRoute = new Hono().get('/', zValidator('query', ChannelListQuerySc
       serviceId: svc.serviceId,
       networkId: svc.networkId,
       name: svc.name,
-      channelNumber: svc.channel?.channel ?? '',
+      channelNumber: deriveChannelNumber(svc),
       hasLogo: true,
       currentProgram: current
         ? {
