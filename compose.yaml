@@ -39,13 +39,13 @@ services:
       CODEC: ${CODEC:-avc}
       HLS_DIR: ${HLS_DIR:-/app/data/hls}
       HLS_IDLE_KILL_MS: ${HLS_IDLE_KILL_MS:-15000}
-      RECORDINGS_DIR: ${RECORDINGS_DIR:-/app/data/recordings}
+      RECORDINGS_DIR: ${RECORDINGS_DIR:-/app/data/recorded}
     tmpfs:
       - /app/data/hls:size=512M,mode=0755,exec
     volumes:
       - ./config/kototv.yaml:/app/config/kototv.yaml:ro
-      - recordings:/app/data/recordings
-      - encoded:/app/data/encoded
+      - ./data/recorded:/app/data/recorded
+      - ./data/encoded:/app/data/encoded
     ports:
       - "${PORT:-11575}:${PORT:-11575}"
     restart: unless-stopped
@@ -60,5 +60,3 @@ services:
 volumes:
   epg-data:
   postgres-data:
-  recordings:
-  encoded:
