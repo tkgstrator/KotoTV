@@ -1,9 +1,9 @@
 ARG FFMPEG_VERSION=7.1.1
 
-# ─── Bun binary source for glibc runtimes ───────────────────────────────────
+# --- Bun binary source for glibc runtimes ---
 FROM oven/bun:1-slim AS bun-glibc
 
-# ─── Build FFmpeg from source (Debian, all HW accel: nvenc/vaapi/qsv) ──────
+# --- Build FFmpeg from source (Debian, all HW accel: nvenc/vaapi/qsv) ---
 # Single build with software (x264/x265) + all HW backends + ARIB B24.
 # nvenc uses nv-codec-headers at build time; NVIDIA libs injected at runtime
 # via --gpus / NVIDIA Container Toolkit (no CUDA base image needed).
@@ -21,7 +21,6 @@ RUN sed -i '/^Components:/ s/$/ non-free non-free-firmware/' /etc/apt/sources.li
   libass-dev libfreetype-dev libfontconfig-dev libfribidi-dev libharfbuzz-dev \
   libpng-dev
 
-# Build libaribb24 (ARIB B24 Japanese TV subtitles, not packaged)
 RUN wget -qO aribb24.tar.gz "${ARIBB24_URL}" \
   && mkdir aribb24-src && tar xf aribb24.tar.gz -C aribb24-src --strip-components=1 \
   && cd aribb24-src \
@@ -31,7 +30,6 @@ RUN wget -qO aribb24.tar.gz "${ARIBB24_URL}" \
   && make install \
   && ldconfig
 
-# nv-codec-headers (compile-time only -- nvenc uses dlopen at runtime)
 RUN wget -q "https://github.com/FFmpeg/nv-codec-headers/releases/download/n12.2.72.0/nv-codec-headers-12.2.72.0.tar.gz" \
   && tar xf nv-codec-headers-12.2.72.0.tar.gz \
   && cd nv-codec-headers-12.2.72.0 \
@@ -60,7 +58,6 @@ RUN wget -q "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" \
   && make -j"$(nproc)" \
   && make install
 
-# Collect only real .so files (not symlinks) for COPY; ldconfig recreates them
 RUN mkdir -p /ffmpeg-export/lib /ffmpeg-export/bin \
   && find /usr/lib/x86_64-linux-gnu -maxdepth 1 \
   \( -name 'libav*.so.*.*.*' -o -name 'libsw*.so.*.*.*' -o -name 'libpostproc*.so.*.*.*' \) \
@@ -68,7 +65,7 @@ RUN mkdir -p /ffmpeg-export/lib /ffmpeg-export/bin \
   && cp /usr/lib/libaribb24.so.0.0.0 /ffmpeg-export/lib/ \
   && cp /usr/bin/ffmpeg /usr/bin/ffprobe /ffmpeg-export/bin/
 
-# ─── Stage 1: Full install (client build needs devDependencies) ─────────────
+# --- Stage 1: Full workspace install ---
 FROM oven/bun:1-slim AS deps
 
 WORKDIR /app
@@ -80,46 +77,37 @@ COPY packages/client/package.json packages/client/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
   bun install --frozen-lockfile
 
-# ─── Stage 2: Build the Vite client ────────────────────────────────────────
+# --- Stage 2: Build the Vite client ---
 FROM deps AS client-build
 
-# tsconfig chain (client extends ../../tsconfig.base.json)
 COPY tsconfig.base.json ./
 COPY packages/server/tsconfig.json packages/server/
-
-# Server source -- client imports types via workspace link
 COPY packages/server/src packages/server/src
-
 COPY packages/client packages/client
 
 RUN bun run --cwd packages/client build
 
-# ─── Stage 3: Production server deps + Prisma generate ─────────────────────
-FROM oven/bun:1-slim AS server-deps
+# --- Stage 3: Production server deps + Prisma generate ---
+FROM deps AS server-deps
 
-WORKDIR /app
-
-COPY packages/server/package.json ./
+COPY packages/server/prisma packages/server/prisma
 
 RUN --mount=type=cache,target=/root/.bun/install/cache \
   bun install --production
 
-COPY packages/server/prisma ./prisma
-
 RUN --mount=type=cache,target=/root/.cache/prisma \
-  bunx prisma generate --schema=prisma/schema.prisma
+  bunx prisma generate --schema=packages/server/prisma/schema.prisma
 
 RUN rm -rf node_modules/@electric-sql \
   node_modules/mysql2 \
   node_modules/@types
 
-# ─── Runtime ───────────────────────────────────────────────────────────────
+# --- Runtime ---
 FROM debian:bookworm-slim AS runtime
 
 COPY --from=bun-glibc /usr/local/bin/bun /usr/local/bin/bun
 RUN ln -s bun /usr/local/bin/bunx
 
-# Runtime libraries for FFmpeg + all HW accel backends
 RUN sed -i '/^Components:/ s/$/ non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources \
   && apt-get update && apt-get install -y --no-install-recommends \
   libx264-164 libx265-199 libfdk-aac2 \
@@ -130,25 +118,20 @@ RUN sed -i '/^Components:/ s/$/ non-free non-free-firmware/' /etc/apt/sources.li
   intel-media-va-driver-non-free \
   && rm -rf /var/lib/apt/lists/*
 
-# Custom FFmpeg + libaribb24 (real .so files only; ldconfig creates symlinks)
 COPY --from=ffmpeg-build /ffmpeg-export/bin/ /usr/bin/
 COPY --from=ffmpeg-build /ffmpeg-export/lib/ /usr/lib/x86_64-linux-gnu/
 RUN ldconfig
 
-# NVIDIA Container Toolkit injects GPU libs when --gpus is used
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
 
 WORKDIR /app
 
 COPY --from=server-deps /app/node_modules packages/server/node_modules
-COPY --from=server-deps /app/src/generated packages/server/src/generated
+COPY --from=server-deps /app/packages/server/src/generated packages/server/src/generated
 COPY --from=client-build /app/packages/client/dist packages/client/dist
 
-# Server source (Bun runs TS directly)
 COPY packages/server packages/server
-
-# Config file (sensible defaults; override via compose volume mount)
 COPY config/kototv.yaml /app/config/kototv.yaml
 
 RUN mkdir -p /app/data/hls /app/data/recorded /app/data/encoded
