@@ -157,11 +157,20 @@ export function startTranscoder(opts: StartTranscoderOpts): TranscoderHandle {
 
   const playlistPath = `${outputDir}/playlist.m3u8`
 
-  const waitForPlaylist = async (timeoutMs: number): Promise<void> => {
+  // Wait until the playlist has at least minSegments .ts entries.
+  // A playlist with only 1-2 segments causes a visible stutter: hls.js
+  // starts playing immediately but runs out of buffer before FFmpeg
+  // produces the next segment.
+  const waitForPlaylist = async (timeoutMs: number, minSegments = 3): Promise<void> => {
     const deadline = Date.now() + timeoutMs
     while (Date.now() < deadline) {
-      if (await Bun.file(playlistPath).exists()) return
-      await sleep(100)
+      const file = Bun.file(playlistPath)
+      if (await file.exists()) {
+        const text = await file.text()
+        const segmentCount = (text.match(/\.ts$/gm) ?? []).length
+        if (segmentCount >= minSegments) return
+      }
+      await sleep(200)
     }
     throw new Error('playlist_timeout')
   }
