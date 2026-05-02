@@ -1,3 +1,4 @@
+import type { HlsConfig } from 'hls.js'
 import Hls from 'hls.js'
 import { forwardRef, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
@@ -11,9 +12,22 @@ export interface HlsPlayerProps {
   muted?: boolean
   ariaLabel?: string
   lowLatencyMode?: boolean
+  /** VOD playback skips live-tuned buffer settings. */
+  isVod?: boolean
 }
 
 const MAX_RETRIES = 3
+
+// Tuned for our 2 s segment / 6-segment playlist FFmpeg output.
+// Without these, hls.js starts from ct=0 with only ~4 s of buffer;
+// playback consumes it faster than FFmpeg produces new segments,
+// causing a visible stutter around the 4 s mark.
+const LIVE_CONFIG: Partial<HlsConfig> = {
+  liveSyncDuration: 6,
+  liveMaxLatencyDuration: 12,
+  maxBufferLength: 12,
+  backBufferLength: 10
+}
 
 /**
  * Single HLS player component shared by live view and (Phase 5) recording
@@ -25,7 +39,17 @@ const MAX_RETRIES = 3
  */
 export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
   (
-    { playlistUrl, onError, onReady, className, autoPlay = true, muted = false, ariaLabel, lowLatencyMode = false },
+    {
+      playlistUrl,
+      onError,
+      onReady,
+      className,
+      autoPlay = true,
+      muted = false,
+      ariaLabel,
+      lowLatencyMode = false,
+      isVod = false
+    },
     ref
   ) => {
     const internalRef = useRef<HTMLVideoElement>(null)
@@ -71,11 +95,11 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
         return
       }
 
-      // Use hls.js defaults — the official docs show `new Hls()` with no
-      // options as the recommended entry point. We keep the lowLatencyMode
-      // prop as an escape hatch for callers that know their server emits
-      // LL-HLS, but default to undefined so hls.js picks its own defaults.
-      const hls = new Hls(lowLatencyMode ? { lowLatencyMode: true } : {})
+      const hlsConfig: Partial<HlsConfig> = {
+        ...(isVod ? {} : LIVE_CONFIG),
+        ...(lowLatencyMode ? { lowLatencyMode: true } : {})
+      }
+      const hls = new Hls(hlsConfig)
 
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (!data.fatal) return
@@ -121,7 +145,7 @@ export const HlsPlayer = forwardRef<HTMLVideoElement, HlsPlayerProps>(
       }
       // videoRef is a RefObject (stable); onError/onReady are captured via refs above.
       // Only playlistUrl, autoPlay, and lowLatencyMode should re-init the player.
-    }, [playlistUrl, autoPlay, videoRef, lowLatencyMode])
+    }, [playlistUrl, autoPlay, videoRef, lowLatencyMode, isVod])
 
     return (
       <video
