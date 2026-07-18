@@ -4,138 +4,158 @@
 
 ## プロジェクト
 
-KonomiTV クローン。Bun + Hono (Prisma + Postgres) / Vite + React + TanStack Router + Shadcn/ui / FFmpeg → HLS。外出先ライブ視聴が最重要要件、将来 tvOS/FireTV 移植を見据える。
+KonomiTV クローン。Mirakc に繋がったチューナーを、外出先のスマホから「開いたら映ってる」体験で見るための Web アプリ。将来 tvOS/FireTV 移植を見据える。
 
-- 詳細: [`docs/plans/roadmap.md`](docs/plans/roadmap.md)
-- ユーザー向けサマリ: [`README.md`](README.md)
+- 利用者向けサマリ: [`README.md`](README.md)
+- 詳細ロードマップ: [`docs/plans/roadmap.md`](docs/plans/roadmap.md)
+
+## 実装状況
+
+| Phase | 内容 | 状態 |
+|-------|------|------|
+| 0 | Bun workspace + 最小 Hono/Vite | ✔ 完了 |
+| 1 | チャンネル一覧 + Mirakc 連携 | ✔ 完了 |
+| 2 | ライブ HLS ストリーミング | ✔ 完了 |
+| 3 | EPG 番組表 | ✔ 完了 |
+| 4 | 録画（ルール / スケジューラ） | ✔ 完了 |
+| 5 | 録画視聴 | ✔ 完了 |
+| 6 ★ | 仕上げ（PWA / Docker 最適化 / 低遅延） | ⏳ 進行中 |
+
+フェーズごとの計画は [`docs/plans/phase-*.md`](docs/plans/)。
 
 ## スタック早見表
 
 | 層 | 採用 | メモ |
 |----|------|------|
 | Runtime | **Bun** | `bun` / `bunx` 固定。`npm` / `yarn` / `pnpm` 禁止 |
+| Workspace | `packages/server`, `packages/client` | `@kototv/server`, `@kototv/client`。`shared` パッケージは無し |
 | HTTP | **Hono** | `Bun.serve`、`hono/streaming`、`hc<AppType>` で RPC |
-| DB | **Postgres 17 + Prisma** | `bunx prisma migrate dev`。生 DDL 禁止 |
+| Validation | **Zod** + `@hono/zod-validator` | ルートは `zValidator('query'|'param'|'json', schema)` |
+| DB | **Postgres 17 + Prisma** | `bunx prisma migrate dev`。生 DDL 禁止。生成先: `packages/server/src/generated/prisma` |
 | Dev DB 閲覧 | **pgadmin** | devcontainer 同梱 (<http://localhost:8080>) |
 | Mirakc | REST | `/api/services`, `/api/programs`, `/api/services/{id}/stream?decode=1` |
-| Transcode | **FFmpeg** | HW: `nvenc` / `qsv` / `vaapi` / `none`。`HW_ACCEL_TYPE` env |
+| Transcode | **FFmpeg** (自前ビルド) | Dockerfile で NVENC / VAAPI / QSV / x264 / x265 全部入り |
+| HW accel | `nvenc` / `qsv` / `vaapi` / `none` | `HW_ACCEL_TYPE` env、`config/kototv.yaml` の `streaming.hw_accel` |
 | HLS | tmpfs | `/app/data/hls/<sessionId>/`、`-hls_flags delete_segments` |
-| Client build | **Vite** | `@tanstack/router-plugin`、`@tailwindcss/vite` |
+| Client build | **Vite** | `@tanstack/router-plugin`、`@tailwindcss/vite`、`@vitejs/plugin-react` |
 | Client UI | **React 19 + Tailwind v4 + Shadcn/ui** | 純黒/純白禁止、Shadcn トークンを使う |
-| Routing | **TanStack Router** (file-based) | `src/routes/**/*.tsx`、`routeTree.gen.ts` 自動生成 |
+| Routing | **TanStack Router** (file-based) | `packages/client/src/routes/**/*.tsx`、`routeTree.gen.ts` 自動生成 |
 | Data | **TanStack Query** | キー `[resource, ...params]`、narrowly invalidate |
+| Virtual scroll | `@tanstack/react-virtual` | EPG グリッドで使用 |
 | Player | **hls.js** | `<HlsPlayer>` は 1 個、live/recording で共有 |
-| Lint/Format | **Biome** | 4 層で強制 (フック / Stop / QA / CI) |
-| Logger | `pino` | JSON、requestId 付き |
-| Container | Docker Compose | mirakc + postgres + app (prod)。dev は devcontainer (`.devcontainer/` = 標準 / `.devcontainer/cuda/` = NVENC 用 GPU 版) |
-| CI | GitHub Actions | `.github/workflows/ci.yml` |
+| Lint/Format | **Biome** | フック / Stop / CI で強制 |
+| Logger | `pino` (via `logger.ts`) | JSON、`module` フィールドで child logger |
+| Config | `config/kototv.yaml` + env override | `packages/server/src/lib/config.ts` で読み込み |
+| CI | GitHub Actions | `.github/workflows/integration.yaml` (CommitLint / Code Check / Run Tests / Docker Build) |
+| Deploy | **Cloudflare Workers** | `.github/workflows/deployment.yaml`。`develop` merge → dev、`master` merge → prod |
+| E2E | **Playwright** | `tests/{e2e,visual,ux}/`。`bun run test:e2e` / `test:visual` / `test:ux` |
 
-## エージェント配置（Agent Teams）
+## ディレクトリ構成
 
-`.claude/agents/` 配下。`/compose` で leader が統括。
+```
+.
+├── packages/
+│   ├── server/                    # Hono + Prisma + FFmpeg 制御
+│   │   ├── src/
+│   │   │   ├── app.ts             # Hono app 組み立て
+│   │   │   ├── index.ts           # Bun.serve エントリ
+│   │   │   ├── routes/            # channels, programs, streams, recordings,
+│   │   │   │                      # recording-rules, encode-profiles, status
+│   │   │   ├── services/          # epg-sync, mirakc-client, recording-manager,
+│   │   │   │                      # rule-matcher, stream-manager, transcoder,
+│   │   │   │                      # encode-benchmark
+│   │   │   ├── lib/               # config, logger, prisma, ffmpeg, arib-genre,
+│   │   │   │                      # timezone, title-normalize, log-buffer
+│   │   │   ├── schemas/           # Zod DTO
+│   │   │   └── generated/prisma/  # Prisma Client (git 管理外)
+│   │   └── prisma/
+│   │       ├── schema.prisma
+│   │       ├── seed.ts
+│   │       └── migrations/
+│   └── client/                    # Vite + React 19 SPA
+│       └── src/
+│           ├── routes/            # file-based (`__root`, index, epg, live/,
+│           │                      # recordings.*, settings)
+│           ├── components/        # channel, epg, live, player, recording,
+│           │                      # settings, shared, shell, ui
+│           ├── hooks/  lib/  api/  themes/  types/
+│           └── routeTree.gen.ts   # 自動生成
+├── config/
+│   ├── kototv.yaml                # ランタイム設定（env でオーバーライド可能）
+│   └── mirakc/                    # Mirakc の設定
+├── tests/
+│   ├── e2e/  visual/  ux/         # Playwright
+├── docs/
+│   ├── plans/phase-*.md, roadmap.md
+│   ├── design/  mocks/
+├── compose.yaml                   # 本体（mirakc + postgres + app）
+├── compose.nvenc.yaml             # HW accel override (NVIDIA)
+├── compose.qsv.yaml               # HW accel override (Intel QSV)
+├── compose.vaapi.yaml             # HW accel override (VAAPI)
+├── Dockerfile                     # multi-stage: ffmpeg-build → bun runtime
+├── entrypoint.sh
+├── playwright.config.ts
+├── biome.json / .commitlintrc.yaml / tsconfig.base.json
+└── .devcontainer/                 # 標準 + cuda/ (NVENC 用)
+```
 
-| エージェント | 担当 |
-|------------|------|
-| [`leader`](.claude/agents/leader.md) | 計画・分解・並列実行・集約。コードは書かない |
-| [`planner`](.claude/agents/planner.md) | `docs/plans/*.md` 執筆。設計判断 |
-| [`designer`](.claude/agents/designer.md) | `docs/mocks/<slug>/` に HTML バリアントを複数提示 → ユーザー選定。実装はしない |
-| [`backend`](.claude/agents/backend.md) | `packages/server/**` 以外 transcoder/stream-manager/ffmpeg.ts。Hono / Prisma / Mirakc クライアント |
-| [`frontend`](.claude/agents/frontend.md) | `packages/client/**`。選ばれたモックを React / TanStack Router / Shadcn / hls.js で実装 |
-| [`streaming`](.claude/agents/streaming.md) | FFmpeg コマンド、`Bun.spawn`、HLS セッション管理、ストリーム HTTP |
-| [`devops`](.claude/agents/devops.md) | `Dockerfile` / `compose.yaml` / CI / HW accel 配線 |
-| [`qa`](.claude/agents/qa.md) | 型チェック + biome + commitlint フォーマットでコミット |
-| [`visual-qa`](.claude/agents/visual-qa.md) | Playwright でモック整合 / UX（折返し・スクロール・フォーカス）/ E2E をチェック。修正はしない |
-| [`ui-refactor`](.claude/agents/ui-refactor.md) | `packages/client/**` のリファクタ専門。コンポーネント分割・hook 抽出・Shadcn 準拠・Tailwind 整理・a11y |
-| [`backend-refactor`](.claude/agents/backend-refactor.md) | `packages/server/**` のリファクタ専門。ルート薄型化・サービス抽出・Prisma 最適化・Zod 統合 |
+## HW accel 別 compose
 
-## スキル（ドメイン別ガイド）
+本体の `compose.yaml` にトップアップして起動する：
 
-`.claude/skills/` 配下。該当コードを触るときに Claude Code が自動でロード。
+```sh
+docker compose -f compose.yaml -f compose.nvenc.yaml up -d     # NVIDIA
+docker compose -f compose.yaml -f compose.qsv.yaml up -d       # Intel QSV
+docker compose -f compose.yaml -f compose.vaapi.yaml up -d     # VAAPI
+docker compose up -d                                            # SW encode
+```
 
-| スキル | 起動条件（抜粋） |
-|--------|-------------------|
-| [`bun-hono`](.claude/skills/bun-hono/SKILL.md) | `packages/server/src/{index,app,routes}/**` |
-| [`prisma-postgres`](.claude/skills/prisma-postgres/SKILL.md) | Prisma schema / migration / client instantiation |
-| [`mirakc`](.claude/skills/mirakc/SKILL.md) | Mirakc REST 連携 |
-| [`ffmpeg-hls`](.claude/skills/ffmpeg-hls/SKILL.md) | FFmpeg 起動、HLS 出力、セッション管理 |
-| [`hls-player`](.claude/skills/hls-player/SKILL.md) | `<HlsPlayer>` と `useLiveStream` |
-| [`tanstack-router`](.claude/skills/tanstack-router/SKILL.md) | file-based routing、Zod search, loader 連携 |
-| [`tanstack-query-best-practices`](.claude/skills/tanstack-query-best-practices/SKILL.md) | query keys / invalidation / mutation |
-| [`shadcn`](.claude/skills/shadcn/SKILL.md) | Shadcn/ui 追加・構成・MCP 経由の利用 |
-| [`vite`](.claude/skills/vite/SKILL.md) | `vite.config.ts` / プラグイン |
-| [`spatial-nav`](.claude/skills/spatial-nav/SKILL.md) | 将来の tvOS/FireTV に備えた DOM/focus ルール |
-| [`pwa`](.claude/skills/pwa/SKILL.md) | Service Worker / オフライン (将来オプション) |
-| [`compose`](.claude/skills/compose/SKILL.md) | `/compose` の Agent Team ワークフロー定義 |
-| [`ui-refactor`](.claude/skills/ui-refactor/SKILL.md) | `/ui-refactor` — フロントエンドのリファクタワークフロー |
-| [`backend-refactor`](.claude/skills/backend-refactor/SKILL.md) | `/backend-refactor` — バックエンドのリファクタワークフロー |
+## 開発フロー
 
-## MCP サーバ（`.mcp.json`）
+```sh
+# devcontainer 内で
+bun install
+bunx prisma migrate dev             # DB マイグレーション
+bun run --cwd packages/server dev   # Hono: http://localhost:11575
+bun run --cwd packages/client dev   # Vite: http://localhost:15575
+```
 
-| サーバ | 用途 |
-|--------|------|
-| `docker` | `docker compose` の確認・Docker 操作 (`devops`) |
-| `github` | PR / Issue / PR review (`leader` / `qa`) |
-| `tailwindcss` | Tailwind ユーティリティ参照 (`frontend`) |
-| `shadcn` | Shadcn レジストリ参照・`add` コマンド生成 (`frontend`) |
-| `prisma` | Prisma ドキュメント / マイグレーション支援 (`backend`) |
-| `zod` | Zod ドキュメント |
+型・lint・テストは root スクリプトから：
+
+- `bun run typecheck` — `tsc -b --noEmit`
+- `bun run lint` / `lint:fix` — Biome
+- `bun run test` — `bun test packages/`
+- `bun run test:e2e` / `test:visual` / `test:ux` — Playwright
 
 ## コード品質ゲート
 
 1. **PostToolUse フック**: `Edit` / `Write` / `MultiEdit` の直後、`bunx --bun @biomejs/biome check --write` を対象ファイルに実行（`.claude/settings.json`）
-2. **Stop フック**: ターン終了前にリポジトリ全体の Biome + (`tsconfig.base.json` があれば) `tsc -b --noEmit`
-3. **`qa` エージェント**: 実装後に明示的に走らせる最終ゲート。commitlint 形式でコミット
-4. **CI**: `.github/workflows/ci.yml`（Phase 0 で `devops` が作成）
+2. **Stop フック**: ターン終了前にリポジトリ全体の Biome + `tsc -b --noEmit`
+3. **CI** (`integration.yaml`): CommitLint → Code Check (Biome) → Run Tests (`bun test`) → Docker Build
 
-Biome ルール = [`biome.json`](biome.json)。コミット規約 = [`.commitlintrc.yaml`](.commitlintrc.yaml) で `build, ui, ci, docs, feat, fix, perf, refactor, revert, format, test, chore`。
+Biome ルール = [`biome.json`](biome.json)。コミット規約 = [`.commitlintrc.yaml`](.commitlintrc.yaml) の `type-enum` は `build, ui, ci, docs, feat, fix, perf, refactor, revert, format, test, chore`。
 
 ## 不変ルール（memory 由来）
 
-- **`bun` / `bunx` 固定**。npx/npm/yarn は使わない。
+- **`bun` / `bunx` 固定**。npx / npm / yarn は使わない。
 - **DB スキーマ変更は Prisma Migrate 経由**。生 DDL / `db push` は commit 対象のブランチで禁止。
 - **純黒 (#000) / 純白 (#fff) を UI に使わない**。Shadcn のトークンで代替。
-- **変更点の説明はリスト形式**。横並び文章はＮＧ。
-- **コードの変更を伴う作業の最後は必ずコミット**（commitlint 形式）。
-- **`/admin/*` の認証は Cloudflare Access 側**。React 側では認証チェック不要。
-- **`.devcontainer/auth` は削除禁止**（Firebase エミュレータのシード）。
+- **変更点の説明はリスト形式**。横並び文章は NG。
+- **コードの変更を伴う作業の最後は必ずコミット**（commitlint 形式、英語）。
 - **アプリの温度感は「パッと入力、たまに見返す」** — 滞在時間を伸ばす系の機能追加は NG。
-
-## 開始パターン
-
-| ユーザー入力 | 推奨アクション |
-|--------------|---------------|
-| "Phase N やって" | `/compose` → planner → 承認 → 並列実行 |
-| "ちょっと修正して (1 ファイル)" | 単体 specialist に直接投げる。planner スキップ |
-| "EPG 画面作って" | `/compose` → planner → designer (3 案) → ユーザー選定 → backend/frontend 並列 |
-| "画面デザインだけ検討" | `designer` 単体 (実装は後日) |
-| "FFmpeg 周り直して" | `streaming` 単体 |
-| "Dockerfile 直して" | `devops` 単体 |
-| "UI リファクタして" | `/ui-refactor` → `ui-refactor` エージェント → `qa` コミット |
-| "バックエンド整理して" | `/backend-refactor` → `backend-refactor` エージェント → `qa` コミット |
+- **フロントの日付処理は date-fns 経由**。生の `new Date()` / 手動 ms 演算は使わない。
+- **Tailwind v4 の important は postfix `!`**（`size-6!`）。プリフィックス形（`!size-6`）は無反応。
+- **破壊操作は `destructive` テーマ**。削除ボタンや `AlertDialogAction` は `variant='destructive'`。
 
 ## 応答言語
 
 - ユーザーへの返信は**日本語**
-- エージェント間のプロンプト / 応答は**英語**
+- コミットメッセージは**英語**（`.commitlintrc.yaml` の `type-enum` に従う）
 - コードコメントは**英語**、かつ「なぜそう書いたか」が自明でない時だけ
-
-## まだ Phase 0 が済んでいないこと
-
-以下は `docs/plans/roadmap.md` の Phase 0 で devops + backend + frontend が作る。現時点では **ない** こと前提で計画する：
-
-- `package.json` (root workspace), `packages/*/package.json`
-- `bun.lock`
-- `tsconfig.base.json`, `packages/*/tsconfig.json`
-- `packages/client/components.json`, `packages/client/vite.config.ts`
-- `packages/server/prisma/schema.prisma` と `migrations/`
-- `Dockerfile`, `compose.yaml`, `config/mirakc/config.yml`
-- `.env.example`
-- `.github/workflows/ci.yml`
 
 ## 参考リンク
 
-- ロードマップ: `docs/plans/roadmap.md`
-- エージェント定義: `.claude/agents/*.md`
-- スキル: `.claude/skills/**/SKILL.md`
-- 設定: `.claude/settings.json`, `biome.json`, `.commitlintrc.yaml`
+- ロードマップ: [`docs/plans/roadmap.md`](docs/plans/roadmap.md)
+- フェーズ別: [`docs/plans/phase-*.md`](docs/plans/)
+- CI ワークフロー: [`.github/workflows/`](.github/workflows/)
 - Dev Container 構成の参照元: [qtmleap/devcontainers](https://github.com/qtmleap/devcontainers) (`hono-vite-react-node` + `python-cuda`)
