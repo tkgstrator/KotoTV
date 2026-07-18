@@ -1,5 +1,5 @@
 {
-  "name": "Koto TV",
+  "name": "Koto TV(GPU)",
   "dockerComposeFile": ["compose.yaml"],
   "service": "app",
   "workspaceFolder": "/home/vscode/app",
@@ -39,10 +39,7 @@
       "moby": false,
       "dockerDashComposeVersion": "v2"
     },
-    "ghcr.io/devcontainers-community/features/direnv:1": {},
-    "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
-      "packages": "git-filter-repo"
-    }
+    "ghcr.io/devcontainers-community/features/direnv:1": {}
   },
   "postAttachCommand": "/bin/sh .devcontainer/postAttachCommand.sh",
   "postCreateCommand": "/bin/sh .devcontainer/postCreateCommand.sh",

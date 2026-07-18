@@ -27,7 +27,7 @@ KonomiTV クローン。Bun + Hono (Prisma + Postgres) / Vite + React + TanStack
 | Player | **hls.js** | `<HlsPlayer>` は 1 個、live/recording で共有 |
 | Lint/Format | **Biome** | 4 層で強制 (フック / Stop / QA / CI) |
 | Logger | `pino` | JSON、requestId 付き |
-| Container | Docker Compose | mirakc + postgres + app (prod)。dev は devcontainer |
+| Container | Docker Compose | mirakc + postgres + app (prod)。dev は devcontainer (`.devcontainer/` = 標準 / `.devcontainer/cuda/` = NVENC 用 GPU 版) |
 | CI | GitHub Actions | `.github/workflows/ci.yml` |
 
 ## エージェント配置（Agent Teams）
@@ -45,6 +45,8 @@ KonomiTV クローン。Bun + Hono (Prisma + Postgres) / Vite + React + TanStack
 | [`devops`](.claude/agents/devops.md) | `Dockerfile` / `compose.yaml` / CI / HW accel 配線 |
 | [`qa`](.claude/agents/qa.md) | 型チェック + biome + commitlint フォーマットでコミット |
 | [`visual-qa`](.claude/agents/visual-qa.md) | Playwright でモック整合 / UX（折返し・スクロール・フォーカス）/ E2E をチェック。修正はしない |
+| [`ui-refactor`](.claude/agents/ui-refactor.md) | `packages/client/**` のリファクタ専門。コンポーネント分割・hook 抽出・Shadcn 準拠・Tailwind 整理・a11y |
+| [`backend-refactor`](.claude/agents/backend-refactor.md) | `packages/server/**` のリファクタ専門。ルート薄型化・サービス抽出・Prisma 最適化・Zod 統合 |
 
 ## スキル（ドメイン別ガイド）
 
@@ -64,6 +66,8 @@ KonomiTV クローン。Bun + Hono (Prisma + Postgres) / Vite + React + TanStack
 | [`spatial-nav`](.claude/skills/spatial-nav/SKILL.md) | 将来の tvOS/FireTV に備えた DOM/focus ルール |
 | [`pwa`](.claude/skills/pwa/SKILL.md) | Service Worker / オフライン (将来オプション) |
 | [`compose`](.claude/skills/compose/SKILL.md) | `/compose` の Agent Team ワークフロー定義 |
+| [`ui-refactor`](.claude/skills/ui-refactor/SKILL.md) | `/ui-refactor` — フロントエンドのリファクタワークフロー |
+| [`backend-refactor`](.claude/skills/backend-refactor/SKILL.md) | `/backend-refactor` — バックエンドのリファクタワークフロー |
 
 ## MCP サーバ（`.mcp.json`）
 
@@ -106,6 +110,8 @@ Biome ルール = [`biome.json`](biome.json)。コミット規約 = [`.commitlin
 | "画面デザインだけ検討" | `designer` 単体 (実装は後日) |
 | "FFmpeg 周り直して" | `streaming` 単体 |
 | "Dockerfile 直して" | `devops` 単体 |
+| "UI リファクタして" | `/ui-refactor` → `ui-refactor` エージェント → `qa` コミット |
+| "バックエンド整理して" | `/backend-refactor` → `backend-refactor` エージェント → `qa` コミット |
 
 ## 応答言語
 
@@ -132,3 +138,4 @@ Biome ルール = [`biome.json`](biome.json)。コミット規約 = [`.commitlin
 - エージェント定義: `.claude/agents/*.md`
 - スキル: `.claude/skills/**/SKILL.md`
 - 設定: `.claude/settings.json`, `biome.json`, `.commitlintrc.yaml`
+- Dev Container 構成の参照元: [qtmleap/devcontainers](https://github.com/qtmleap/devcontainers) (`hono-vite-react-node` + `python-cuda`)
