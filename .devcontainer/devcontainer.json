@@ -15,7 +15,7 @@
   ],
   "remoteEnv": {
       "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
-      "CODEX_HOME": "/home/vscode/app/.codex",
+      "CODEX_HOME": "${containerWorkspaceFolder}/.codex",
       "CLAUDE_CODE_AUTO_MODE_SERVER": "0",
       "WAKATIME_API_KEY": "${localEnv:WAKATIME_API_KEY}",
       "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
