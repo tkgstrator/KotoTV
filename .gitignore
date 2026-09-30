@@ -259,3 +259,6 @@ bun.d.ts
 # .agents/ is a local mirror of .claude/skills/ (Claude Code default-skill cache).
 # The authoritative copy is .claude/skills/; keep this one out of git.
 .agents/
+
+# Local Codex configuration, credentials, and session state.
+/.codex/
