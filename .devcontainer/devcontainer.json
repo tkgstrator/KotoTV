@@ -14,6 +14,7 @@
       "source=${env:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached,readonly"
   ],
   "remoteEnv": {
+      "CLAUDE_CODE_AUTO_MODE_SERVER": "0",
       "WAKATIME_API_KEY": "${localEnv:WAKATIME_API_KEY}",
       "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
