@@ -26,7 +26,7 @@ COPY packages/client/package.json packages/client/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --production
 
-# ─── Stage 3: Prisma generate (uses prod deps + schema) ─────────────────────
+# ─── Stage 3: Prisma generate (uses locked workspace deps + schema) ─────────────────────
 FROM deps AS prisma-generate
 
 COPY packages/server packages/server
