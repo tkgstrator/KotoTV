@@ -14,14 +14,7 @@ COPY packages/client/package.json packages/client/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile
 
-# ─── Stage 2: Build the Vite client ──────────────────────────────────────────
-FROM deps AS client-build
-
-COPY packages/client packages/client
-
-RUN bun run --cwd packages/client build
-
-# ─── Stage 3: Production-only dependencies ───────────────────────────────────
+# ─── Stage 2: Production-only dependencies ───────────────────────────────────
 FROM oven/bun:1-alpine AS prod-deps
 
 WORKDIR /app
@@ -33,13 +26,23 @@ COPY packages/client/package.json packages/client/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --production
 
-# ─── Stage 4: Prisma generate (uses prod deps + schema) ─────────────────────
-FROM prod-deps AS prisma-generate
+# ─── Stage 3: Prisma generate (uses locked workspace deps + schema) ─────────────────────
+FROM deps AS prisma-generate
 
-COPY packages/server/prisma packages/server/prisma
+COPY packages/server packages/server
+COPY tsconfig.base.json ./
 
+# Client generation reads the config but does not connect to this build-only URL.
 RUN --mount=type=cache,target=/root/.cache/prisma \
-    bunx prisma generate --schema=packages/server/prisma/schema.prisma
+    DATABASE_URL=postgresql://postgres:password@localhost:5432/koto \
+    bun run --cwd packages/server db:generate
+
+# ─── Stage 4: Build the Vite client ──────────────────────────────────────────
+FROM prisma-generate AS client-build
+
+COPY packages/client packages/client
+
+RUN bun run --cwd packages/client build
 
 # ─── Runtime base: none — Alpine + software FFmpeg ───────────────────────────
 FROM oven/bun:1-alpine AS runtime-none
@@ -88,14 +91,14 @@ WORKDIR /app
 COPY --from=prod-deps /app/node_modules node_modules
 COPY --from=prod-deps /app/packages/server/node_modules packages/server/node_modules
 
-# Generated Prisma client
-COPY --from=prisma-generate /app/node_modules/.prisma node_modules/.prisma
-
 # Pre-built client assets
 COPY --from=client-build /app/packages/client/dist packages/client/dist
 
 # Server source (Bun runs TS directly)
 COPY packages/server packages/server
+
+# Prisma 7 writes the client to the schema's configured source directory.
+COPY --from=prisma-generate /app/packages/server/src/generated/prisma packages/server/src/generated/prisma
 
 RUN mkdir -p /app/data/hls /app/data/recordings
 

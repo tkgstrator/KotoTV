@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "bun run src/index.ts",
     "dev": "bun --hot run src/index.ts",
     "typecheck": "tsc -b --noEmit",
     "db:migrate": "prisma migrate dev",
