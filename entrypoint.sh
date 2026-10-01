@@ -4,6 +4,6 @@ set -e
 cd /app
 
 echo "Running Prisma migrations..."
-bunx prisma migrate deploy --schema=packages/server/prisma/schema.prisma
+(cd packages/server && bunx --no-install prisma migrate deploy)
 
 exec "$@"

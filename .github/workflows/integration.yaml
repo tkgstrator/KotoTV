@@ -41,6 +41,9 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     if: github.event.action != 'closed' || github.event.pull_request.merged != true
+    env:
+      DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/koto
+      NODE_ENV: test
     services:
       postgres:
         image: postgres:17
@@ -63,14 +66,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Generate Prisma client
-        run: cd packages/server && bunx prisma generate
+        run: bun run --cwd packages/server db:generate
       - name: Apply Prisma migrations
-        run: cd packages/server &&
-          DATABASE_URL="postgresql://postgres:password@127.0.0.1:5432/koto" bunx
-          prisma migrate deploy
+        run: cd packages/server && bunx --no-install prisma migrate deploy
       - name: Run tests
-        run: DATABASE_URL="postgresql://postgres:password@127.0.0.1:5432/koto"
-          NODE_ENV=test bunx bun test
+        run: bun test packages/
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
