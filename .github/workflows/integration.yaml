@@ -2,6 +2,15 @@ name: Continuous Integration
 on:
   push:
 jobs:
+  ci-change-scope:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci-change-scope.yaml
+    with:
+      doc-paths: '["AGENTS.md","CHANGELOG.md","CLAUDE.md","LICENSE","README.md","docs/design/themes.md","docs/development/ci-change-scope.md","docs/plans/encode-profile-resolution-and-benchmark.md","docs/plans/phase-0-foundation.md","docs/plans/phase-1-channels.md","docs/plans/phase-2-live-hls.md","docs/plans/phase-3-epg.md","docs/plans/phase-4-recording-rules.md","docs/plans/phase-4-recording.md","docs/plans/phase-5-recording-playback.md","docs/plans/phase-6-polish.md","docs/plans/roadmap.md"]'
+      doc-prefixes: '[]'
+      runner: '"ubuntu-latest"'
+
   commitlint:
     name: CommitLint
     if: github.event.action != 'closed' || github.event.pull_request.merged != true
@@ -38,15 +47,16 @@ jobs:
         run: |
           bunx @biomejs/biome check
   test:
+    needs: ["ci-change-scope"]
     name: Run Tests
-    runs-on: ubuntu-latest
-    if: github.event.action != 'closed' || github.event.pull_request.merged != true
+    runs-on: ${{ fromJSON((needs['ci-change-scope'].result == 'success' && needs['ci-change-scope'].outputs.docs_only == 'true') && '"ubuntu-latest"' || '"ubuntu-latest"') }}
+    if: ${{ !cancelled() && (true) && (github.event.action != 'closed' || github.event.pull_request.merged != true) }}
     env:
       DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/koto
       NODE_ENV: test
     services:
       postgres:
-        image: postgres:17
+        image: ${{ fromJSON((needs['ci-change-scope'].result == 'success' && needs['ci-change-scope'].outputs.docs_only == 'true') && '""' || '"postgres:17"') }}
         env:
           POSTGRES_DB: koto
           POSTGRES_USER: postgres
@@ -58,27 +68,54 @@ jobs:
           --health-timeout 5s --health-retries 20
     steps:
       - name: Checkout
+        if: ${{ (needs['ci-change-scope'].result != 'success' || needs['ci-change-scope'].outputs.docs_only != 'true') }}
         uses: actions/checkout@v5
       - name: Setup Bun
+        if: ${{ (needs['ci-change-scope'].result != 'success' || needs['ci-change-scope'].outputs.docs_only != 'true') }}
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - name: Install dependencies
+        if: ${{ (needs['ci-change-scope'].result != 'success' || needs['ci-change-scope'].outputs.docs_only != 'true') }}
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Generate Prisma client
+        if: ${{ (needs['ci-change-scope'].result != 'success' || needs['ci-change-scope'].outputs.docs_only != 'true') }}
         run: bun run --cwd packages/server db:generate
       - name: Apply Prisma migrations
+        if: ${{ (needs['ci-change-scope'].result != 'success' || needs['ci-change-scope'].outputs.docs_only != 'true') }}
         run: cd packages/server && bunx --no-install prisma migrate deploy
       - name: Run tests
+        if: ${{ (needs['ci-change-scope'].result != 'success' || needs['ci-change-scope'].outputs.docs_only != 'true') }}
         run: bun test packages/
+      - name: Docs-only exemption
+        if: ${{ needs['ci-change-scope'].result == 'success' && needs['ci-change-scope'].outputs.docs_only == 'true' }}
+        shell: bash
+        working-directory: .
+        env:
+          CI_CHANGE_REASON: ${{ needs['ci-change-scope'].outputs.reason }}
+        run: |
+          printf '%s\n' "$CI_CHANGE_REASON" >> "$GITHUB_STEP_SUMMARY"
   docker-build:
+    needs: ["ci-change-scope"]
     name: Docker Build
-    runs-on: ubuntu-latest
-    if: github.event.action != 'closed' || github.event.pull_request.merged != true
+    runs-on: ${{ fromJSON((needs['ci-change-scope'].result == 'success' && needs['ci-change-scope'].outputs.docs_only == 'true') && '"ubuntu-latest"' || '"ubuntu-latest"') }}
+    if: ${{ !cancelled() && (true) && (github.event.action != 'closed' || github.event.pull_request.merged != true) }}
     steps:
       - name: Checkout
+        if: ${{ (needs['ci-change-scope'].result != 'success' || needs['ci-change-scope'].outputs.docs_only != 'true') }}
         uses: actions/checkout@v4
       - name: Set up Docker Buildx
+        if: ${{ (needs['ci-change-scope'].result != 'success' || needs['ci-change-scope'].outputs.docs_only != 'true') }}
         uses: docker/setup-buildx-action@v3
       - name: Build Docker image (none)
+        if: ${{ (needs['ci-change-scope'].result != 'success' || needs['ci-change-scope'].outputs.docs_only != 'true') }}
         run: docker buildx build --target runtime --build-arg HW_ACCEL=none --load -t kototv:ci .
+
+      - name: Docs-only exemption
+        if: ${{ needs['ci-change-scope'].result == 'success' && needs['ci-change-scope'].outputs.docs_only == 'true' }}
+        shell: bash
+        working-directory: .
+        env:
+          CI_CHANGE_REASON: ${{ needs['ci-change-scope'].outputs.reason }}
+        run: |
+          printf '%s\n' "$CI_CHANGE_REASON" >> "$GITHUB_STEP_SUMMARY"

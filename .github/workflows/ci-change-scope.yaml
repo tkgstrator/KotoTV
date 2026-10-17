@@ -1,0 +1,172 @@
+name: CI Change Scope
+
+# Reusable, dependency-free classifier. Outputs docs_only=true only when every
+# changed file is provably inside the caller's narrow human-only documentation
+# allowlist. Anything uncertain (API error, truncation, race, rename, delete,
+# unknown event or path) yields docs_only=false so the caller runs heavy checks.
+# This file is meant to be copied byte-for-byte across repositories; see
+# docs/development/ci-change-scope.md.
+on:
+  workflow_call:
+    inputs:
+      doc-paths:
+        description: JSON array of exact documentation paths
+        type: string
+        default: '[]'
+      doc-prefixes:
+        description: JSON array of directory prefixes (trailing slash); only Markdown beneath them
+        type: string
+        default: '[]'
+      runner:
+        description: JSON runner label or array of labels
+        type: string
+        default: '"ubuntu-latest"'
+      force-heavy:
+        description: Always report docs_only=false
+        type: boolean
+        default: false
+    outputs:
+      docs_only:
+        description: '"true" only when the change is documentation-only'
+        value: ${{ jobs.classify.outputs.docs_only }}
+      reason:
+        description: Short explanation of the decision
+        value: ${{ jobs.classify.outputs.reason }}
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    name: Change Scope
+    runs-on: ${{ fromJSON(inputs.runner) }}
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.scope.outputs.docs_only }}
+      reason: ${{ steps.scope.outputs.reason }}
+    steps:
+      - id: scope
+        uses: actions/github-script@v7
+        env:
+          DOC_PATHS: ${{ inputs.doc-paths }}
+          DOC_PREFIXES: ${{ inputs.doc-prefixes }}
+          FORCE_HEAVY: ${{ inputs.force-heavy }}
+        with:
+          script: |
+            const SHA = /^[0-9a-f]{40}$/
+            const ZERO = '0'.repeat(40)
+            const NAME = /^(?!\.{1,2}(?:\/|$))(?!.*\/\.{1,2}(?:\/|$))[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/
+            const DENY = new Set(['.git', '.github', '.devcontainer', 'src', 'source', 'sources', 'lib', 'app', 'apps',
+              'packages', 'test', 'tests', '__tests__', 'fixtures', 'resources', 'assets',
+              'public', 'static', 'node_modules', 'vendor', 'build', 'dist', 'scripts', 'bin', 'examples',
+              'migrations', 'prisma', 'sql', 'signing', 'certs', 'secrets'])
+            const MAX_LISTED = 200
+            const heavy = (why) => ({ docsOnly: false, reason: why, files: [] })
+            const safeText = (s, n = 300) => String(s).replace(/[^\x20-\x7e]/g, '?').slice(0, n)
+            const html = (s) => String(s).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+            const isInt = (n) => Number.isInteger(n)
+            const denied = (p) => p.split('/').some((s) => DENY.has(s.toLowerCase()))
+
+            const parseList = (name, raw) => {
+              let v
+              try { v = JSON.parse(raw ?? '[]') } catch { throw new Error(`${name} is not valid JSON`) }
+              if (!Array.isArray(v) || v.some((x) => typeof x !== 'string')) throw new Error(`${name} must be a JSON string array`)
+              return v
+            }
+            const loadAllow = () => {
+              const paths = parseList('doc-paths', process.env.DOC_PATHS)
+              const prefixes = parseList('doc-prefixes', process.env.DOC_PREFIXES)
+              if (!paths.length && !prefixes.length) throw new Error('empty allowlist')
+              for (const p of paths) {
+                if (!NAME.test(p) || denied(p) || !(p.endsWith('.md') || p === 'LICENSE')) throw new Error(`unsafe doc-path ${JSON.stringify(p)}`)
+              }
+              for (const p of prefixes) {
+                if (!p.endsWith('/') || !NAME.test(p.slice(0, -1)) || denied(p)) throw new Error(`unsafe doc-prefix ${JSON.stringify(p)}`)
+              }
+              return { paths: new Set(paths), prefixes }
+            }
+            const allowed = (allow, name) =>
+              NAME.test(name) && !denied(name) &&
+              (allow.paths.has(name) || (name.endsWith('.md') && allow.prefixes.some((p) => name.startsWith(p))))
+
+            const classify = (allow, files) => {
+              for (const f of files) {
+                const name = f?.filename
+                if (typeof name !== 'string') return heavy('unnamed file entry')
+                if (!SHA.test(f?.sha ?? '')) return heavy('missing or malformed immutable file SHA')
+                if (f.status !== 'added' && f.status !== 'modified') return heavy(`${f.status} file ${JSON.stringify(safeText(name, 100))}`)
+                if (f.previous_filename) return heavy('rename metadata present')
+                if (!allowed(allow, name)) return heavy(`non-documentation file ${JSON.stringify(safeText(name, 100))}`)
+              }
+              return { docsOnly: true, reason: `${files.length} documentation file(s)`, files: files.map((f) => f.filename) }
+            }
+
+            const classifyPull = async (allow) => {
+              if (!['opened', 'synchronize', 'reopened', 'ready_for_review'].includes(context.payload.action)) return heavy(`pull_request action ${safeText(context.payload.action)}`)
+              const pr = context.payload.pull_request
+              const ev = { head: { sha: pr?.head?.sha }, base: { sha: pr?.base?.sha }, changed_files: pr?.changed_files }
+              if (!isInt(pr?.number) || !SHA.test(ev.head.sha) || !SHA.test(ev.base.sha)) return heavy('incomplete pull_request payload')
+              if (!isInt(ev.changed_files) || ev.changed_files < 1 || ev.changed_files > 299) return heavy(`changed file count ${ev.changed_files} out of range 1..299`)
+              const { owner, repo } = context.repo
+              // Compare immutable event SHAs, never mutable PR file pages.
+              // Contents-only access also preserves release callers' permission ceiling.
+              const cmp = (await github.rest.repos.compareCommitsWithBasehead({ owner, repo,
+                basehead: `${ev.base.sha}...${ev.head.sha}`, per_page: 100, page: 1 })).data
+              if (!['ahead', 'diverged'].includes(cmp.status) || cmp.base_commit?.sha !== ev.base.sha ||
+                  !SHA.test(cmp.merge_base_commit?.sha) || !Array.isArray(cmp.commits) ||
+                  !isInt(cmp.total_commits) || cmp.total_commits < 1 || cmp.total_commits > 100 ||
+                  cmp.commits.length !== cmp.total_commits || cmp.commits.at(-1)?.sha !== ev.head.sha ||
+                  !Array.isArray(cmp.files) || cmp.files.length !== ev.changed_files || cmp.files.length >= 300) {
+                return heavy('immutable PR diff incomplete or mismatched')
+              }
+              return classify(allow, cmp.files)
+            }
+
+            const classifyPush = async (allow) => {
+              const { before, after, ref } = context.payload
+              if (typeof ref !== 'string' || !ref.startsWith('refs/heads/') || context.ref !== ref) return heavy('push is not a branch ref')
+              if (context.payload.forced !== false) return heavy('forced or unknown push')
+              if (!SHA.test(before) || !SHA.test(after) || before === ZERO || after === ZERO) return heavy('missing or zero push SHA')
+              const { owner, repo } = context.repo
+              const cmp = (await github.rest.repos.compareCommitsWithBasehead({ owner, repo, basehead: `${before}...${after}`, per_page: 100, page: 1 })).data
+              if (cmp.status !== 'ahead') return heavy(`compare status ${safeText(cmp.status)}`)
+              if (cmp.base_commit?.sha !== before || cmp.merge_base_commit?.sha !== before) return heavy('compare base does not match push before')
+              const commits = cmp.commits
+              if (!Array.isArray(commits) || !isInt(cmp.total_commits) || cmp.total_commits < 1 || cmp.total_commits > 100 || cmp.total_commits !== commits.length) return heavy('commit list incomplete')
+              if (commits[commits.length - 1]?.sha !== after) return heavy('compare head does not match push after')
+              const files = cmp.files
+              // per_page limits commits; files have a separate 300-file cap.
+              // Keep a conservative budget below that cap for push exemptions.
+              if (!Array.isArray(files) || files.length < 1 || files.length > 99) return heavy('compare file list empty or possibly truncated')
+              return classify(allow, files)
+            }
+
+            let result
+            try {
+              const force = process.env.FORCE_HEAVY
+              if (force === 'true') result = heavy('force-heavy requested')
+              else if (force !== 'false') result = heavy('invalid force-heavy value')
+              else if (context.eventName !== 'pull_request' && context.eventName !== 'push') result = heavy(`event ${safeText(context.eventName)} always runs heavy checks`)
+              else {
+                const allow = loadAllow()
+                result = context.eventName === 'pull_request' ? await classifyPull(allow) : await classifyPush(allow)
+              }
+            } catch (e) {
+              result = heavy(`classification error: ${safeText(e?.message)}`)
+            }
+
+            core.setOutput('docs_only', result.docsOnly ? 'true' : 'false')
+            core.setOutput('reason', safeText(result.reason))
+            try {
+              const shown = result.files.slice(0, MAX_LISTED).map((n) => JSON.stringify(n))
+              const omitted = result.files.length - shown.length
+              core.summary
+                .addHeading('CI change scope', 2)
+                .addRaw(`docs_only: ${result.docsOnly}\n\nreason: `)
+                .addCodeBlock(html(safeText(result.reason)))
+                .addRaw(`\n\nfiles: ${result.files.length}\n`)
+                .addCodeBlock(html(shown.join('\n') + (omitted > 0 ? `\n... ${omitted} more omitted` : '')))
+              await core.summary.write()
+            } catch (e) {
+              core.warning(`summary write failed: ${safeText(e?.message)}`)
+            }
