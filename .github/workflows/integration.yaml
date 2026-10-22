@@ -34,9 +34,11 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Check
         run: |
-          bunx @biomejs/biome check
+          bunx --no-install biome check
   test:
     name: Run Tests
     runs-on: ubuntu-latest
